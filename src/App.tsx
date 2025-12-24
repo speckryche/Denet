@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import Login from "./components/auth/Login";
 import Home from "./components/home";
