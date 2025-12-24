@@ -8,6 +8,7 @@ import DatePickerWithRange from '@/components/ui/date-picker-with-range';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Settings, AlertCircle, X, Filter, Calculator, Search, Bell, BarChart3, Banknote, TrendingUp } from 'lucide-react';
+import UserMenu from '@/components/layout/UserMenu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Select,
@@ -730,7 +731,7 @@ export default function Dashboard() {
             >
               <Settings className="w-5 h-5" />
             </Button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-purple-500" />
+            <UserMenu />
           </div>
         </div>
       </header>
