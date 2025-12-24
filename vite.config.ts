@@ -7,6 +7,19 @@ export default defineConfig({
   base: process.env.NODE_ENV === "development" ? "/" : process.env.VITE_BASE_PATH || "/",
   optimizeDeps: {
     entries: ["src/main.tsx", "src/tempobook/**/*"],
+    include: ["xlsx-js-style"],
+    exclude: [],
+    esbuildOptions: {
+      loader: {
+        ".js": "jsx",
+      },
+    },
+  },
+  build: {
+    commonjsOptions: {
+      include: [/xlsx-js-style/, /node_modules/],
+      transformMixedEsModules: true,
+    },
   },
   plugins: [
     react(),

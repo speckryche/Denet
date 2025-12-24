@@ -1,0 +1,4 @@
+ALTER TABLE atm_profiles DROP COLUMN IF EXISTS monthly_cash_fee;
+
+ALTER TABLE atm_profiles ADD COLUMN IF NOT EXISTS cash_management_rps DECIMAL(10,2) NOT NULL DEFAULT 0;
+ALTER TABLE atm_profiles ADD COLUMN IF NOT EXISTS cash_management_rep DECIMAL(10,2) NOT NULL DEFAULT 0;

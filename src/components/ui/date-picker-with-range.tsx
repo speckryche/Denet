@@ -14,13 +14,25 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+interface DatePickerWithRangeProps extends React.HTMLAttributes<HTMLDivElement> {
+  date?: DateRange | undefined;
+  onDateChange?: (date: DateRange | undefined) => void;
+}
+
 export default function DatePickerWithRange({
   className,
-}: React.HTMLAttributes<HTMLDivElement>) {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: new Date(2022, 0, 20),
-    to: addDays(new Date(2022, 0, 20), 20),
+  date: controlledDate,
+  onDateChange,
+}: DatePickerWithRangeProps) {
+  const [internalDate, setInternalDate] = React.useState<DateRange | undefined>({
+    from: addDays(new Date(), -30),
+    to: new Date(),
   });
+
+  // Use controlled date if onDateChange is provided, otherwise use internal state
+  const isControlled = onDateChange !== undefined;
+  const date = isControlled ? controlledDate : internalDate;
+  const setDate = onDateChange || setInternalDate;
 
   return (
     <div className={cn("grid gap-2", className)}>
@@ -45,7 +57,7 @@ export default function DatePickerWithRange({
                 format(date.from, "LLL dd, y")
               )
             ) : (
-              <span>Pick a date</span>
+              <span>All Time</span>
             )}
           </Button>
         </PopoverTrigger>
