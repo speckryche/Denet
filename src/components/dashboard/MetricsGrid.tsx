@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, Users, ShoppingBag, Bitcoin, CreditCard } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, Users, ShoppingBag, Bitcoin, CreditCard, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -68,6 +68,7 @@ interface PlatformMetrics {
   totalFees: number;
   totalOperatorFees: number;
   totalBitcoinSent: number;
+  activeATMCount: number;
 }
 
 interface MetricsGridProps {
@@ -122,6 +123,7 @@ export function MetricsGrid({
   const totalFees = denetMetrics.totalFees + bitstopMetrics.totalFees;
   const totalOperatorFees = denetMetrics.totalOperatorFees + bitstopMetrics.totalOperatorFees;
   const totalGrossProfit = totalFees - totalOperatorFees;
+  const totalActiveATMs = denetMetrics.activeATMCount + bitstopMetrics.activeATMCount;
 
   const totalFeesPercent = totalSales > 0 ? (totalFees / totalSales) * 100 : 0;
   const totalOperatorFeesPercent = totalSales > 0 ? (totalOperatorFees / totalSales) * 100 : 0;
@@ -132,18 +134,24 @@ export function MetricsGrid({
       {/* Denet Platform Metrics */}
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-primary">Denet Platform</h3>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <MetricCard
+            title="Current Active BTMs"
+            value={denetMetrics.activeATMCount.toString()}
+            icon={<Monitor className="w-4 h-4" />}
+            delay={0}
+          />
           <MetricCard
             title="Total Sales"
             value={formatCurrency(denetMetrics.totalSales)}
             icon={<DollarSign className="w-4 h-4" />}
-            delay={0}
+            delay={50}
           />
           <MetricCard
             title="Total Sent to Customers"
             value={formatCurrency(denetMetrics.totalBitcoinSent)}
             icon={<Bitcoin className="w-4 h-4" />}
-            delay={50}
+            delay={100}
           />
           <MetricCard
             title="Total Fees"
@@ -151,7 +159,7 @@ export function MetricsGrid({
             percentage={formatPercent(denetTotalFeesPercent)}
             percentageValue={denetTotalFeesPercent}
             icon={<CreditCard className="w-4 h-4" />}
-            delay={100}
+            delay={150}
           />
           <MetricCard
             title="Bitstop Fees"
@@ -159,7 +167,7 @@ export function MetricsGrid({
             percentage={formatPercent(denetBitstopFeesPercent)}
             percentageValue={denetBitstopFeesPercent}
             icon={<ShoppingBag className="w-4 h-4" />}
-            delay={150}
+            delay={200}
           />
           <MetricCard
             title="Gross Profit $"
@@ -168,7 +176,7 @@ export function MetricsGrid({
             percentageValue={denetGrossProfitPercent}
             icon={<TrendingUp className="w-4 h-4" />}
             className={denetGrossProfit >= 0 ? 'border-green-500/20' : 'border-red-500/20'}
-            delay={200}
+            delay={250}
           />
         </div>
       </div>
@@ -176,18 +184,24 @@ export function MetricsGrid({
       {/* Bitstop Platform Metrics */}
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-orange-400">Bitstop Platform</h3>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <MetricCard
+            title="Current Active BTMs"
+            value={bitstopMetrics.activeATMCount.toString()}
+            icon={<Monitor className="w-4 h-4" />}
+            delay={0}
+          />
           <MetricCard
             title="Total Sales"
             value={formatCurrency(bitstopMetrics.totalSales)}
             icon={<DollarSign className="w-4 h-4" />}
-            delay={0}
+            delay={50}
           />
           <MetricCard
             title="Total Sent to Customers"
             value={formatCurrency(bitstopMetrics.totalBitcoinSent)}
             icon={<Bitcoin className="w-4 h-4" />}
-            delay={50}
+            delay={100}
           />
           <MetricCard
             title="Total Fees"
@@ -195,7 +209,7 @@ export function MetricsGrid({
             percentage={formatPercent(bitstopTotalFeesPercent)}
             percentageValue={bitstopTotalFeesPercent}
             icon={<CreditCard className="w-4 h-4" />}
-            delay={100}
+            delay={150}
           />
           <MetricCard
             title="Bitstop Fees"
@@ -203,7 +217,7 @@ export function MetricsGrid({
             percentage={formatPercent(bitstopBitstopFeesPercent)}
             percentageValue={bitstopBitstopFeesPercent}
             icon={<ShoppingBag className="w-4 h-4" />}
-            delay={150}
+            delay={200}
           />
           <MetricCard
             title="Gross Profit $"
@@ -212,7 +226,7 @@ export function MetricsGrid({
             percentageValue={bitstopGrossProfitPercent}
             icon={<TrendingUp className="w-4 h-4" />}
             className={bitstopGrossProfit >= 0 ? 'border-green-500/20' : 'border-red-500/20'}
-            delay={200}
+            delay={250}
           />
         </div>
       </div>
@@ -220,20 +234,27 @@ export function MetricsGrid({
       {/* Combined Total Metrics - stands out with special styling */}
       <div className="space-y-3 pt-6 border-t-2 border-primary/30">
         <h3 className="text-lg font-semibold text-green-400">Total (Both Platforms)</h3>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <MetricCard
+            title="Current Active BTMs"
+            value={totalActiveATMs.toString()}
+            icon={<Monitor className="w-4 h-4" />}
+            className="bg-yellow-400/5 border-yellow-400/30 ring-1 ring-yellow-400/20"
+            delay={0}
+          />
           <MetricCard
             title="Total Sales"
             value={formatCurrency(totalSales)}
             icon={<DollarSign className="w-4 h-4" />}
             className="bg-yellow-400/5 border-yellow-400/30 ring-1 ring-yellow-400/20"
-            delay={0}
+            delay={50}
           />
           <MetricCard
             title="Total Sent to Customers"
             value={formatCurrency(totalBitcoinSent)}
             icon={<Bitcoin className="w-4 h-4" />}
             className="bg-yellow-400/5 border-yellow-400/30 ring-1 ring-yellow-400/20"
-            delay={50}
+            delay={100}
           />
           <MetricCard
             title="Total Fees"
@@ -242,7 +263,7 @@ export function MetricsGrid({
             percentageValue={totalFeesPercent}
             icon={<CreditCard className="w-4 h-4" />}
             className="bg-yellow-400/5 border-yellow-400/30 ring-1 ring-yellow-400/20"
-            delay={100}
+            delay={150}
           />
           <MetricCard
             title="Bitstop Fees"
@@ -251,7 +272,7 @@ export function MetricsGrid({
             percentageValue={totalOperatorFeesPercent}
             icon={<ShoppingBag className="w-4 h-4" />}
             className="bg-yellow-400/5 border-yellow-400/30 ring-1 ring-yellow-400/20"
-            delay={150}
+            delay={200}
           />
           <MetricCard
             title="Gross Profit $"
@@ -263,7 +284,7 @@ export function MetricsGrid({
               "bg-yellow-400/5 border-yellow-400/30 ring-2",
               totalGrossProfit >= 0 ? 'ring-green-500/40' : 'ring-red-500/40'
             )}
-            delay={200}
+            delay={250}
           />
         </div>
       </div>

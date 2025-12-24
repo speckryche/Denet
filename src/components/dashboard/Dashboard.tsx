@@ -100,12 +100,14 @@ export default function Dashboard() {
       totalFees: 0,
       totalOperatorFees: 0,
       totalBitcoinSent: 0,
+      activeATMCount: 0,
     },
     bitstop: {
       totalSales: 0,
       totalFees: 0,
       totalOperatorFees: 0,
       totalBitcoinSent: 0,
+      activeATMCount: 0,
     }
   });
 
@@ -217,14 +219,33 @@ export default function Dashboard() {
           totalFees: 0,
           totalOperatorFees: 0,
           totalBitcoinSent: 0,
+          activeATMCount: 0,
         },
         bitstop: {
           totalSales: 0,
           totalFees: 0,
           totalOperatorFees: 0,
           totalBitcoinSent: 0,
+          activeATMCount: 0,
         }
       });
+
+      // Fetch active ATM counts (independent of date range)
+      const { count: denetActiveCount } = await supabase
+        .from('atm_profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('active', true)
+        .eq('platform', 'denet');
+
+      const { count: bitstopActiveCount } = await supabase
+        .from('atm_profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('active', true)
+        .eq('platform', 'bitstop');
+
+      // Update metrics with active ATM counts
+      calculatedMetrics.denet.activeATMCount = denetActiveCount || 0;
+      calculatedMetrics.bitstop.activeATMCount = bitstopActiveCount || 0;
 
       setMetrics(calculatedMetrics);
     } catch (error) {
@@ -247,75 +268,62 @@ export default function Dashboard() {
 
   const fetchAllTransactionDates = async () => {
     try {
-      // Get total count
-      const { count } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact', head: true });
-
-      console.log('Total transactions for date range:', count);
-
-      // Fetch in batches to get ALL transactions
-      const batchSize = 1000;
-      const batches = Math.ceil((count || 0) / batchSize);
-      let allTransactions: any[] = [];
-
-      for (let i = 0; i < batches; i++) {
-        const from = i * batchSize;
-        const to = from + batchSize - 1;
-
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('date, platform')
-          .range(from, to);
-
-        if (error) throw error;
-        if (data) {
-          allTransactions = allTransactions.concat(data);
-        }
-      }
-
-      console.log('Fetched transactions for date range:', allTransactions.length);
-
-      const denetTransactions = allTransactions.filter(t => t.platform === 'denet');
-      const bitstopTransactions = allTransactions.filter(t => t.platform === 'bitstop');
-
-      const getDateRange = (txns: any[]) => {
-        if (txns.length === 0) return { first: null, last: null };
-        const dates = txns
-          .map(t => t.date)
-          .filter(d => d)
-          .map(d => new Date(d))
-          .filter(d => !isNaN(d.getTime()));
-
-        if (dates.length === 0) return { first: null, last: null };
-
-        const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-        const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-
-        const formatDate = (date: Date) => {
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          const year = date.getFullYear();
-          return `${month}/${day}/${year}`;
-        };
-
-        return {
-          first: formatDate(minDate),
-          last: formatDate(maxDate)
-        };
+      const formatDate = (date: Date) => {
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${month}/${day}/${year}`;
       };
 
-      const denetDates = getDateRange(denetTransactions);
-      const bitstopDates = getDateRange(bitstopTransactions);
+      // Fetch min/max dates for Denet platform using order and limit
+      const { data: denetFirst } = await supabase
+        .from('transactions')
+        .select('date')
+        .eq('platform', 'denet')
+        .not('date', 'is', null)
+        .order('date', { ascending: true })
+        .limit(1);
+
+      const { data: denetLast } = await supabase
+        .from('transactions')
+        .select('date')
+        .eq('platform', 'denet')
+        .not('date', 'is', null)
+        .order('date', { ascending: false })
+        .limit(1);
+
+      // Fetch min/max dates for Bitstop platform using order and limit
+      const { data: bitstopFirst } = await supabase
+        .from('transactions')
+        .select('date')
+        .eq('platform', 'bitstop')
+        .not('date', 'is', null)
+        .order('date', { ascending: true })
+        .limit(1);
+
+      const { data: bitstopLast } = await supabase
+        .from('transactions')
+        .select('date')
+        .eq('platform', 'bitstop')
+        .not('date', 'is', null)
+        .order('date', { ascending: false })
+        .limit(1);
 
       setTransactionDates({
-        denetFirst: denetDates.first,
-        denetLast: denetDates.last,
-        bitstopFirst: bitstopDates.first,
-        bitstopLast: bitstopDates.last
+        denetFirst: denetFirst?.[0]?.date ? formatDate(new Date(denetFirst[0].date)) : null,
+        denetLast: denetLast?.[0]?.date ? formatDate(new Date(denetLast[0].date)) : null,
+        bitstopFirst: bitstopFirst?.[0]?.date ? formatDate(new Date(bitstopFirst[0].date)) : null,
+        bitstopLast: bitstopLast?.[0]?.date ? formatDate(new Date(bitstopLast[0].date)) : null
       });
     } catch (error) {
       console.error('Error fetching transaction dates:', error);
+      // Set empty dates on error to prevent UI issues
+      setTransactionDates({
+        denetFirst: null,
+        denetLast: null,
+        bitstopFirst: null,
+        bitstopLast: null
+      });
     }
   };
 

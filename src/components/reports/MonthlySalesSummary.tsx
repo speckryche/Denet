@@ -32,8 +32,8 @@ export default function MonthlySalesSummary() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
-  const months = ['January', 'February', 'March', 'April', 'May', 'June',
-                  'July', 'August', 'September', 'October', 'November', 'December'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   useEffect(() => {
     fetchAvailableYears();
@@ -353,9 +353,9 @@ export default function MonthlySalesSummary() {
               <TableRow className="border-white/10">
                 <TableHead className="font-bold">Platform</TableHead>
                 {months.map(month => (
-                  <TableHead key={month} className="text-center font-bold">{month}</TableHead>
+                  <TableHead key={month} className="text-center font-bold w-[100px]">{month}</TableHead>
                 ))}
-                <TableHead className="text-center font-bold">Totals</TableHead>
+                <TableHead className="text-center font-bold w-[100px]">Totals</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -38,8 +38,8 @@ export default function ATMMonthlySales() {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('both');
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
-  const months = ['January', 'February', 'March', 'April', 'May', 'June',
-                  'July', 'August', 'September', 'October', 'November', 'December'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   useEffect(() => {
     fetchAvailableYears();
@@ -643,16 +643,16 @@ export default function ATMMonthlySales() {
           <Table>
             <TableHeader className="bg-white/5">
               <TableRow className="border-white/10">
-                <TableHead className="font-bold">Status</TableHead>
-                <TableHead className="font-bold">Install</TableHead>
-                <TableHead className="font-bold">Removed</TableHead>
-                <TableHead className="font-bold">ATM ID</TableHead>
-                <TableHead className="font-bold">ATM Name</TableHead>
-                <TableHead className="font-bold">Platform</TableHead>
+                <TableHead className="font-bold sticky left-0 z-20 bg-slate-950 w-[90px] min-w-[90px]">Status</TableHead>
+                <TableHead className="font-bold sticky left-[90px] z-20 bg-slate-950 w-[100px] min-w-[100px]">Install</TableHead>
+                <TableHead className="font-bold sticky left-[190px] z-20 bg-slate-950 w-[100px] min-w-[100px]">Removed</TableHead>
+                <TableHead className="font-bold sticky left-[290px] z-20 bg-slate-950 w-[100px] min-w-[100px]">ATM ID</TableHead>
+                <TableHead className="font-bold sticky left-[390px] z-20 bg-slate-950 w-[250px] min-w-[250px]">ATM Name</TableHead>
+                <TableHead className="font-bold sticky left-[640px] z-20 bg-slate-950 w-[100px] min-w-[100px] border-r-2 border-white/20">Platform</TableHead>
                 {months.map(month => (
-                  <TableHead key={month} className="text-center font-bold">{month}</TableHead>
+                  <TableHead key={month} className="text-center font-bold w-[110px] min-w-[110px] max-w-[110px]">{month}</TableHead>
                 ))}
-                <TableHead className="text-center font-bold">Totals</TableHead>
+                <TableHead className="text-center font-bold w-[110px] min-w-[110px] max-w-[110px]">Totals</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -672,14 +672,14 @@ export default function ATMMonthlySales() {
                 <>
                   {data.map((row, idx) => (
                     <TableRow key={idx} className="border-white/5">
-                      <TableCell className={`font-semibold ${row.active === false ? 'text-red-500' : 'text-green-500'}`}>
+                      <TableCell className={`font-semibold sticky left-0 z-20 bg-slate-950 w-[90px] min-w-[90px] ${row.active === false ? 'text-red-500' : 'text-green-500'}`}>
                         {row.active === false ? 'Inactive' : 'Active'}
                       </TableCell>
-                      <TableCell>{formatDate(row.installed_date)}</TableCell>
-                      <TableCell>{formatDate(row.removed_date)}</TableCell>
-                      <TableCell className="font-medium">{row.atm_id}</TableCell>
-                      <TableCell>{row.atm_name}</TableCell>
-                      <TableCell>
+                      <TableCell className="sticky left-[90px] z-20 bg-slate-950 w-[100px] min-w-[100px]">{formatDate(row.installed_date)}</TableCell>
+                      <TableCell className="sticky left-[190px] z-20 bg-slate-950 w-[100px] min-w-[100px]">{formatDate(row.removed_date)}</TableCell>
+                      <TableCell className="font-medium sticky left-[290px] z-20 bg-slate-950 w-[100px] min-w-[100px]">{row.atm_id}</TableCell>
+                      <TableCell className="whitespace-nowrap sticky left-[390px] z-20 bg-slate-950 w-[250px] min-w-[250px]">{row.atm_name}</TableCell>
+                      <TableCell className="sticky left-[640px] z-20 bg-slate-950 w-[100px] min-w-[100px] border-r-2 border-white/20">
                         <span className={`px-2 py-1 rounded text-xs ${
                           row.platform === 'bitstop'
                             ? 'bg-blue-500/20 text-blue-300'
@@ -713,32 +713,32 @@ export default function ATMMonthlySales() {
                         return (
                           <TableCell
                             key={monthIdx}
-                            className={`text-center font-mono ${
-                              isRemovalMonth ? 'bg-red-200/30' : isInstallMonth ? 'bg-yellow-200/30' : ''
-                            }`}
+                            className="text-center font-mono w-[110px] min-w-[110px] max-w-[110px]"
                           >
-                            ${Math.round(value).toLocaleString('en-US')}
+                            <span className={isRemovalMonth ? 'text-red-600 font-semibold' : isInstallMonth ? 'text-green-600 font-semibold' : ''}>
+                              ${Math.round(value).toLocaleString('en-US')}
+                            </span>
                           </TableCell>
                         );
                       })}
-                      <TableCell className="text-center font-mono font-semibold">
+                      <TableCell className="text-center font-mono font-semibold w-[110px] min-w-[110px] max-w-[110px]">
                         ${Math.round(row.yearTotal).toLocaleString('en-US')}
                       </TableCell>
                     </TableRow>
                   ))}
                   {/* Totals Row */}
                   <TableRow className="border-white/10 bg-white/5 font-bold">
-                    <TableCell colSpan={6}>TOTAL</TableCell>
+                    <TableCell colSpan={6} className="sticky left-0 z-20 bg-slate-900 border-r-2 border-white/20">TOTAL</TableCell>
                     {months.map((_, monthIdx) => {
                       const monthKey = `${selectedYear}-${String(monthIdx + 1).padStart(2, '0')}`;
                       const value = totals.monthlyTotals[monthKey] || 0;
                       return (
-                        <TableCell key={monthIdx} className="text-center font-mono">
+                        <TableCell key={monthIdx} className="text-center font-mono w-[110px] min-w-[110px] max-w-[110px]">
                           ${Math.round(value).toLocaleString('en-US')}
                         </TableCell>
                       );
                     })}
-                    <TableCell className="text-center font-mono">
+                    <TableCell className="text-center font-mono w-[110px] min-w-[110px] max-w-[110px]">
                       ${Math.round(totals.yearTotal).toLocaleString('en-US')}
                     </TableCell>
                   </TableRow>
