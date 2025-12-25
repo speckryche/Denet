@@ -8,6 +8,7 @@ import CommissionCalculator from "./components/commissions/CommissionCalculator"
 import Reports from "./components/reports/Reports";
 import CashManagement from "./components/cash-management/CashManagement";
 import BitstopCommissions from "./components/bitstop/BitstopCommissions";
+import { Layout } from "./components/layout/Layout";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -24,7 +25,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Login />;
   }
 
-  return <>{children}</>;
+  return <Layout>{children}</Layout>;
 }
 
 function App() {

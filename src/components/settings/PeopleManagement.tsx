@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
+import { SettingsGuard } from './SettingsGuard';
 import {
   Table,
   TableBody,
@@ -31,6 +33,8 @@ interface Person {
 }
 
 export function PeopleManagement() {
+  const { role } = useAuth();
+  const isReadOnly = role === 'standard';
   const [people, setPeople] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -158,6 +162,8 @@ export function PeopleManagement() {
   };
 
   return (
+    <SettingsGuard>
+    <div className={isReadOnly ? '[&_input]:read-only [&_button]:pointer-events-none [&_button]:opacity-50' : ''}>
     <Card className="bg-card/30 border-white/10">
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -308,5 +314,7 @@ export function PeopleManagement() {
         </div>
       </CardContent>
     </Card>
+    </div>
+    </SettingsGuard>
   );
 }

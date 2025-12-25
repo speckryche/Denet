@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,8 +20,9 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Calculator, CheckCircle, AlertCircle, Eye, Download, Trash2, ChevronDown, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { Calculator, CheckCircle, AlertCircle, Eye, Download, Trash2, ChevronDown, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 interface Commission {
   id: string;
@@ -64,7 +64,6 @@ interface CommissionDetail {
 }
 
 export default function CommissionCalculator() {
-  const navigate = useNavigate();
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -645,21 +644,7 @@ export default function CommissionCalculator() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">
-      <header className="border-b border-white/10 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-[95%] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/')}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="font-display font-bold text-xl tracking-tight">Commission Calculator</h1>
-          </div>
-        </div>
-      </header>
+      <PageHeader title="Commission Calculator" />
 
       <main className="max-w-[95%] mx-auto px-6 py-8 space-y-6">
         {successMessage && (

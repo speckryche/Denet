@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { DollarSign, ArrowLeft } from 'lucide-react';
+import { DollarSign } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { CashPickups } from './CashPickups';
 import { Deposits } from './Deposits';
 
@@ -15,7 +14,6 @@ interface CashInTransit {
 }
 
 export default function CashManagement() {
-  const navigate = useNavigate();
   const [cashInTransit, setCashInTransit] = useState<CashInTransit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -73,24 +71,7 @@ export default function CashManagement() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-[95%] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/')}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="font-display font-bold text-xl tracking-tight">
-              Cash Management
-            </h1>
-          </div>
-        </div>
-      </header>
+      <PageHeader title="Cash Management" />
 
       <div className="max-w-[95%] mx-auto px-6 py-8 space-y-6">
 

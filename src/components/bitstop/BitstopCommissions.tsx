@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,8 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Save, Plus, Trash2, ArrowLeft, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, Plus, Trash2, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 interface BitstopCommission {
   id: string;
@@ -47,7 +47,6 @@ const MONTH_ORDER: { [key: string]: number } = {
 };
 
 export default function BitstopCommissions() {
-  const navigate = useNavigate();
   const [records, setRecords] = useState<BitstopCommission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -223,24 +222,7 @@ export default function BitstopCommissions() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-[95%] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/')}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="font-display font-bold text-xl tracking-tight">
-              Bitstop Commission Tracking
-            </h1>
-          </div>
-        </div>
-      </header>
+      <PageHeader title="Bitstop Commission Tracking" />
 
       <div className="max-w-[95%] mx-auto px-6 py-8">
         <Card className="bg-card/30 border-white/10">

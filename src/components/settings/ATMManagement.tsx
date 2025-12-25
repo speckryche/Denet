@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SettingsGuard } from './SettingsGuard';
 import {
   Table,
   TableBody,
@@ -53,6 +55,8 @@ interface ATMProfile {
 }
 
 export function ATMManagement() {
+  const { role } = useAuth();
+  const isReadOnly = role === 'standard';
   const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
   const [profiles, setProfiles] = useState<ATMProfile[]>([]);
   const [originalProfiles, setOriginalProfiles] = useState<ATMProfile[]>([]);
@@ -462,6 +466,8 @@ export function ATMManagement() {
   }
 
   return (
+    <SettingsGuard>
+    <div className={isReadOnly ? '[&_input]:read-only [&_select]:pointer-events-none [&_textarea]:read-only' : ''}>
     <Card>
       <CardHeader>
         <CardTitle>ATM & Sales Rep Management</CardTitle>
@@ -494,7 +500,7 @@ export function ATMManagement() {
               <div className="flex gap-2">
                 <Dialog open={isAddRepOpen} onOpenChange={setIsAddRepOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm">
+                    <Button size="sm" disabled={isReadOnly}>
                       <Plus className="w-4 h-4 mr-2" />
                       Add Sales Rep
                     </Button>
@@ -559,7 +565,7 @@ export function ATMManagement() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Button size="sm" onClick={handleSaveReps} disabled={isSaving}>
+                <Button size="sm" onClick={handleSaveReps} disabled={isSaving || isReadOnly}>
                   <Save className="w-4 h-4 mr-2" />
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
@@ -591,6 +597,7 @@ export function ATMManagement() {
                             value={rep.name}
                             onChange={(e) => handleRepFieldChange(rep.id, 'name', e.target.value)}
                             className="bg-card border-white/10"
+                            readOnly={isReadOnly}
                           />
                         </TableCell>
                         <TableCell>
@@ -600,6 +607,7 @@ export function ATMManagement() {
                             onChange={(e) => handleRepFieldChange(rep.id, 'email', e.target.value)}
                             placeholder="email@example.com"
                             className="bg-card border-white/10"
+                            readOnly={isReadOnly}
                           />
                         </TableCell>
                         <TableCell>
@@ -609,6 +617,7 @@ export function ATMManagement() {
                             value={rep.commission_percentage}
                             onChange={(e) => handleRepFieldChange(rep.id, 'commission_percentage', parseFloat(e.target.value) || 0)}
                             className="bg-card border-white/10"
+                            readOnly={isReadOnly}
                           />
                         </TableCell>
                         <TableCell>
@@ -618,12 +627,14 @@ export function ATMManagement() {
                             value={rep.flat_monthly_fee}
                             onChange={(e) => handleRepFieldChange(rep.id, 'flat_monthly_fee', parseFloat(e.target.value) || 0)}
                             className="bg-card border-white/10"
+                            readOnly={isReadOnly}
                           />
                         </TableCell>
                         <TableCell>
                           <Select
                             value={rep.active ? 'true' : 'false'}
                             onValueChange={(value) => handleRepFieldChange(rep.id, 'active', value === 'true')}
+                            disabled={isReadOnly}
                           >
                             <SelectTrigger className="bg-card border-white/10">
                               <SelectValue />
@@ -663,7 +674,7 @@ export function ATMManagement() {
                 )}
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setIsAddATMOpen(true)}>
+                <Button size="sm" variant="outline" onClick={() => setIsAddATMOpen(true)} disabled={isReadOnly}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add ATM
                 </Button>
@@ -671,7 +682,7 @@ export function ATMManagement() {
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Refresh
                 </Button>
-                <Button size="sm" onClick={handleSaveATMs} disabled={isSaving}>
+                <Button size="sm" onClick={handleSaveATMs} disabled={isSaving || isReadOnly}>
                   <Save className="w-4 h-4 mr-2" />
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
@@ -1273,5 +1284,7 @@ export function ATMManagement() {
         </DialogContent>
       </Dialog>
     </Card>
+    </div>
+    </SettingsGuard>
   );
 }

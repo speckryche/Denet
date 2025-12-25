@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  role: 'admin' | 'standard' | null;
   signIn: (email: string, password: string, rememberMe: boolean) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -16,12 +17,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<'admin' | 'standard' | null>(null);
 
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      // Extract role from user metadata
+      const userRole = session?.user?.user_metadata?.role as 'admin' | 'standard' | undefined;
+      setRole(userRole ?? null);
       setLoading(false);
     });
 
@@ -31,6 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      // Extract role from user metadata
+      const userRole = session?.user?.user_metadata?.role as 'admin' | 'standard' | undefined;
+      setRole(userRole ?? null);
       setLoading(false);
     });
 
@@ -72,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     session,
     loading,
+    role,
     signIn,
     signOut,
   };

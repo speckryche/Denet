@@ -7,7 +7,7 @@ import { LastUploadDates } from './LastUploadDates';
 import DatePickerWithRange from '@/components/ui/date-picker-with-range';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Settings, AlertCircle, X, Filter, Calculator, Search, Bell, BarChart3, Banknote, TrendingUp } from 'lucide-react';
+import { AlertCircle, X, Filter, Search, Bell } from 'lucide-react';
 import UserMenu from '@/components/layout/UserMenu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -695,50 +695,6 @@ export default function Dashboard() {
                 </Button>
               )}
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => navigate('/reports')}
-              title="Reports"
-            >
-              <BarChart3 className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => navigate('/commissions')}
-              title="Commission Calculator"
-            >
-              <Calculator className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => navigate('/cash-management')}
-              title="Cash Management"
-            >
-              <Banknote className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => navigate('/bitstop-commissions')}
-              title="Bitstop Commissions"
-            >
-              <TrendingUp className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => navigate('/settings')}
-            >
-              <Settings className="w-5 h-5" />
-            </Button>
             <UserMenu />
           </div>
         </div>

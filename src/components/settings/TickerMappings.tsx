@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SettingsGuard } from './SettingsGuard';
 import {
   Table,
   TableBody,
@@ -32,6 +34,8 @@ interface TickerMapping {
 }
 
 export function TickerMappings() {
+  const { role } = useAuth();
+  const isReadOnly = role === 'standard';
   const [mappings, setMappings] = useState<TickerMapping[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -314,6 +318,8 @@ export function TickerMappings() {
   }
 
   return (
+    <SettingsGuard>
+    <div className={isReadOnly ? '[&_input]:read-only [&_select]:pointer-events-none [&_textarea]:read-only' : ''}>
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -337,7 +343,7 @@ export function TickerMappings() {
               variant="outline"
               size="sm"
               onClick={handleRefreshTransactions}
-              disabled={isRefreshing}
+              disabled={isRefreshing || isReadOnly}
             >
               <Database className="w-4 h-4 mr-2" />
               {isRefreshing ? 'Updating...' : 'Update Transactions'}
@@ -346,7 +352,7 @@ export function TickerMappings() {
               variant="outline"
               size="sm"
               onClick={handleRecalculateFeesClick}
-              disabled={isRecalculating}
+              disabled={isRecalculating || isReadOnly}
               className="bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20"
             >
               <Calculator className="w-4 h-4 mr-2" />
@@ -355,7 +361,7 @@ export function TickerMappings() {
             <Button
               size="sm"
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || isReadOnly}
             >
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? 'Saving...' : 'Save Changes'}
@@ -471,5 +477,7 @@ export function TickerMappings() {
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+    </div>
+    </SettingsGuard>
   );
 }
