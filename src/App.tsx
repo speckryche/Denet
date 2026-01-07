@@ -8,6 +8,7 @@ import CommissionCalculator from "./components/commissions/CommissionCalculator"
 import Reports from "./components/reports/Reports";
 import CashManagement from "./components/cash-management/CashManagement";
 import BitstopCommissions from "./components/bitstop/BitstopCommissions";
+import BTMDetails from "./components/btm-details/BTMDetails";
 import { Layout } from "./components/layout/Layout";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -78,6 +79,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <BitstopCommissions />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/btm-details"
+            element={
+              <ProtectedRoute>
+                <BTMDetails />
               </ProtectedRoute>
             }
           />

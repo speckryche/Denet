@@ -264,10 +264,19 @@ export default function ATMMonthlySales() {
         }
       });
 
-      // Sort by Totals (descending) as default
-      const sortedData = Array.from(atmData.values()).sort((a, b) =>
-        b.yearTotal - a.yearTotal
-      );
+      // Sort data based on selected platform
+      const sortedData = Array.from(atmData.values()).sort((a, b) => {
+        if (selectedPlatform === 'both') {
+          // When "Both" is selected: First by Platform, then by Totals (descending)
+          if (a.platform !== b.platform) {
+            return a.platform.localeCompare(b.platform);
+          }
+          return b.yearTotal - a.yearTotal;
+        } else {
+          // When specific platform selected: Sort by Totals only (descending)
+          return b.yearTotal - a.yearTotal;
+        }
+      });
 
       setData(sortedData);
     } catch (error) {
@@ -492,8 +501,18 @@ export default function ATMMonthlySales() {
       ['B', 'C', 'D', 'E', 'F'].forEach(col => {
         const cell = `${col}${i}`;
         if (ws[cell]) {
+          const cellValue = ws[cell].v;
+          const isBitstop = col === 'F' && cellValue === 'Bitstop';
+          const isDenet = col === 'F' && cellValue === 'Denet';
+
           ws[cell].s = {
-            font: { bold: isTotal, sz: 12 },
+            font: { 
+              bold: isTotal, 
+              sz: 12,
+              color: col === 'F' && !isTotal
+                ? (isBitstop ? { rgb: "3B82F6" } : isDenet ? { rgb: "22C55E" } : undefined)
+                : undefined
+            },
             alignment: { horizontal: 'left', vertical: 'center' },
             border: {
               top: { style: 'thin', color: { rgb: "000000" } },
@@ -501,7 +520,11 @@ export default function ATMMonthlySales() {
               left: { style: 'thin', color: { rgb: "000000" } },
               right: { style: 'thin', color: { rgb: "000000" } }
             },
-            fill: isTotal ? { fgColor: { rgb: "D1D5DB" } } : undefined
+            fill: isTotal 
+              ? { fgColor: { rgb: "D1D5DB" } }
+              : col === 'F' && !isTotal
+                ? (isBitstop ? { fgColor: { rgb: "DBEAFE" } } : isDenet ? { fgColor: { rgb: "D1FAE5" } } : undefined)
+                : undefined
           };
         }
       });

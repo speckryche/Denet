@@ -7,7 +7,8 @@ import {
   TrendingUp,
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Server
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -50,6 +51,12 @@ const navItems: NavItem[] = [
     path: '/bitstop-commissions',
     icon: <TrendingUp className="w-5 h-5" />,
     title: 'Bitstop Commissions'
+  },
+  {
+    name: 'BTM Machine Details',
+    path: '/btm-details',
+    icon: <Server className="w-5 h-5" />,
+    title: 'BTM Machine Details'
   },
   {
     name: 'Settings',

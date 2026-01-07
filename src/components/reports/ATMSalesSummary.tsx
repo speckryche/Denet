@@ -445,8 +445,18 @@ export default function ATMSalesSummary() {
       ['A', 'B', 'C'].forEach(col => {
         const cell = `${col}${i}`;
         if (ws[cell]) {
+          const cellValue = ws[cell].v;
+          const isBitstop = col === 'C' && cellValue === 'Bitstop';
+          const isDenet = col === 'C' && cellValue === 'Denet';
+
           ws[cell].s = {
-            font: { bold: isTotal, sz: 12 },
+            font: { 
+              bold: isTotal, 
+              sz: 12,
+              color: col === 'C' && !isTotal
+                ? (isBitstop ? { rgb: "3B82F6" } : isDenet ? { rgb: "22C55E" } : undefined)
+                : undefined
+            },
             alignment: { horizontal: 'left', vertical: 'center' },
             border: {
               top: { style: 'thin', color: { rgb: "000000" } },
@@ -454,7 +464,11 @@ export default function ATMSalesSummary() {
               left: { style: 'thin', color: { rgb: "000000" } },
               right: { style: 'thin', color: { rgb: "000000" } }
             },
-            fill: isTotal ? { fgColor: { rgb: "D1D5DB" } } : undefined
+            fill: isTotal 
+              ? { fgColor: { rgb: "D1D5DB" } }
+              : col === 'C' && !isTotal
+                ? (isBitstop ? { fgColor: { rgb: "DBEAFE" } } : isDenet ? { fgColor: { rgb: "D1FAE5" } } : undefined)
+                : undefined
           };
         }
       });

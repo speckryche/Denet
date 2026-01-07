@@ -266,11 +266,11 @@ export function Deposits({ onUpdate }: DepositsProps) {
           id,
           pickup_date,
           person_id,
-          atm_id,
+          atm_profile_id,
           city,
           amount,
           people!cash_pickups_person_id_fkey(name),
-          atm_profiles!cash_pickups_atm_id_fkey(location_name)
+          atm_profiles!cash_pickups_atm_profile_id_fkey(location_name)
         `)
         .eq('deposited', false)
         .order('person_id')
@@ -283,7 +283,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
         pickup_date: p.pickup_date,
         person_id: p.person_id,
         person_name: p.people?.name || 'Unknown',
-        atm_name: p.atm_profiles?.location_name || p.atm_id,
+        atm_name: p.atm_profiles?.location_name || 'Unknown',
         city: p.city || '',
         amount: parseFloat(p.amount),
       })) || [];

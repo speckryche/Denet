@@ -1,0 +1,3 @@
+ALTER TABLE atm_profiles ADD COLUMN IF NOT EXISTS serial_number TEXT;
+
+ALTER TABLE atm_profiles ALTER COLUMN atm_id DROP NOT NULL;

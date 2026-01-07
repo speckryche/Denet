@@ -128,7 +128,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
         .select(`
           *,
           people!cash_pickups_person_id_fkey(name),
-          atm_profiles!cash_pickups_atm_id_fkey(location_name)
+          atm_profiles!cash_pickups_atm_profile_id_fkey(location_name)
         `)
         .order('pickup_date', { ascending: false });
 
@@ -149,8 +149,8 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
         pickup_date: p.pickup_date,
         person_id: p.person_id,
         person_name: p.people?.name || 'Unknown',
-        atm_id: p.atm_id,
-        atm_name: p.atm_profiles?.location_name || p.atm_id,
+        atm_id: p.atm_profile_id,
+        atm_name: p.atm_profiles?.location_name || 'Unknown',
         city: p.city,
         amount: parseFloat(p.amount),
         deposited: p.deposited,
@@ -174,7 +174,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
       const payload = {
         pickup_date: formData.pickup_date,
         person_id: formData.person_id,
-        atm_id: formData.atm_id,
+        atm_profile_id: formData.atm_id,
         city: formData.city,
         amount: parseFloat(formData.amount),
         deposited: formData.deposited,

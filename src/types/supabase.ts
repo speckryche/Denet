@@ -17,7 +17,7 @@ export type Database = {
       atm_profiles: {
         Row: {
           active: boolean | null
-          atm_id: string
+          atm_id: string | null
           cash_management_rep: number
           cash_management_rps: number
           city: string | null
@@ -27,17 +27,23 @@ export type Database = {
           location_name: string | null
           monthly_rent: number
           notes: string | null
+          on_bitstop: boolean | null
+          on_coinradar: boolean | null
           platform: string | null
           platform_switch_date: string | null
           removed_date: string | null
           rent_payment_method: string | null
           sales_rep_id: string | null
+          serial_number: string | null
           state: string | null
+          street_address: string | null
           updated_at: string | null
+          warehouse_location: string | null
+          zip_code: string | null
         }
         Insert: {
           active?: boolean | null
-          atm_id: string
+          atm_id?: string | null
           cash_management_rep?: number
           cash_management_rps?: number
           city?: string | null
@@ -47,17 +53,23 @@ export type Database = {
           location_name?: string | null
           monthly_rent?: number
           notes?: string | null
+          on_bitstop?: boolean | null
+          on_coinradar?: boolean | null
           platform?: string | null
           platform_switch_date?: string | null
           removed_date?: string | null
           rent_payment_method?: string | null
           sales_rep_id?: string | null
+          serial_number?: string | null
           state?: string | null
+          street_address?: string | null
           updated_at?: string | null
+          warehouse_location?: string | null
+          zip_code?: string | null
         }
         Update: {
           active?: boolean | null
-          atm_id?: string
+          atm_id?: string | null
           cash_management_rep?: number
           cash_management_rps?: number
           city?: string | null
@@ -67,13 +79,19 @@ export type Database = {
           location_name?: string | null
           monthly_rent?: number
           notes?: string | null
+          on_bitstop?: boolean | null
+          on_coinradar?: boolean | null
           platform?: string | null
           platform_switch_date?: string | null
           removed_date?: string | null
           rent_payment_method?: string | null
           sales_rep_id?: string | null
+          serial_number?: string | null
           state?: string | null
+          street_address?: string | null
           updated_at?: string | null
+          warehouse_location?: string | null
+          zip_code?: string | null
         }
         Relationships: [
           {
@@ -134,6 +152,7 @@ export type Database = {
         Row: {
           amount: number
           atm_id: string | null
+          atm_profile_id: string | null
           city: string | null
           created_at: string | null
           deposit_date: string | null
@@ -147,6 +166,7 @@ export type Database = {
         Insert: {
           amount: number
           atm_id?: string | null
+          atm_profile_id?: string | null
           city?: string | null
           created_at?: string | null
           deposit_date?: string | null
@@ -160,6 +180,7 @@ export type Database = {
         Update: {
           amount?: number
           atm_id?: string | null
+          atm_profile_id?: string | null
           city?: string | null
           created_at?: string | null
           deposit_date?: string | null
@@ -172,11 +193,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "cash_pickups_atm_id_fkey"
-            columns: ["atm_id"]
+            foreignKeyName: "cash_pickups_atm_profile_id_fkey"
+            columns: ["atm_profile_id"]
             isOneToOne: false
             referencedRelation: "atm_profiles"
-            referencedColumns: ["atm_id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "cash_pickups_person_id_fkey"

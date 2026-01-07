@@ -171,7 +171,7 @@ export default function ATMProfitLoss() {
       if (atmError) throw atmError;
 
       // **VALIDATION: Check for missing platforms**
-      const missingPlatform = atmProfiles?.filter(p => !p.platform) || [];
+      const missingPlatform = atmProfiles?.filter(p => p.atm_id && !p.platform) || [];
       if (missingPlatform.length > 0) {
         const atmIds = missingPlatform.map(p => p.atm_id).join(', ');
         setError(`Cannot run report: The following ATM IDs are missing platform assignments in ATM Profile settings: ${atmIds}. Please assign a platform (Bitstop or Denet) to these ATMs before running the report.`);
@@ -180,9 +180,10 @@ export default function ATMProfitLoss() {
       }
 
       // **VALIDATION: Check for missing install dates**
-      const missingInstallDate = atmProfiles?.filter(p => !p.installed_date) || [];
+      const missingInstallDate = atmProfiles?.filter(p => p.atm_id && !p.installed_date) || [];
       if (missingInstallDate.length > 0) {
-        const atmIds = missingInstallDate.map(p => p.atm_id).join(', ');
+        const atmIds = missingInstallDate.map(p => p.atm_id).filter(id => id).join(', ');
+        console.log('ATMs missing install dates:', missingInstallDate);
         setError(`Cannot run report: The following ATM IDs are missing install dates in ATM Profile settings: ${atmIds}. Please add an install date to these ATMs before running the report.`);
         setIsLoading(false);
         return;
@@ -274,6 +275,11 @@ export default function ATMProfitLoss() {
 
       // Helper function: Calculate expense months considering install/removed dates
       const calculateExpenseMonths = (profile: any, reportStartDate: Date, reportEndDate: Date): number => {
+        // Skip if no install date
+        if (!profile.installed_date) {
+          return 0;
+        }
+        
         // Parse dates in local timezone to avoid timezone offset issues
         const [iYear, iMonth, iDay] = profile.installed_date.split('-').map(Number);
         const installDate = new Date(iYear, iMonth - 1, iDay);
@@ -805,12 +811,18 @@ export default function ATMProfitLoss() {
           const cellValue = ws[cell].v;
           const isInactive = cellValue === 'Inactive';
           const isActive = cellValue === 'Active';
+          const isBitstop = col === 'F' && cellValue?.toLowerCase() === 'bitstop';
+          const isDenet = col === 'F' && cellValue?.toLowerCase() === 'denet';
 
           ws[cell].s = {
             font: {
               bold: isTotal,
               sz: 12,
-              color: col === 'A' && !isTotal ? (isInactive ? { rgb: "DC2626" } : isActive ? { rgb: "22C55E" } : undefined) : undefined
+              color: col === 'A' && !isTotal 
+                ? (isInactive ? { rgb: "DC2626" } : isActive ? { rgb: "22C55E" } : undefined)
+                : col === 'F' && !isTotal
+                  ? (isBitstop ? { rgb: "3B82F6" } : isDenet ? { rgb: "22C55E" } : undefined)
+                  : undefined
             },
             alignment: { horizontal: 'left', vertical: 'center' },
             border: {
@@ -819,7 +831,11 @@ export default function ATMProfitLoss() {
               left: { style: 'thin', color: { rgb: "000000" } },
               right: { style: 'thin', color: { rgb: "000000" } }
             },
-            fill: isTotal ? { fgColor: { rgb: "D1D5DB" } } : undefined
+            fill: isTotal 
+              ? { fgColor: { rgb: "D1D5DB" } } 
+              : col === 'F' && !isTotal
+                ? (isBitstop ? { fgColor: { rgb: "DBEAFE" } } : isDenet ? { fgColor: { rgb: "D1FAE5" } } : undefined)
+                : undefined
           };
         }
       });
@@ -1278,7 +1294,15 @@ export default function ATMProfitLoss() {
                         {row.atm_name}
                       </TableCell>
                       <TableCell>{row.state}</TableCell>
-                      <TableCell>{row.platform}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          row.platform?.toLowerCase() === 'bitstop'
+                            ? 'bg-blue-500/20 text-blue-300'
+                            : 'bg-green-500/20 text-green-300'
+                        }`}>
+                          {row.platform}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-right font-mono">
                         ${Math.round(row.total_sales).toLocaleString('en-US')}
                       </TableCell>
