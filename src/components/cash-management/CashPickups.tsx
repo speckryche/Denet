@@ -51,6 +51,7 @@ interface Person {
 }
 
 interface ATM {
+  id: string; // UUID primary key for foreign key reference
   atm_id: string;
   atm_name: string;
   city: string | null;
@@ -102,7 +103,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
       // Fetch ATMs
       const { data: atmsData, error: atmsError } = await supabase
         .from('atm_profiles')
-        .select('atm_id, location_name, city, state')
+        .select('id, atm_id, location_name, city, state')
         .order('location_name');
 
       if (atmsError) {
@@ -113,6 +114,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
 
       // Use location_name as the display name
       const formattedATMs = atmsData?.map(atm => ({
+        id: atm.id,
         atm_id: atm.atm_id,
         atm_name: atm.location_name || atm.atm_id,
         city: atm.city,
@@ -169,6 +171,16 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate required Select fields (native validation doesn't work with Radix Select)
+    if (!formData.person_id) {
+      alert('Please select a person');
+      return;
+    }
+    if (!formData.atm_id) {
+      alert('Please select an ATM');
+      return;
+    }
 
     try {
       const payload = {
@@ -256,11 +268,11 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
     });
   };
 
-  const handleATMChange = (atmId: string) => {
-    const selectedATM = atms.find(a => a.atm_id === atmId);
+  const handleATMChange = (atmUuid: string) => {
+    const selectedATM = atms.find(a => a.id === atmUuid);
     setFormData({
       ...formData,
-      atm_id: atmId,
+      atm_id: atmUuid, // Store UUID for foreign key reference
       city: selectedATM?.city || '',
     });
   };
@@ -345,7 +357,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                   </div>
                   <div>
                     <Label htmlFor="person_id">Person</Label>
-                    <Select value={formData.person_id} onValueChange={(value) => setFormData({ ...formData, person_id: value })} required>
+                    <Select value={formData.person_id} onValueChange={(value) => setFormData({ ...formData, person_id: value })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select person" />
                       </SelectTrigger>
@@ -361,13 +373,13 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="atm_id">ATM</Label>
-                    <Select value={formData.atm_id} onValueChange={handleATMChange} required>
+                    <Select value={formData.atm_id} onValueChange={handleATMChange}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select ATM" />
                       </SelectTrigger>
                       <SelectContent>
                         {atms.map(atm => (
-                          <SelectItem key={atm.atm_id} value={atm.atm_id}>
+                          <SelectItem key={atm.id} value={atm.id}>
                             {atm.atm_name || atm.atm_id}
                           </SelectItem>
                         ))}
@@ -542,7 +554,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                             <TableCell>{pickup.atm_name}</TableCell>
                             <TableCell>{pickup.city}</TableCell>
                             <TableCell className="text-right font-mono">
-                              ${pickup.amount.toLocaleString('en-US', { minimumFractionDigals: 2, maximumFractionDigits: 2 })}
+                              ${pickup.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-center">
                               {pickup.deposited ? (
