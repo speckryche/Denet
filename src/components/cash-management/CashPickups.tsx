@@ -100,10 +100,12 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
         .order('name');
       setPeople(peopleData || []);
 
-      // Fetch ATMs
+      // Fetch ATMs - only active Denet ATMs
       const { data: atmsData, error: atmsError } = await supabase
         .from('atm_profiles')
         .select('id, atm_id, location_name, city, state')
+        .eq('active', true)
+        .eq('platform', 'denet')
         .order('location_name');
 
       if (atmsError) {
