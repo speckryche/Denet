@@ -24,6 +24,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save, RefreshCw, Plus, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 
 interface SalesRep {
@@ -79,6 +89,13 @@ export function ATMManagement() {
 
   // New ATM Dialog
   const [isAddATMOpen, setIsAddATMOpen] = useState(false);
+
+  // Delete ATM Dialog
+  const [isDeleteATMOpen, setIsDeleteATMOpen] = useState(false);
+  const [atmToDelete, setAtmToDelete] = useState<ATMProfile | null>(null);
+  const [deleteCheckLoading, setDeleteCheckLoading] = useState(false);
+  const [hasSalesHistory, setHasSalesHistory] = useState(false);
+
   const [newATM, setNewATM] = useState({
     atm_id: '',
     location_name: '',
@@ -321,7 +338,7 @@ export function ATMManagement() {
 
   const handleDeleteRep = async (id: string) => {
     if (!confirm('Are you sure you want to delete this sales rep? This will unassign them from all ATMs.')) return;
-    
+
     try {
       const { error } = await supabase.from('sales_reps').delete().eq('id', id);
       if (error) throw error;
@@ -332,6 +349,64 @@ export function ATMManagement() {
     } catch (err) {
       console.error('Error deleting sales rep:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete sales rep');
+    }
+  };
+
+  // Open delete confirmation for ATM - check for sales history first
+  const handleDeleteATMClick = async (profile: ATMProfile) => {
+    setAtmToDelete(profile);
+    setDeleteCheckLoading(true);
+    setHasSalesHistory(false);
+    setIsDeleteATMOpen(true);
+
+    try {
+      // Check for transactions linked to this ATM ID
+      const { count: transactionCount, error: txError } = await supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('atm_id', profile.atm_id);
+
+      if (txError) throw txError;
+
+      // Check for cash pickups linked to this ATM profile ID
+      const { count: pickupCount, error: pickupError } = await supabase
+        .from('cash_pickups')
+        .select('*', { count: 'exact', head: true })
+        .eq('atm_profile_id', profile.id);
+
+      if (pickupError) throw pickupError;
+
+      const hasHistory = (transactionCount || 0) > 0 || (pickupCount || 0) > 0;
+      setHasSalesHistory(hasHistory);
+    } catch (err) {
+      console.error('Error checking sales history:', err);
+      // If we can't check, assume there's history to be safe
+      setHasSalesHistory(true);
+    } finally {
+      setDeleteCheckLoading(false);
+    }
+  };
+
+  // Actually delete the ATM
+  const handleConfirmDeleteATM = async () => {
+    if (!atmToDelete || hasSalesHistory) return;
+
+    try {
+      const { error } = await supabase
+        .from('atm_profiles')
+        .delete()
+        .eq('id', atmToDelete.id);
+
+      if (error) throw error;
+
+      setSuccessMessage(`ATM ${atmToDelete.atm_id} deleted successfully!`);
+      setIsDeleteATMOpen(false);
+      setAtmToDelete(null);
+      fetchData();
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error deleting ATM:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete ATM');
     }
   };
 
@@ -732,6 +807,7 @@ export function ATMManagement() {
                             <TableHead className="min-w-[100px]">Removed</TableHead>
                             <TableHead className="min-w-[90px]">Status</TableHead>
                             <TableHead className="min-w-[200px]">Notes</TableHead>
+                            <TableHead className="w-[60px]">Delete</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -885,6 +961,17 @@ export function ATMManagement() {
                             placeholder="Notes"
                             className="bg-card border-white/10"
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteATMClick(profile)}
+                            className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            disabled={isReadOnly}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -930,6 +1017,7 @@ export function ATMManagement() {
                           <TableHead className="min-w-[100px]">Removed</TableHead>
                           <TableHead className="min-w-[90px]">Status</TableHead>
                           <TableHead className="min-w-[200px]">Notes</TableHead>
+                          <TableHead className="w-[60px]">Delete</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1083,6 +1171,17 @@ export function ATMManagement() {
                                 placeholder="Notes"
                                 className="bg-card border-white/10"
                               />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteATMClick(profile)}
+                                className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                disabled={isReadOnly}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1283,6 +1382,53 @@ export function ATMManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete ATM Confirmation Dialog */}
+      <AlertDialog open={isDeleteATMOpen} onOpenChange={setIsDeleteATMOpen}>
+        <AlertDialogContent className="bg-card border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteCheckLoading ? 'Checking...' : hasSalesHistory ? 'Cannot Delete ATM' : 'Delete ATM?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteCheckLoading ? (
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Checking for sales history...
+                </span>
+              ) : hasSalesHistory ? (
+                <span className="text-red-400">
+                  This ATM (ID: {atmToDelete?.atm_id}) cannot be deleted because it has sales history
+                  (transactions or cash pickups) associated with it. You can mark it as inactive instead.
+                </span>
+              ) : (
+                <>
+                  Are you sure you want to delete ATM <strong>{atmToDelete?.atm_id}</strong>
+                  {atmToDelete?.location_name && <> at <strong>{atmToDelete.location_name}</strong></>}?
+                  <br /><br />
+                  This action cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsDeleteATMOpen(false);
+              setAtmToDelete(null);
+            }}>
+              {hasSalesHistory ? 'Close' : 'Cancel'}
+            </AlertDialogCancel>
+            {!deleteCheckLoading && !hasSalesHistory && (
+              <AlertDialogAction
+                onClick={handleConfirmDeleteATM}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete ATM
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
     </div>
     </SettingsGuard>

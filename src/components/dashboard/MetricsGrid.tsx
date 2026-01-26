@@ -148,7 +148,7 @@ export function MetricsGrid({
             delay={50}
           />
           <MetricCard
-            title="Total Sent to Customers"
+            title="Total to Customers"
             value={formatCurrency(denetMetrics.totalBitcoinSent)}
             icon={<Bitcoin className="w-4 h-4" />}
             delay={100}
@@ -198,7 +198,7 @@ export function MetricsGrid({
             delay={50}
           />
           <MetricCard
-            title="Total Sent to Customers"
+            title="Total to Customers"
             value={formatCurrency(bitstopMetrics.totalBitcoinSent)}
             icon={<Bitcoin className="w-4 h-4" />}
             delay={100}
@@ -250,7 +250,7 @@ export function MetricsGrid({
             delay={50}
           />
           <MetricCard
-            title="Total Sent to Customers"
+            title="Total to Customers"
             value={formatCurrency(totalBitcoinSent)}
             icon={<Bitcoin className="w-4 h-4" />}
             className="bg-yellow-400/5 border-yellow-400/30 ring-1 ring-yellow-400/20"
