@@ -799,9 +799,9 @@ export function ATMManagement() {
                             <TableHead className="min-w-[50px]">State</TableHead>
                             <TableHead className="min-w-[70px]">Platform</TableHead>
                             <TableHead className="min-w-[120px]">Sales Rep</TableHead>
-                            <TableHead className="min-w-[60px]">Rent ($)</TableHead>
-                            <TableHead className="min-w-[60px]">CM RPS ($)</TableHead>
-                            <TableHead className="min-w-[60px]">CM Rep ($)</TableHead>
+                            <TableHead className="min-w-[100px]">Rent ($)</TableHead>
+                            <TableHead className="min-w-[100px]">CM RPS ($)</TableHead>
+                            <TableHead className="min-w-[100px]">CM Rep ($)</TableHead>
                             <TableHead className="min-w-[90px]">Rent Pymt</TableHead>
                             <TableHead className="min-w-[100px]">Installed</TableHead>
                             <TableHead className="min-w-[100px]">Removed</TableHead>

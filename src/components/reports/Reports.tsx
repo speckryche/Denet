@@ -1,60 +1,61 @@
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, DollarSign, BarChart3, Calendar } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import MonthlySalesSummary from './MonthlySalesSummary';
 import ATMProfitLoss from './ATMProfitLoss';
 import ATMSalesSummary from './ATMSalesSummary';
 import ATMMonthlySales from './ATMMonthlySales';
 
+const TABS = [
+  { key: 'monthly-sales', label: 'Sales - Totals', icon: TrendingUp },
+  { key: 'atm-monthly', label: 'Sales - by ATM', icon: Calendar },
+  { key: 'atm-pl', label: 'ATM P&L', icon: DollarSign },
+  { key: 'atm-summary', label: 'ATM Summary', icon: BarChart3 },
+] as const;
+
+type TabKey = (typeof TABS)[number]['key'];
+
+const TAB_CONTENT: Record<TabKey, React.FC> = {
+  'monthly-sales': MonthlySalesSummary,
+  'atm-monthly': ATMMonthlySales,
+  'atm-pl': ATMProfitLoss,
+  'atm-summary': ATMSalesSummary,
+};
+
 export default function Reports() {
-  const [activeTab, setActiveTab] = useState('monthly-sales');
+  const [activeTab, setActiveTab] = useState<TabKey>('monthly-sales');
+  const ActiveContent = TAB_CONTENT[activeTab];
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">
       <PageHeader title="Reports & Analytics" />
 
-      <main className="max-w-[95%] mx-auto px-6 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[800px]">
-            <TabsTrigger value="monthly-sales" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              <span className="hidden sm:inline">Sales - Totals</span>
-              <span className="sm:hidden">Totals</span>
-            </TabsTrigger>
-            <TabsTrigger value="atm-monthly" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              <span className="hidden sm:inline">Sales - by ATM</span>
-              <span className="sm:hidden">ATM</span>
-            </TabsTrigger>
-            <TabsTrigger value="atm-pl" className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4" />
-              <span className="hidden sm:inline">ATM P&L</span>
-              <span className="sm:hidden">P&L</span>
-            </TabsTrigger>
-            <TabsTrigger value="atm-summary" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              <span className="hidden sm:inline">ATM Summary</span>
-              <span className="sm:hidden">Summary</span>
-            </TabsTrigger>
-          </TabsList>
+      <main className="max-w-[95%] mx-auto px-6 py-8 space-y-6 overflow-x-hidden">
+        {/* Executive Dashboard nav: large icon+label buttons */}
+        <div className="flex gap-3 max-w-[800px]">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "h-20 flex-1 flex flex-col items-center justify-center gap-1.5 rounded-lg border transition-colors",
+                  isActive
+                    ? "bg-primary/10 border-primary text-primary"
+                    : "bg-white/[0.02] border-white/10 text-muted-foreground hover:bg-white/5"
+                )}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-          <TabsContent value="monthly-sales" className="space-y-4">
-            <MonthlySalesSummary />
-          </TabsContent>
-
-          <TabsContent value="atm-monthly" className="space-y-4">
-            <ATMMonthlySales />
-          </TabsContent>
-
-          <TabsContent value="atm-pl" className="space-y-4">
-            <ATMProfitLoss />
-          </TabsContent>
-
-          <TabsContent value="atm-summary" className="space-y-4">
-            <ATMSalesSummary />
-          </TabsContent>
-        </Tabs>
+        <ActiveContent />
       </main>
     </div>
   );

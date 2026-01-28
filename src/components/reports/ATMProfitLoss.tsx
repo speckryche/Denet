@@ -170,19 +170,36 @@ export default function ATMProfitLoss() {
 
       if (atmError) throw atmError;
 
-      // **VALIDATION: Check for missing platforms**
-      const missingPlatform = atmProfiles?.filter(p => p.atm_id && !p.platform) || [];
+      // Filter to ATM profiles relevant to the selected date range
+      const rangeStart = new Date(parseInt(selectedYear.toString()), parseInt(selectedStartMonth) - 1, 1);
+      const rangeEnd = new Date(parseInt(selectedYear.toString()), parseInt(selectedEndMonth), 0); // last day of end month
+      const relevantProfiles = atmProfiles?.filter(p => {
+        if (!p.atm_id) return false;
+        // Active ATMs installed before/during the range
+        if (p.active && p.installed_date && new Date(p.installed_date) <= rangeEnd) return true;
+        // Inactive ATMs that overlapped the range
+        if (p.active === false) {
+          if (!p.installed_date) return false;
+          if (new Date(p.installed_date) > rangeEnd) return false;
+          if (p.removed_date && new Date(p.removed_date) < rangeStart) return false;
+          return true;
+        }
+        return false;
+      }) || [];
+
+      // **VALIDATION: Check for missing platforms (only relevant ATMs)**
+      const missingPlatform = relevantProfiles.filter(p => !p.platform);
       if (missingPlatform.length > 0) {
-        const atmIds = missingPlatform.map(p => p.atm_id).join(', ');
+        const atmIds = [...new Set(missingPlatform.map(p => p.atm_id))].join(', ');
         setError(`Cannot run report: The following ATM IDs are missing platform assignments in ATM Profile settings: ${atmIds}. Please assign a platform (Bitstop or Denet) to these ATMs before running the report.`);
         setIsLoading(false);
         return;
       }
 
-      // **VALIDATION: Check for missing install dates**
-      const missingInstallDate = atmProfiles?.filter(p => p.atm_id && !p.installed_date) || [];
+      // **VALIDATION: Check for missing install dates (only relevant ATMs)**
+      const missingInstallDate = relevantProfiles.filter(p => !p.installed_date);
       if (missingInstallDate.length > 0) {
-        const atmIds = missingInstallDate.map(p => p.atm_id).filter(id => id).join(', ');
+        const atmIds = [...new Set(missingInstallDate.map(p => p.atm_id))].join(', ');
         console.log('ATMs missing install dates:', missingInstallDate);
         setError(`Cannot run report: The following ATM IDs are missing install dates in ATM Profile settings: ${atmIds}. Please add an install date to these ATMs before running the report.`);
         setIsLoading(false);
@@ -455,7 +472,7 @@ export default function ATMProfitLoss() {
   // Sort data based on current sort field and direction
   const sortedData = [...data].sort((a, b) => {
     // Primary sort: Platform (ascending)
-    const platformCompare = a.platform.localeCompare(b.platform);
+    const platformCompare = (a.platform || '').localeCompare(b.platform || '');
     if (platformCompare !== 0) {
       return platformCompare;
     }
@@ -641,7 +658,7 @@ export default function ATMProfitLoss() {
 
     // Sort data by Platform (ascending), then Net Profit (descending)
     const sortedExcelData = [...data].sort((a, b) => {
-      const platformCompare = a.platform.localeCompare(b.platform);
+      const platformCompare = (a.platform || '').localeCompare(b.platform || '');
       if (platformCompare !== 0) {
         return platformCompare;
       }
@@ -1057,7 +1074,7 @@ export default function ATMProfitLoss() {
             </Card>
             <Card className="bg-white/5 border-white/10">
               <CardContent className="pt-6">
-                <div className="text-sm text-muted-foreground">% of Total Revenue</div>
+                <div className="text-sm text-muted-foreground">% of Total Rev</div>
                 <div className={`text-2xl font-bold ${totals.total_fees > 0 && (totals.net_profit / totals.total_fees) < 0 ? 'text-red-400' : 'text-green-400'}`}>
                   {totals.total_fees > 0 ? ((totals.net_profit / totals.total_fees) * 100).toFixed(2) : '0.00'}%
                 </div>

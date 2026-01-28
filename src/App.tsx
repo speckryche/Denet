@@ -9,6 +9,7 @@ import Reports from "./components/reports/Reports";
 import CashManagement from "./components/cash-management/CashManagement";
 import BitstopCommissions from "./components/bitstop/BitstopCommissions";
 import BTMDetails from "./components/btm-details/BTMDetails";
+import CsvUploads from "./components/csv-uploads/CsvUploads";
 import { Layout } from "./components/layout/Layout";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -83,6 +84,14 @@ function App() {
             }
           />
           <Route
+            path="/csv-uploads"
+            element={
+              <ProtectedRoute>
+                <CsvUploads />
+              </ProtectedRoute>
+            }
+          />
+<Route
             path="/btm-details"
             element={
               <ProtectedRoute>

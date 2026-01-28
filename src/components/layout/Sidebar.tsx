@@ -8,7 +8,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Server
+  Server,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,12 @@ const navItems: NavItem[] = [
     path: '/',
     icon: <Home className="w-5 h-5" />,
     title: 'Dashboard'
+  },
+  {
+    name: 'CSV Uploads',
+    path: '/csv-uploads',
+    icon: <Upload className="w-5 h-5" />,
+    title: 'CSV Uploads'
   },
   {
     name: 'Reports',
@@ -58,7 +65,7 @@ const navItems: NavItem[] = [
     icon: <Server className="w-5 h-5" />,
     title: 'BTM Machine Details'
   },
-  {
+{
     name: 'Settings',
     path: '/settings',
     icon: <Settings className="w-5 h-5" />,
