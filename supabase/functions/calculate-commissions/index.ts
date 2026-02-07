@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
 
     const { data: salesReps, error: repError } = await supabase
       .from('sales_reps')
-      .select('id, commission_percentage, flat_monthly_fee');
+      .select('id, name, commission_percentage, flat_monthly_fee');
 
     if (repError) throw repError;
 
@@ -152,6 +152,10 @@ Deno.serve(async (req) => {
 
     const repMap = new Map(salesReps?.map(r => [r.id, r]) || []);
 
+    // Find Steven Kraft's ID - he gets paid for ALL ATMs, not just ones with sales
+    const stevenKraft = salesReps?.find(r => r.name === 'Steven Kraft');
+    const stevenKraftId = stevenKraft?.id || null;
+
     // Aggregate by ATM ID + Location (to handle same ATM at different locations)
     // Use composite key: atm_id|location_name
     const atmAggregates = new Map<string, ATMData & { location_name: string }>();
@@ -197,6 +201,39 @@ Deno.serve(async (req) => {
         console.log(`ATM ${tx.atm_id} has bitstop_fee: ${tx.bitstop_fee}, type: ${typeof tx.bitstop_fee}`);
       }
     });
+
+    // Special handling for Steven Kraft: Include ALL his ATMs, not just ones with sales
+    // He gets paid the cash_management_rep fee for every ATM he manages
+    if (stevenKraftId) {
+      const stevenATMs = atmProfiles?.filter(p => p.sales_rep_id === stevenKraftId) || [];
+
+      for (const profile of stevenATMs) {
+        if (!profile.atm_id) continue;
+
+        // Check if this ATM was already included (had sales)
+        const compositeKey = `${profile.atm_id}|${profile.location_name || 'Unknown'}`;
+
+        if (!atmAggregates.has(compositeKey)) {
+          // This ATM had no sales - add it with $0 sales but include the CM Rep fee
+          const expenseMonths = calculateExpenseMonths(profile, startDate, endDate);
+
+          if (expenseMonths > 0) {
+            atmAggregates.set(compositeKey, {
+              atm_id: profile.atm_id,
+              location_name: profile.location_name || profile.atm_id,
+              total_sales: 0,
+              total_fees: 0,
+              bitstop_fees: 0,
+              rent: profile.monthly_rent || 0,
+              cash_management_rps: profile.cash_management_rps || 0,
+              cash_management_rep: profile.cash_management_rep || 0,
+              sales_rep_id: stevenKraftId,
+            });
+            console.log(`Added Steven Kraft ATM without sales: ${profile.atm_id} (${profile.location_name}), CM Rep: $${profile.cash_management_rep}`);
+          }
+        }
+      }
+    }
 
     const commissionDetails: CommissionResult[] = [];
     const commissionsByRep = new Map<string, any>();
@@ -261,7 +298,14 @@ Deno.serve(async (req) => {
       repData.total_net_profit += netProfit;
       // Don't add commission here anymore
       repData.atm_count += 1;
-      repData.flat_fee_amount = repData.atm_count * rep.flat_monthly_fee;
+
+      // For Steven Kraft, flat fee is the sum of cash_management_rep from all his ATMs
+      // For other reps, use atm_count * flat_monthly_fee
+      if (atmData.sales_rep_id === stevenKraftId) {
+        repData.flat_fee_amount += atmData.cash_management_rep;
+      } else {
+        repData.flat_fee_amount = repData.atm_count * rep.flat_monthly_fee;
+      }
     });
 
     // Now calculate commission based on total net profit per rep
