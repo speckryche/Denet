@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, AlertCircle, Link, ChevronDown, ChevronRight } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -49,7 +48,7 @@ interface Person {
   name: string;
 }
 
-interface UndepositedPickup {
+interface AvailablePickup {
   id: string;
   pickup_date: string;
   person_id: string;
@@ -57,6 +56,8 @@ interface UndepositedPickup {
   atm_name: string;
   city: string;
   amount: number;
+  total_deposited: number;
+  remaining_balance: number;
 }
 
 interface DepositsProps {
@@ -75,8 +76,9 @@ export function Deposits({ onUpdate }: DepositsProps) {
   // Link Pickups Dialog
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [linkingDeposit, setLinkingDeposit] = useState<Deposit | null>(null);
-  const [undepositedPickups, setUndepositedPickups] = useState<UndepositedPickup[]>([]);
-  const [selectedPickupIds, setSelectedPickupIds] = useState<Set<string>>(new Set());
+  const [availablePickups, setAvailablePickups] = useState<AvailablePickup[]>([]);
+  const [linkAmounts, setLinkAmounts] = useState<Record<string, number>>({});
+  const [alreadyLinkedAmount, setAlreadyLinkedAmount] = useState(0);
 
   const [formData, setFormData] = useState({
     deposit_date: new Date().toISOString().split('T')[0],
@@ -112,31 +114,36 @@ export function Deposits({ onUpdate }: DepositsProps) {
 
       if (depositsError) throw depositsError;
 
-      // For each deposit, calculate amount_above (sum of linked pickups)
-      const depositsWithCalcs = await Promise.all(
-        (depositsData || []).map(async (d: any) => {
-          const { data: pickups } = await supabase
-            .from('cash_pickups')
-            .select('amount')
-            .eq('deposit_id', d.deposit_id);
+      // Fetch all deposit-pickup links to calculate linked amounts
+      const { data: linksData } = await supabase
+        .from('deposit_pickup_links')
+        .select('deposit_id, amount');
 
-          const amountAbove = pickups?.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0) || 0;
-          const depositAmount = parseFloat(d.amount.toString());
-          const difference = depositAmount - amountAbove;
+      // Calculate total linked per deposit
+      const linkedByDeposit = new Map<string, number>();
+      linksData?.forEach(link => {
+        const current = linkedByDeposit.get(link.deposit_id) || 0;
+        linkedByDeposit.set(link.deposit_id, current + parseFloat(link.amount.toString()));
+      });
 
-          return {
-            id: d.id,
-            deposit_date: d.deposit_date,
-            deposit_id: d.deposit_id,
-            person_id: d.person_id,
-            person_name: d.people?.name || 'Unknown',
-            amount: depositAmount,
-            amount_above: amountAbove,
-            difference: difference,
-            notes: d.notes,
-          };
-        })
-      );
+      // For each deposit, calculate amount_above (sum of linked pickups from junction table)
+      const depositsWithCalcs = (depositsData || []).map((d: any) => {
+        const depositAmount = parseFloat(d.amount.toString());
+        const amountAbove = linkedByDeposit.get(d.id) || 0;
+        const difference = depositAmount - amountAbove;
+
+        return {
+          id: d.id,
+          deposit_date: d.deposit_date,
+          deposit_id: d.deposit_id,
+          person_id: d.person_id,
+          person_name: d.people?.name || 'Unknown',
+          amount: depositAmount,
+          amount_above: amountAbove,
+          difference: difference,
+          notes: d.notes,
+        };
+      });
 
       setDeposits(depositsWithCalcs);
 
@@ -256,11 +263,11 @@ export function Deposits({ onUpdate }: DepositsProps) {
 
   const handleOpenLinkDialog = async (deposit: Deposit) => {
     setLinkingDeposit(deposit);
-    setSelectedPickupIds(new Set());
+    setLinkAmounts({});
 
-    // Fetch all undeposited pickups
     try {
-      const { data, error } = await supabase
+      // Fetch all pickups
+      const { data: pickupsData, error: pickupsError } = await supabase
         .from('cash_pickups')
         .select(`
           id,
@@ -272,83 +279,143 @@ export function Deposits({ onUpdate }: DepositsProps) {
           people!cash_pickups_person_id_fkey(name),
           atm_profiles!cash_pickups_atm_profile_id_fkey(location_name)
         `)
-        .eq('deposited', false)
         .order('person_id')
         .order('pickup_date', { ascending: false });
 
-      if (error) throw error;
+      if (pickupsError) throw pickupsError;
 
-      const formattedPickups: UndepositedPickup[] = data?.map((p: any) => ({
-        id: p.id,
-        pickup_date: p.pickup_date,
-        person_id: p.person_id,
-        person_name: p.people?.name || 'Unknown',
-        atm_name: p.atm_profiles?.location_name || 'Unknown',
-        city: p.city || '',
-        amount: parseFloat(p.amount),
-      })) || [];
+      // Fetch all deposit links to calculate deposited amounts per pickup
+      const { data: linksData } = await supabase
+        .from('deposit_pickup_links')
+        .select('pickup_id, deposit_id, amount');
 
-      setUndepositedPickups(formattedPickups);
+      // Calculate total deposited per pickup and amount already linked to this deposit
+      const depositedByPickup = new Map<string, number>();
+      let alreadyLinked = 0;
+      linksData?.forEach(link => {
+        const current = depositedByPickup.get(link.pickup_id) || 0;
+        depositedByPickup.set(link.pickup_id, current + parseFloat(link.amount.toString()));
+        if (link.deposit_id === deposit.id) {
+          alreadyLinked += parseFloat(link.amount.toString());
+        }
+      });
+      setAlreadyLinkedAmount(alreadyLinked);
+
+      // Format pickups with remaining balances, only include those with balance > 0
+      const formattedPickups: AvailablePickup[] = (pickupsData || [])
+        .map((p: any) => {
+          const amount = parseFloat(p.amount);
+          const totalDeposited = depositedByPickup.get(p.id) || 0;
+          const remainingBalance = amount - totalDeposited;
+          return {
+            id: p.id,
+            pickup_date: p.pickup_date,
+            person_id: p.person_id,
+            person_name: p.people?.name || 'Unknown',
+            atm_name: p.atm_profiles?.location_name || 'Unknown',
+            city: p.city || '',
+            amount: amount,
+            total_deposited: totalDeposited,
+            remaining_balance: remainingBalance,
+          };
+        })
+        .filter((p: AvailablePickup) => p.remaining_balance > 0.01);
+
+      setAvailablePickups(formattedPickups);
       setIsLinkDialogOpen(true);
     } catch (error) {
-      console.error('Error fetching undeposited pickups:', error);
-      alert('Failed to load undeposited pickups');
+      console.error('Error fetching pickups:', error);
+      alert('Failed to load pickups');
     }
   };
 
-  const handleTogglePickup = (pickupId: string) => {
-    const newSelected = new Set(selectedPickupIds);
-    if (newSelected.has(pickupId)) {
-      newSelected.delete(pickupId);
+  const handleAmountChange = (pickupId: string, amount: string) => {
+    const newAmounts = { ...linkAmounts };
+    const numAmount = parseFloat(amount) || 0;
+    if (numAmount > 0) {
+      newAmounts[pickupId] = numAmount;
     } else {
-      newSelected.add(pickupId);
+      delete newAmounts[pickupId];
     }
-    setSelectedPickupIds(newSelected);
+    setLinkAmounts(newAmounts);
+  };
+
+  const handleMaxAmount = (pickup: AvailablePickup) => {
+    // Calculate how much is still available to allocate from the deposit
+    const currentlyAdding = Object.entries(linkAmounts)
+      .filter(([id]) => id !== pickup.id)
+      .reduce((sum, [, amt]) => sum + amt, 0);
+    const depositRemaining = linkingDeposit
+      ? linkingDeposit.amount - alreadyLinkedAmount - currentlyAdding
+      : 0;
+
+    // Use the lesser of pickup's remaining balance or deposit's remaining amount
+    const maxAmount = Math.min(pickup.remaining_balance, Math.max(0, depositRemaining));
+
+    const newAmounts = { ...linkAmounts };
+    if (maxAmount > 0) {
+      newAmounts[pickup.id] = Math.round(maxAmount * 100) / 100;
+    } else {
+      delete newAmounts[pickup.id];
+    }
+    setLinkAmounts(newAmounts);
   };
 
   const handleLinkPickups = async () => {
-    if (!linkingDeposit || selectedPickupIds.size === 0) return;
+    if (!linkingDeposit || Object.keys(linkAmounts).length === 0) return;
+
+    // Validate amounts don't exceed remaining balances
+    for (const [pickupId, amount] of Object.entries(linkAmounts)) {
+      const pickup = availablePickups.find(p => p.id === pickupId);
+      if (pickup && amount > pickup.remaining_balance + 0.01) {
+        alert(`Amount for ${pickup.atm_name} exceeds remaining balance`);
+        return;
+      }
+    }
 
     try {
-      // Update all selected pickups with the deposit ID
-      const pickupIds = Array.from(selectedPickupIds);
+      // Insert new links into junction table
+      const linksToInsert = Object.entries(linkAmounts).map(([pickupId, amount]) => ({
+        deposit_id: linkingDeposit.id,
+        pickup_id: pickupId,
+        amount: amount,
+      }));
+
       const { error } = await supabase
-        .from('cash_pickups')
-        .update({
-          deposited: true,
-          deposit_id: linkingDeposit.deposit_id,
-          deposit_date: linkingDeposit.deposit_date
-        })
-        .in('id', pickupIds);
+        .from('deposit_pickup_links')
+        .insert(linksToInsert);
 
       if (error) throw error;
 
       setIsLinkDialogOpen(false);
       setLinkingDeposit(null);
-      setSelectedPickupIds(new Set());
+      setLinkAmounts({});
       fetchData();
       onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error linking pickups:', error);
-      alert('Failed to link pickups to deposit');
+      if (error.code === '23505') {
+        alert('One or more pickups are already linked to this deposit');
+      } else {
+        alert('Failed to link pickups to deposit');
+      }
     }
   };
 
-  // Calculate selected total
-  const selectedTotal = undepositedPickups
-    .filter(p => selectedPickupIds.has(p.id))
-    .reduce((sum, p) => sum + p.amount, 0);
+  // Calculate adding now total
+  const addingNowTotal = Object.values(linkAmounts).reduce((sum, amt) => sum + amt, 0);
 
-  const difference = linkingDeposit ? linkingDeposit.amount - selectedTotal : 0;
+  // Calculate remaining to allocate
+  const remainingToAllocate = linkingDeposit ? linkingDeposit.amount - alreadyLinkedAmount - addingNowTotal : 0;
 
   // Group pickups by person
-  const pickupsByPerson = undepositedPickups.reduce((acc, pickup) => {
+  const pickupsByPerson = availablePickups.reduce((acc, pickup) => {
     if (!acc[pickup.person_name]) {
       acc[pickup.person_name] = [];
     }
     acc[pickup.person_name].push(pickup);
     return acc;
-  }, {} as Record<string, UndepositedPickup[]>);
+  }, {} as Record<string, AvailablePickup[]>);
 
   // Group deposits by month
   const depositsByMonth = deposits.reduce((acc, deposit) => {
@@ -607,19 +674,27 @@ export function Deposits({ onUpdate }: DepositsProps) {
       </CardContent>
 
       {/* Link Pickups Dialog */}
-      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <Dialog open={isLinkDialogOpen} onOpenChange={(open) => {
+        setIsLinkDialogOpen(open);
+        if (!open) {
+          setLinkingDeposit(null);
+          setLinkAmounts({});
+          setAvailablePickups([]);
+          setAlreadyLinkedAmount(0);
+        }
+      }}>
+        <DialogContent key={linkingDeposit?.id || 'new'} className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Link Pickups to Deposit {linkingDeposit?.deposit_id}</DialogTitle>
             <DialogDescription>
-              Select undeposited cash pickups to link to this deposit. Pickups can be from any person.
+              Enter amounts to link from each pickup. Use MAX to quickly fill remaining balance.
             </DialogDescription>
           </DialogHeader>
 
           {linkingDeposit && (
             <div className="space-y-4">
               {/* Summary Bar */}
-              <div className="grid grid-cols-3 gap-4 p-4 bg-secondary/10 rounded-lg border border-white/10">
+              <div className="grid grid-cols-4 gap-4 p-4 bg-secondary/10 rounded-lg border border-white/10">
                 <div>
                   <div className="text-xs text-muted-foreground">Deposit Amount</div>
                   <div className="text-lg font-bold">
@@ -627,24 +702,30 @@ export function Deposits({ onUpdate }: DepositsProps) {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Selected Total</div>
-                  <div className="text-lg font-bold text-blue-500">
-                    ${selectedTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  <div className="text-xs text-muted-foreground">Already Linked</div>
+                  <div className="text-lg font-bold text-muted-foreground">
+                    ${alreadyLinkedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Difference</div>
-                  <div className={`text-lg font-bold ${difference === 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    ${Math.abs(difference).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    {difference !== 0 && (difference > 0 ? ' short' : ' over')}
+                  <div className="text-xs text-muted-foreground">Adding Now</div>
+                  <div className="text-lg font-bold text-blue-500">
+                    ${addingNowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Remaining</div>
+                  <div className={`text-lg font-bold ${Math.abs(remainingToAllocate) < 0.01 ? 'text-green-500' : remainingToAllocate > 0 ? 'text-yellow-500' : 'text-red-500'}`}>
+                    ${Math.abs(remainingToAllocate).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    {remainingToAllocate < -0.01 && ' over'}
                   </div>
                 </div>
               </div>
 
               {/* Pickups by Person */}
-              {undepositedPickups.length === 0 ? (
+              {availablePickups.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
-                  No undeposited pickups available
+                  No pickups with remaining balance available
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -655,14 +736,9 @@ export function Deposits({ onUpdate }: DepositsProps) {
                         {pickups.map((pickup) => (
                           <div
                             key={pickup.id}
-                            className="flex items-center gap-3 p-3 rounded-lg bg-card/30 border border-white/5 hover:bg-card/50 cursor-pointer"
-                            onClick={() => handleTogglePickup(pickup.id)}
+                            className="flex items-center gap-3 p-3 rounded-lg bg-card/30 border border-white/5"
                           >
-                            <Checkbox
-                              checked={selectedPickupIds.has(pickup.id)}
-                              onCheckedChange={() => handleTogglePickup(pickup.id)}
-                            />
-                            <div className="flex-1 grid grid-cols-4 gap-4">
+                            <div className="flex-1 grid grid-cols-5 gap-4 items-center">
                               <div>
                                 <div className="text-xs text-muted-foreground">Date</div>
                                 <div className="text-sm">{new Date(pickup.pickup_date + 'T00:00:00').toLocaleDateString()}</div>
@@ -671,15 +747,37 @@ export function Deposits({ onUpdate }: DepositsProps) {
                                 <div className="text-xs text-muted-foreground">ATM</div>
                                 <div className="text-sm">{pickup.atm_name}</div>
                               </div>
-                              <div>
-                                <div className="text-xs text-muted-foreground">City</div>
-                                <div className="text-sm">{pickup.city || '-'}</div>
-                              </div>
                               <div className="text-right">
-                                <div className="text-xs text-muted-foreground">Amount</div>
-                                <div className="text-sm font-mono font-semibold">
+                                <div className="text-xs text-muted-foreground">Total</div>
+                                <div className="text-sm font-mono">
                                   ${pickup.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                 </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-xs text-muted-foreground">Balance</div>
+                                <div className="text-sm font-mono font-semibold text-orange-500">
+                                  ${pickup.remaining_balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max={pickup.remaining_balance}
+                                  placeholder="0.00"
+                                  value={linkAmounts[pickup.id] || ''}
+                                  onChange={(e) => handleAmountChange(pickup.id, e.target.value)}
+                                  className="w-28 text-right font-mono"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleMaxAmount(pickup)}
+                                >
+                                  MAX
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -698,9 +796,9 @@ export function Deposits({ onUpdate }: DepositsProps) {
             </Button>
             <Button
               onClick={handleLinkPickups}
-              disabled={selectedPickupIds.size === 0}
+              disabled={Object.keys(linkAmounts).length === 0}
             >
-              Link {selectedPickupIds.size} Pickup{selectedPickupIds.size !== 1 ? 's' : ''} to {linkingDeposit?.deposit_id}
+              Link ${addingNowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} to {linkingDeposit?.deposit_id}
             </Button>
           </DialogFooter>
         </DialogContent>

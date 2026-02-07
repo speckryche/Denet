@@ -338,6 +338,45 @@ export type Database = {
           },
         ]
       }
+      deposit_pickup_links: {
+        Row: {
+          id: string
+          deposit_id: string
+          pickup_id: string
+          amount: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          deposit_id: string
+          pickup_id: string
+          amount: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          deposit_id?: string
+          pickup_id?: string
+          amount?: number
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deposit_pickup_links_deposit_id_fkey"
+            columns: ["deposit_id"]
+            isOneToOne: false
+            referencedRelation: "deposits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deposit_pickup_links_pickup_id_fkey"
+            columns: ["pickup_id"]
+            isOneToOne: false
+            referencedRelation: "cash_pickups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deposits: {
         Row: {
           amount: number

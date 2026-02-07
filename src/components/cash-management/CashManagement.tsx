@@ -33,19 +33,38 @@ export default function CashManagement() {
 
       if (peopleError) throw peopleError;
 
-      // Get all undeposited pickups grouped by person
+      // Get all pickups with their linked deposit amounts
       const { data: pickups, error: pickupsError } = await supabase
         .from('cash_pickups')
-        .select('person_id, amount')
-        .eq('deposited', false);
+        .select('id, person_id, amount');
 
       if (pickupsError) throw pickupsError;
 
-      // Calculate totals per person
+      // Get all deposit links to calculate deposited amounts per pickup
+      const { data: links, error: linksError } = await supabase
+        .from('deposit_pickup_links')
+        .select('pickup_id, amount');
+
+      if (linksError) throw linksError;
+
+      // Calculate total deposited per pickup
+      const depositedByPickup = new Map<string, number>();
+      links?.forEach(link => {
+        const current = depositedByPickup.get(link.pickup_id) || 0;
+        depositedByPickup.set(link.pickup_id, current + parseFloat(link.amount.toString()));
+      });
+
+      // Calculate remaining balance per person (pickup amount - deposited amount)
       const transitMap = new Map<string, number>();
       pickups?.forEach(pickup => {
-        const current = transitMap.get(pickup.person_id) || 0;
-        transitMap.set(pickup.person_id, current + parseFloat(pickup.amount.toString()));
+        const pickupAmount = parseFloat(pickup.amount.toString());
+        const depositedAmount = depositedByPickup.get(pickup.id) || 0;
+        const remainingBalance = pickupAmount - depositedAmount;
+
+        if (remainingBalance > 0) {
+          const current = transitMap.get(pickup.person_id) || 0;
+          transitMap.set(pickup.person_id, current + remainingBalance);
+        }
       });
 
       // Build result array

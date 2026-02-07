@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Check, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -43,6 +43,9 @@ interface CashPickup {
   deposit_id: string | null;
   deposit_date: string | null;
   notes: string | null;
+  total_deposited: number;
+  remaining_balance: number;
+  deposit_status: 'undeposited' | 'partial' | 'full';
 }
 
 interface Person {
@@ -79,9 +82,6 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
     atm_id: '',
     city: '',
     amount: '',
-    deposited: false,
-    deposit_id: '',
-    deposit_date: '',
     notes: '',
   });
 
@@ -140,28 +140,63 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
         query = query.eq('person_id', filterPerson);
       }
 
-      if (filterDeposited !== 'all') {
-        query = query.eq('deposited', filterDeposited === 'yes');
-      }
-
       const { data: pickupsData, error } = await query;
 
       if (error) throw error;
 
-      const formattedPickups: CashPickup[] = pickupsData?.map((p: any) => ({
-        id: p.id,
-        pickup_date: p.pickup_date,
-        person_id: p.person_id,
-        person_name: p.people?.name || 'Unknown',
-        atm_id: p.atm_profile_id,
-        atm_name: p.atm_profiles?.location_name || 'Unknown',
-        city: p.city,
-        amount: parseFloat(p.amount),
-        deposited: p.deposited,
-        deposit_id: p.deposit_id,
-        deposit_date: p.deposit_date,
-        notes: p.notes,
-      })) || [];
+      // Fetch all deposit links to calculate deposited amounts
+      const { data: linksData } = await supabase
+        .from('deposit_pickup_links')
+        .select('pickup_id, amount');
+
+      // Calculate total deposited per pickup
+      const depositedByPickup = new Map<string, number>();
+      linksData?.forEach(link => {
+        const current = depositedByPickup.get(link.pickup_id) || 0;
+        depositedByPickup.set(link.pickup_id, current + parseFloat(link.amount.toString()));
+      });
+
+      let formattedPickups: CashPickup[] = pickupsData?.map((p: any) => {
+        const amount = parseFloat(p.amount);
+        const totalDeposited = depositedByPickup.get(p.id) || 0;
+        const remainingBalance = amount - totalDeposited;
+        let depositStatus: 'undeposited' | 'partial' | 'full';
+        if (totalDeposited === 0) {
+          depositStatus = 'undeposited';
+        } else if (remainingBalance > 0.01) {
+          depositStatus = 'partial';
+        } else {
+          depositStatus = 'full';
+        }
+
+        return {
+          id: p.id,
+          pickup_date: p.pickup_date,
+          person_id: p.person_id,
+          person_name: p.people?.name || 'Unknown',
+          atm_id: p.atm_profile_id,
+          atm_name: p.atm_profiles?.location_name || 'Unknown',
+          city: p.city,
+          amount: amount,
+          deposited: p.deposited,
+          deposit_id: p.deposit_id,
+          deposit_date: p.deposit_date,
+          notes: p.notes,
+          total_deposited: totalDeposited,
+          remaining_balance: remainingBalance,
+          deposit_status: depositStatus,
+        };
+      }) || [];
+
+      // Apply deposit status filter
+      if (filterDeposited !== 'all') {
+        formattedPickups = formattedPickups.filter(p => {
+          if (filterDeposited === 'full') return p.deposit_status === 'full';
+          if (filterDeposited === 'partial') return p.deposit_status === 'partial';
+          if (filterDeposited === 'undeposited') return p.deposit_status === 'undeposited';
+          return true;
+        });
+      }
 
       setPickups(formattedPickups);
     } catch (error) {
@@ -191,9 +226,6 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
         atm_profile_id: formData.atm_id,
         city: formData.city,
         amount: parseFloat(formData.amount),
-        deposited: formData.deposited,
-        deposit_id: formData.deposit_id || null,
-        deposit_date: formData.deposit_date || null,
         notes: formData.notes || null,
       };
 
@@ -229,9 +261,6 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
       atm_id: pickup.atm_id,
       city: pickup.city,
       amount: pickup.amount.toString(),
-      deposited: pickup.deposited,
-      deposit_id: pickup.deposit_id || '',
-      deposit_date: pickup.deposit_date || '',
       notes: pickup.notes || '',
     });
     setIsDialogOpen(true);
@@ -263,9 +292,6 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
       atm_id: '',
       city: '',
       amount: '',
-      deposited: false,
-      deposit_id: '',
-      deposit_date: '',
       notes: '',
     });
   };
@@ -411,34 +437,6 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="deposit_id">Deposit ID (optional)</Label>
-                    <Input
-                      id="deposit_id"
-                      value={formData.deposit_id}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFormData({
-                          ...formData,
-                          deposit_id: value,
-                          deposited: value ? true : false,
-                        });
-                      }}
-                      placeholder="e.g., D098"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="deposit_date">Deposit Date (optional)</Label>
-                    <Input
-                      id="deposit_date"
-                      type="date"
-                      value={formData.deposit_date}
-                      onChange={(e) => setFormData({ ...formData, deposit_date: e.target.value })}
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <Label htmlFor="notes">Notes (optional)</Label>
                   <Input
@@ -485,8 +483,9 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="yes">Deposited</SelectItem>
-                <SelectItem value="no">Not Deposited</SelectItem>
+                <SelectItem value="full">Fully Deposited</SelectItem>
+                <SelectItem value="partial">Partially Deposited</SelectItem>
+                <SelectItem value="undeposited">Undeposited</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -541,9 +540,8 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                           <TableHead>ATM</TableHead>
                           <TableHead>City</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
-                          <TableHead className="text-center">Deposited</TableHead>
-                          <TableHead>Deposit ID</TableHead>
-                          <TableHead>Deposit Date</TableHead>
+                          <TableHead className="text-right">Deposited</TableHead>
+                          <TableHead className="text-right">Balance</TableHead>
                           <TableHead>Notes</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -558,16 +556,21 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                             <TableCell className="text-right font-mono">
                               ${pickup.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
-                            <TableCell className="text-center">
-                              {pickup.deposited ? (
-                                <Check className="w-4 h-4 text-green-500 mx-auto" />
-                              ) : (
-                                <X className="w-4 h-4 text-red-500 mx-auto" />
-                              )}
+                            <TableCell className="text-right">
+                              <span className={`font-mono ${
+                                pickup.deposit_status === 'full' ? 'text-green-500' :
+                                pickup.deposit_status === 'partial' ? 'text-yellow-500' :
+                                'text-muted-foreground'
+                              }`}>
+                                ${pickup.total_deposited.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                <span className="text-muted-foreground"> / </span>
+                                ${pickup.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
                             </TableCell>
-                            <TableCell>{pickup.deposit_id || '-'}</TableCell>
-                            <TableCell>
-                              {pickup.deposit_date ? new Date(pickup.deposit_date + 'T00:00:00').toLocaleDateString() : '-'}
+                            <TableCell className={`text-right font-mono ${
+                              pickup.remaining_balance > 0 ? 'text-orange-500' : 'text-green-500'
+                            }`}>
+                              ${pickup.remaining_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="max-w-xs truncate">{pickup.notes || '-'}</TableCell>
                             <TableCell className="text-right">
