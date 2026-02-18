@@ -105,6 +105,8 @@ export function ATMManagement() {
     location_name: '',
     city: '',
     state: '',
+    zip_code: '',
+    street_address: '',
     platform: null as string | null,
     sales_rep_id: null as string | null,
     monthly_rent: 0,
@@ -112,6 +114,9 @@ export function ATMManagement() {
     cash_management_rep: 0,
     rent_payment_method: null as string | null,
     installed_date: null as string | null,
+    warehouse_location: null as string | null,
+    on_bitstop: false,
+    on_coinradar: false,
     notes: ''
   });
 
@@ -310,6 +315,8 @@ export function ATMManagement() {
         location_name: newATM.location_name || null,
         city: newATM.city || null,
         state: newATM.state || null,
+        zip_code: newATM.zip_code || null,
+        street_address: newATM.street_address || null,
         platform: newATM.platform,
         sales_rep_id: newATM.sales_rep_id,
         monthly_rent: newATM.monthly_rent,
@@ -319,6 +326,9 @@ export function ATMManagement() {
         installed_date: newATM.installed_date,
         removed_date: null,
         active: true,
+        warehouse_location: newATM.warehouse_location,
+        on_bitstop: newATM.on_bitstop,
+        on_coinradar: newATM.on_coinradar,
         notes: newATM.notes || null
       }]);
 
@@ -332,6 +342,8 @@ export function ATMManagement() {
         location_name: '',
         city: '',
         state: '',
+        zip_code: '',
+        street_address: '',
         platform: null,
         sales_rep_id: null,
         monthly_rent: 0,
@@ -339,6 +351,9 @@ export function ATMManagement() {
         cash_management_rep: 0,
         rent_payment_method: null,
         installed_date: null,
+        warehouse_location: null,
+        on_bitstop: false,
+        on_coinradar: false,
         notes: ''
       });
       fetchData();
@@ -1305,7 +1320,17 @@ export function ATMManagement() {
                 className="bg-card border-white/10"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="street_address">Street Address</Label>
+              <Input
+                id="street_address"
+                value={newATM.street_address}
+                onChange={(e) => setNewATM({ ...newATM, street_address: e.target.value })}
+                placeholder="Enter street address"
+                className="bg-card border-white/10"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="city">City</Label>
                 <Input
@@ -1325,6 +1350,16 @@ export function ATMManagement() {
                   placeholder="ST"
                   maxLength={2}
                   className="bg-card border-white/10 uppercase"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="zip_code">Zip Code</Label>
+                <Input
+                  id="zip_code"
+                  value={newATM.zip_code}
+                  onChange={(e) => setNewATM({ ...newATM, zip_code: e.target.value })}
+                  placeholder="Zip"
+                  className="bg-card border-white/10"
                 />
               </div>
             </div>
@@ -1362,6 +1397,43 @@ export function ATMManagement() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="warehouse_location">Warehouse Location</Label>
+              <Select
+                value={newATM.warehouse_location || 'none'}
+                onValueChange={(value) => setNewATM({ ...newATM, warehouse_location: value === 'none' ? null : value })}
+              >
+                <SelectTrigger className="bg-card border-white/10">
+                  <SelectValue placeholder="Select warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">-</SelectItem>
+                  <SelectItem value="Arizona (Steven)">Arizona (Steven)</SelectItem>
+                  <SelectItem value="Oregon (RPS)">Oregon (RPS)</SelectItem>
+                  <SelectItem value="Oregon (Portland)">Oregon (Portland)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-6 py-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newATM.on_bitstop}
+                  onChange={(e) => setNewATM({ ...newATM, on_bitstop: e.target.checked })}
+                  className="w-4 h-4 rounded border-white/20"
+                />
+                <span className="text-sm">On Bitstop</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newATM.on_coinradar}
+                  onChange={(e) => setNewATM({ ...newATM, on_coinradar: e.target.checked })}
+                  className="w-4 h-4 rounded border-white/20"
+                />
+                <span className="text-sm">On CoinRadar</span>
+              </label>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2">

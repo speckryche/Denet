@@ -11,12 +11,19 @@ import { Pencil, History, Search, Download, X, Check, Plus, Monitor, DollarSign,
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
+interface SalesRep {
+  id: string;
+  name: string;
+  active: boolean | null;
+}
+
 interface ATMProfile {
   id: string;
   atm_id: string | null;
   serial_number: string | null;
   location_name: string;
   platform: 'denet' | 'bitstop';
+  platform_switch_date?: string | null;
   active: boolean;
   status: 'Active' | 'Inactive' | 'Pending';
   monthly_rent: number;
@@ -32,6 +39,7 @@ interface ATMProfile {
   warehouse_location: string | null;
   on_bitstop: boolean;
   on_coinradar: boolean;
+  sales_rep_id: string | null;
   notes: string | null;
 }
 
@@ -43,6 +51,7 @@ export default function BTMDetails() {
   const [historyModal, setHistoryModal] = useState<{ atmId: string; open: boolean }>({ atmId: '', open: false });
   const [historyData, setHistoryData] = useState<ATMProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
   const [addingNew, setAddingNew] = useState(false);
   const [newMachineForm, setNewMachineForm] = useState<Partial<ATMProfile>>({
     platform: 'denet',
@@ -52,6 +61,7 @@ export default function BTMDetails() {
     rent_payment_method: '',
     cash_management_rps: 0,
     cash_management_rep: 0,
+    sales_rep_id: null,
   });
   const [sortConfigActive, setSortConfigActive] = useState<{ key: keyof ATMProfile | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
   const [sortConfigInactive, setSortConfigInactive] = useState<{ key: keyof ATMProfile | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
@@ -63,7 +73,16 @@ export default function BTMDetails() {
 
   useEffect(() => {
     fetchProfiles();
+    fetchSalesReps();
   }, []);
+
+  const fetchSalesReps = async () => {
+    const { data } = await supabase
+      .from('sales_reps')
+      .select('id, name, active')
+      .order('name');
+    if (data) setSalesReps(data);
+  };
 
   const fetchProfiles = async () => {
     setLoading(true);
@@ -203,6 +222,7 @@ export default function BTMDetails() {
           rent_payment_method: '',
           cash_management_rps: 0,
           cash_management_rep: 0,
+          sales_rep_id: null,
         });
       }
     } catch (err) {
@@ -582,10 +602,12 @@ export default function BTMDetails() {
   const latestProfiles = getLatestProfiles();
   const activeDenet = latestProfiles.filter(p => p.status === 'Active' && p.platform === 'denet');
   const activeBitstop = latestProfiles.filter(p => p.status === 'Active' && p.platform === 'bitstop');
-  const pendingDenet = latestProfiles.filter(p => p.status === 'Pending' && p.platform === 'denet');
-  const pendingBitstop = latestProfiles.filter(p => p.status === 'Pending' && p.platform === 'bitstop');
-  const inactiveDenet = latestProfiles.filter(p => p.status === 'Inactive' && p.platform === 'denet');
-  const inactiveBitstop = latestProfiles.filter(p => p.status === 'Inactive' && p.platform === 'bitstop');
+  const pending = latestProfiles.filter(p => p.status === 'Pending');
+  const inactive = latestProfiles.filter(p => p.status === 'Inactive');
+  const pendingDenet = pending.filter(p => p.platform === 'denet');
+  const pendingBitstop = pending.filter(p => p.platform === 'bitstop');
+  const inactiveDenet = inactive.filter(p => p.platform === 'denet');
+  const inactiveBitstop = inactive.filter(p => p.platform === 'bitstop');
 
   // Calculate total rent by platform
   const totalRentDenet = activeDenet.reduce((sum, p) => sum + (p.monthly_rent || 0), 0);
@@ -820,6 +842,24 @@ export default function BTMDetails() {
                   <SelectContent>
                     <SelectItem value="denet">Denet</SelectItem>
                     <SelectItem value="bitstop">Bitstop</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm text-[#F5F1E8] mb-1 block">Sales Rep</label>
+                <Select
+                  value={newMachineForm.sales_rep_id || ''}
+                  onValueChange={(value) => setNewMachineForm({ ...newMachineForm, sales_rep_id: value || null })}
+                >
+                  <SelectTrigger className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
+                    <SelectValue placeholder="Select sales rep..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salesReps.filter(r => r.active).map((rep) => (
+                      <SelectItem key={rep.id} value={rep.id}>
+                        {rep.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
