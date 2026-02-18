@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { Pencil, History, Search, Download, X, Check, Plus, Monitor } from 'lucide-react';
+import { Pencil, History, Search, Download, X, Check, Plus, Monitor, DollarSign, CreditCard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -582,8 +582,28 @@ export default function BTMDetails() {
   const latestProfiles = getLatestProfiles();
   const activeDenet = latestProfiles.filter(p => p.status === 'Active' && p.platform === 'denet');
   const activeBitstop = latestProfiles.filter(p => p.status === 'Active' && p.platform === 'bitstop');
-  const pending = latestProfiles.filter(p => p.status === 'Pending');
-  const inactive = latestProfiles.filter(p => p.status === 'Inactive');
+  const pendingDenet = latestProfiles.filter(p => p.status === 'Pending' && p.platform === 'denet');
+  const pendingBitstop = latestProfiles.filter(p => p.status === 'Pending' && p.platform === 'bitstop');
+  const inactiveDenet = latestProfiles.filter(p => p.status === 'Inactive' && p.platform === 'denet');
+  const inactiveBitstop = latestProfiles.filter(p => p.status === 'Inactive' && p.platform === 'bitstop');
+
+  // Calculate total rent by platform
+  const totalRentDenet = activeDenet.reduce((sum, p) => sum + (p.monthly_rent || 0), 0);
+  const totalRentBitstop = activeBitstop.reduce((sum, p) => sum + (p.monthly_rent || 0), 0);
+
+  // Calculate total management costs by platform (Mgmt RPS + Mgmt Rep)
+  const totalMgmtDenet = activeDenet.reduce((sum, p) => sum + (p.cash_management_rps || 0) + (p.cash_management_rep || 0), 0);
+  const totalMgmtBitstop = activeBitstop.reduce((sum, p) => sum + (p.cash_management_rps || 0) + (p.cash_management_rep || 0), 0);
+
+  // Calculate rent payment method counts by platform
+  const rentPaidDenet = {
+    ach: activeDenet.filter(p => p.rent_payment_method === 'ACH').length,
+    billPay: activeDenet.filter(p => p.rent_payment_method === 'Bill Pay').length,
+  };
+  const rentPaidBitstop = {
+    ach: activeBitstop.filter(p => p.rent_payment_method === 'ACH').length,
+    billPay: activeBitstop.filter(p => p.rent_payment_method === 'Bill Pay').length,
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -616,83 +636,145 @@ export default function BTMDetails() {
           </div>
         </div>
 
-        {/* Scorecards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card
-            className={cn(
-              "bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards"
-            )}
-            style={{ animationDelay: '0ms' }}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground font-sans">
-                Active BTMs - Denet
-              </CardTitle>
-              <div className="text-green-500 group-hover:text-green-400 transition-colors duration-300">
-                <Monitor className="w-4 h-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold font-mono text-foreground">{activeDenet.length}</div>
-            </CardContent>
-          </Card>
+        {/* Scorecards - Two Platform Sections Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Denet Section */}
+          <div className="border border-green-500/30 rounded-lg p-4 bg-green-500/5 animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards" style={{ animationDelay: '0ms' }}>
+            <h3 className="text-lg font-semibold text-green-500 mb-4 flex items-center gap-2">
+              <Monitor className="w-5 h-5" /> Denet
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Status Card */}
+              <Card className={cn("bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground text-center">Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 divide-x divide-white/10">
+                    <div className="text-center pr-2">
+                      <div className="text-xs text-green-400 mb-1">Active</div>
+                      <div className="text-xl font-bold font-mono text-green-400">{activeDenet.length}</div>
+                    </div>
+                    <div className="text-center px-2">
+                      <div className="text-xs text-amber-500 mb-1">Pending</div>
+                      <div className="text-xl font-bold font-mono text-amber-500">{pendingDenet.length}</div>
+                    </div>
+                    <div className="text-center pl-2">
+                      <div className="text-xs text-red-500 mb-1">Inactive</div>
+                      <div className="text-xl font-bold font-mono text-red-500">{inactiveDenet.length}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card
-            className={cn(
-              "bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards"
-            )}
-            style={{ animationDelay: '100ms' }}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground font-sans">
-                Active BTMs - Bitstop
-              </CardTitle>
-              <div className="text-blue-500 group-hover:text-blue-400 transition-colors duration-300">
-                <Monitor className="w-4 h-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold font-mono text-foreground">{activeBitstop.length}</div>
-            </CardContent>
-          </Card>
+              {/* Costs Card */}
+              <Card className={cn("bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground text-center">Costs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 divide-x divide-white/10">
+                    <div className="text-center pr-2">
+                      <div className="text-xs text-muted-foreground mb-1">Total Rent</div>
+                      <div className="text-xl font-bold font-mono">${totalRentDenet.toLocaleString()}</div>
+                    </div>
+                    <div className="text-center pl-2">
+                      <div className="text-xs text-muted-foreground mb-1">Management</div>
+                      <div className="text-xl font-bold font-mono">${totalMgmtDenet.toLocaleString()}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card
-            className={cn(
-              "bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards"
-            )}
-            style={{ animationDelay: '200ms' }}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground font-sans">
-                Pending BTMs
-              </CardTitle>
-              <div className="text-amber-500 group-hover:text-amber-400 transition-colors duration-300">
-                <Monitor className="w-4 h-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold font-mono text-foreground">{pending.length}</div>
-            </CardContent>
-          </Card>
+              {/* Rent Method Card */}
+              <Card className={cn("bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground text-center">Rent Method</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 divide-x divide-white/10">
+                    <div className="text-center pr-2">
+                      <div className="text-xs text-green-400 mb-1">ACH</div>
+                      <div className="text-xl font-bold font-mono">{rentPaidDenet.ach}</div>
+                    </div>
+                    <div className="text-center pl-2">
+                      <div className="text-xs text-blue-400 mb-1">Bill Pay</div>
+                      <div className="text-xl font-bold font-mono">{rentPaidDenet.billPay}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
 
-          <Card
-            className={cn(
-              "bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards"
-            )}
-            style={{ animationDelay: '300ms' }}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground font-sans">
-                Inactive BTMs
-              </CardTitle>
-              <div className="text-red-500 group-hover:text-red-400 transition-colors duration-300">
-                <Monitor className="w-4 h-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold font-mono text-foreground">{inactive.length}</div>
-            </CardContent>
-          </Card>
+          {/* Bitstop Section */}
+          <div className="border border-blue-500/30 rounded-lg p-4 bg-blue-500/5 animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards" style={{ animationDelay: '100ms' }}>
+            <h3 className="text-lg font-semibold text-blue-500 mb-4 flex items-center gap-2">
+              <Monitor className="w-5 h-5" /> Bitstop
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Status Card */}
+              <Card className={cn("bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground text-center">Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 divide-x divide-white/10">
+                    <div className="text-center pr-2">
+                      <div className="text-xs text-green-400 mb-1">Active</div>
+                      <div className="text-xl font-bold font-mono text-green-400">{activeBitstop.length}</div>
+                    </div>
+                    <div className="text-center px-2">
+                      <div className="text-xs text-amber-500 mb-1">Pending</div>
+                      <div className="text-xl font-bold font-mono text-amber-500">{pendingBitstop.length}</div>
+                    </div>
+                    <div className="text-center pl-2">
+                      <div className="text-xs text-red-500 mb-1">Inactive</div>
+                      <div className="text-xl font-bold font-mono text-red-500">{inactiveBitstop.length}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Costs Card */}
+              <Card className={cn("bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground text-center">Costs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 divide-x divide-white/10">
+                    <div className="text-center pr-2">
+                      <div className="text-xs text-muted-foreground mb-1">Total Rent</div>
+                      <div className="text-xl font-bold font-mono">${totalRentBitstop.toLocaleString()}</div>
+                    </div>
+                    <div className="text-center pl-2">
+                      <div className="text-xs text-muted-foreground mb-1">Management</div>
+                      <div className="text-xl font-bold font-mono">${totalMgmtBitstop.toLocaleString()}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Rent Method Card */}
+              <Card className={cn("bg-card border-white/5 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,102,255,0.15)] group")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground text-center">Rent Method</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 divide-x divide-white/10">
+                    <div className="text-center pr-2">
+                      <div className="text-xs text-green-400 mb-1">ACH</div>
+                      <div className="text-xl font-bold font-mono">{rentPaidBitstop.ach}</div>
+                    </div>
+                    <div className="text-center pl-2">
+                      <div className="text-xs text-blue-400 mb-1">Bill Pay</div>
+                      <div className="text-xl font-bold font-mono">{rentPaidBitstop.billPay}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
 
         {addingNew && (

@@ -48,6 +48,7 @@ interface SalesRep {
 interface ATMProfile {
   id: string;
   atm_id: string;
+  serial_number: string | null;
   location_name: string | null;
   city: string | null;
   state: string | null;
@@ -76,7 +77,9 @@ export function ATMManagement() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('sales-reps');
   const [atmSortOrder, setAtmSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [atmSortField, setAtmSortField] = useState<'atm_id' | 'location_name'>('atm_id');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'bitstop' | 'denet'>('all');
 
   // New Sales Rep Dialog
   const [isAddRepOpen, setIsAddRepOpen] = useState(false);
@@ -98,6 +101,7 @@ export function ATMManagement() {
 
   const [newATM, setNewATM] = useState({
     atm_id: '',
+    serial_number: '',
     location_name: '',
     city: '',
     state: '',
@@ -200,16 +204,23 @@ export function ATMManagement() {
     setHasUnsavedChanges(true);
   };
 
-  // Sort ATM profiles by ATM ID
-  const toggleAtmSort = () => {
-    const newOrder = atmSortOrder === 'asc' ? 'desc' : 'asc';
+  // Sort ATM profiles by field
+  const toggleAtmSort = (field: 'atm_id' | 'location_name') => {
+    const newOrder = atmSortField === field && atmSortOrder === 'asc' ? 'desc' : 'asc';
     setAtmSortOrder(newOrder);
+    setAtmSortField(field);
 
     setProfiles(prev => {
       const sorted = [...prev].sort((a, b) => {
-        const aNum = parseInt(a.atm_id) || 0;
-        const bNum = parseInt(b.atm_id) || 0;
-        return newOrder === 'asc' ? aNum - bNum : bNum - aNum;
+        if (field === 'atm_id') {
+          const aNum = parseInt(a.atm_id) || 0;
+          const bNum = parseInt(b.atm_id) || 0;
+          return newOrder === 'asc' ? aNum - bNum : bNum - aNum;
+        } else {
+          const aName = (a.location_name || '').toLowerCase();
+          const bName = (b.location_name || '').toLowerCase();
+          return newOrder === 'asc' ? aName.localeCompare(bName) : bName.localeCompare(aName);
+        }
       });
       return sorted;
     });
@@ -295,6 +306,7 @@ export function ATMManagement() {
 
       const { error } = await supabase.from('atm_profiles').insert([{
         atm_id: newATM.atm_id.trim(),
+        serial_number: newATM.serial_number || null,
         location_name: newATM.location_name || null,
         city: newATM.city || null,
         state: newATM.state || null,
@@ -316,6 +328,7 @@ export function ATMManagement() {
       setIsAddATMOpen(false);
       setNewATM({
         atm_id: '',
+        serial_number: '',
         location_name: '',
         city: '',
         state: '',
@@ -740,13 +753,28 @@ export function ATMManagement() {
 
           <TabsContent value="atms" className="mt-6">
             <div className="flex justify-between items-center mb-4">
-              <div>
-                <h3 className="text-lg font-semibold">ATM Profiles</h3>
-                {hasUnsavedChanges && (
-                  <p className="text-xs text-yellow-500 mt-1">
-                    ⚠ You have unsaved changes
-                  </p>
-                )}
+              <div className="flex items-center gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold">ATM Profiles</h3>
+                  {hasUnsavedChanges && (
+                    <p className="text-xs text-yellow-500 mt-1">
+                      ⚠ You have unsaved changes
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Platform:</span>
+                  <Select value={platformFilter} onValueChange={(value: 'all' | 'bitstop' | 'denet') => setPlatformFilter(value)}>
+                    <SelectTrigger className="w-32 bg-card border-white/10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="bitstop">Bitstop</SelectItem>
+                      <SelectItem value="denet">Denet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => setIsAddATMOpen(true)} disabled={isReadOnly}>
@@ -772,10 +800,10 @@ export function ATMManagement() {
             ) : (
               <>
                 {/* Active ATMs Section */}
-                {profiles.filter(p => p.active !== false).length > 0 && (
+                {profiles.filter(p => p.active !== false && (platformFilter === 'all' || p.platform === platformFilter)).length > 0 && (
                   <div className="mb-8">
                     <h4 className="text-md font-semibold text-green-500 mb-3">
-                      Active ATMs ({profiles.filter(p => p.active !== false).length})
+                      Active ATMs ({profiles.filter(p => p.active !== false && (platformFilter === 'all' || p.platform === platformFilter)).length})
                     </h4>
                     <div className="rounded-md border border-white/10 overflow-x-auto">
                       <Table>
@@ -783,18 +811,32 @@ export function ATMManagement() {
                           <TableRow className="border-white/10">
                             <TableHead className="min-w-[70px]">
                               <button
-                                onClick={toggleAtmSort}
+                                onClick={() => toggleAtmSort('atm_id')}
                                 className="flex items-center gap-1 hover:text-foreground transition-colors"
                               >
                                 ATM ID
-                                {atmSortOrder === 'asc' ? (
+                                {atmSortField === 'atm_id' && (atmSortOrder === 'asc' ? (
                                   <ArrowUp className="w-4 h-4" />
                                 ) : (
                                   <ArrowDown className="w-4 h-4" />
-                                )}
+                                ))}
+                                {atmSortField !== 'atm_id' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                               </button>
                             </TableHead>
-                            <TableHead className="min-w-[140px]">Location Name</TableHead>
+                            <TableHead className="min-w-[140px]">
+                              <button
+                                onClick={() => toggleAtmSort('location_name')}
+                                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                              >
+                                Location Name
+                                {atmSortField === 'location_name' && (atmSortOrder === 'asc' ? (
+                                  <ArrowUp className="w-4 h-4" />
+                                ) : (
+                                  <ArrowDown className="w-4 h-4" />
+                                ))}
+                                {atmSortField !== 'location_name' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
+                              </button>
+                            </TableHead>
                             <TableHead className="min-w-[90px]">City</TableHead>
                             <TableHead className="min-w-[50px]">State</TableHead>
                             <TableHead className="min-w-[70px]">Platform</TableHead>
@@ -811,7 +853,7 @@ export function ATMManagement() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {profiles.filter(p => p.active !== false).map((profile) => (
+                          {profiles.filter(p => p.active !== false && (platformFilter === 'all' || p.platform === platformFilter)).map((profile) => (
                       <TableRow key={profile.id} className="border-white/5">
                         <TableCell className="font-mono text-sm">{profile.atm_id}</TableCell>
                         <TableCell>
@@ -982,10 +1024,10 @@ export function ATMManagement() {
               )}
 
               {/* Inactive ATMs Section */}
-              {profiles.filter(p => p.active === false).length > 0 && (
+              {profiles.filter(p => p.active === false && (platformFilter === 'all' || p.platform === platformFilter)).length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-md font-semibold text-red-500 mb-3">
-                    Inactive ATMs ({profiles.filter(p => p.active === false).length})
+                    Inactive ATMs ({profiles.filter(p => p.active === false && (platformFilter === 'all' || p.platform === platformFilter)).length})
                   </h4>
                   <div className="rounded-md border border-white/10 overflow-x-auto">
                     <Table>
@@ -993,18 +1035,32 @@ export function ATMManagement() {
                         <TableRow className="border-white/10">
                           <TableHead className="min-w-[70px]">
                             <button
-                              onClick={toggleAtmSort}
+                              onClick={() => toggleAtmSort('atm_id')}
                               className="flex items-center gap-1 hover:text-foreground transition-colors"
                             >
                               ATM ID
-                              {atmSortOrder === 'asc' ? (
+                              {atmSortField === 'atm_id' && (atmSortOrder === 'asc' ? (
                                 <ArrowUp className="w-4 h-4" />
                               ) : (
                                 <ArrowDown className="w-4 h-4" />
-                              )}
+                              ))}
+                              {atmSortField !== 'atm_id' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                             </button>
                           </TableHead>
-                          <TableHead className="min-w-[140px]">Location Name</TableHead>
+                          <TableHead className="min-w-[140px]">
+                            <button
+                              onClick={() => toggleAtmSort('location_name')}
+                              className="flex items-center gap-1 hover:text-foreground transition-colors"
+                            >
+                              Location Name
+                              {atmSortField === 'location_name' && (atmSortOrder === 'asc' ? (
+                                <ArrowUp className="w-4 h-4" />
+                              ) : (
+                                <ArrowDown className="w-4 h-4" />
+                              ))}
+                              {atmSortField !== 'location_name' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
+                            </button>
+                          </TableHead>
                           <TableHead className="min-w-[90px]">City</TableHead>
                           <TableHead className="min-w-[50px]">State</TableHead>
                           <TableHead className="min-w-[70px]">Platform</TableHead>
@@ -1021,7 +1077,7 @@ export function ATMManagement() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {profiles.filter(p => p.active === false).map((profile) => (
+                        {profiles.filter(p => p.active === false && (platformFilter === 'all' || p.platform === platformFilter)).map((profile) => (
                           <TableRow key={profile.id} className="border-white/5">
                             <TableCell className="font-mono text-sm">{profile.atm_id}</TableCell>
                             <TableCell>
@@ -1217,15 +1273,27 @@ export function ATMManagement() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="atm_id">ATM ID *</Label>
-              <Input
-                id="atm_id"
-                value={newATM.atm_id}
-                onChange={(e) => setNewATM({ ...newATM, atm_id: e.target.value })}
-                placeholder="Enter ATM ID"
-                className="bg-card border-white/10"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="atm_id">ATM ID *</Label>
+                <Input
+                  id="atm_id"
+                  value={newATM.atm_id}
+                  onChange={(e) => setNewATM({ ...newATM, atm_id: e.target.value })}
+                  placeholder="Enter ATM ID"
+                  className="bg-card border-white/10"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="serial_number">Serial Number</Label>
+                <Input
+                  id="serial_number"
+                  value={newATM.serial_number}
+                  onChange={(e) => setNewATM({ ...newATM, serial_number: e.target.value })}
+                  placeholder="Enter serial number"
+                  className="bg-card border-white/10"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="location_name">Location Name</Label>
