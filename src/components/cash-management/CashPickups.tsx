@@ -76,8 +76,12 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
   const [filterDeposited, setFilterDeposited] = useState<string>('all');
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
+  const getPacificDateString = () => {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  };
+
   const [formData, setFormData] = useState({
-    pickup_date: new Date().toISOString().split('T')[0],
+    pickup_date: getPacificDateString(),
     person_id: '',
     atm_id: '',
     city: '',
@@ -287,7 +291,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
   const resetForm = () => {
     setEditingId(null);
     setFormData({
-      pickup_date: new Date().toISOString().split('T')[0],
+      pickup_date: getPacificDateString(),
       person_id: '',
       atm_id: '',
       city: '',
@@ -321,7 +325,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
   // Auto-expand current month on initial load
   useEffect(() => {
     if (sortedMonthKeys.length > 0 && expandedMonths.size === 0) {
-      const currentMonth = new Date().toISOString().slice(0, 7);
+      const currentMonth = getPacificDateString().slice(0, 7);
       setExpandedMonths(new Set([currentMonth]));
     }
   }, [sortedMonthKeys.length]);
