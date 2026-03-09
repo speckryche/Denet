@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Download, FileSpreadsheet, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -36,6 +36,7 @@ interface ATMPLData {
   mgmt_rep: number;
   commissions: number;
   net_profit: number;
+  has_override: boolean;
 }
 
 export default function ATMProfitLoss() {
@@ -56,6 +57,11 @@ export default function ATMProfitLoss() {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [sortField, setSortField] = useState<keyof ATMPLData>('platform');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [editingCell, setEditingCell] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const escapeRef = useRef(false);
+
+  const isSingleMonth = selectedStartMonth === selectedEndMonth;
 
   const months = [
     { value: '01', label: 'January' },
@@ -360,6 +366,25 @@ export default function ATMProfitLoss() {
 
       if (commError) console.error('Error fetching commissions:', commError);
 
+      // Fetch bitstop fee overrides for the selected period
+      const overrideMonths: string[] = [];
+      for (let m = startMonthNum; m <= endMonthNum; m++) {
+        overrideMonths.push(`${selectedYear}-${String(m).padStart(2, '0')}`);
+      }
+
+      const { data: feeOverrides, error: overrideError } = await supabase
+        .from('bitstop_fee_overrides')
+        .select('atm_id, year_month, actual_fees')
+        .in('year_month', overrideMonths);
+
+      if (overrideError) console.error('Error fetching fee overrides:', overrideError);
+
+      // Build override lookup map: "atm_id:year_month" -> actual_fees
+      const overrideMap = new Map<string, number>();
+      feeOverrides?.forEach(o => {
+        overrideMap.set(`${o.atm_id}:${o.year_month}`, Number(o.actual_fees));
+      });
+
       // Create a map of commission amounts by ATM
       const commissionMap = new Map<string, number>();
       commissionDetails?.forEach(detail => {
@@ -427,6 +452,36 @@ export default function ATMProfitLoss() {
           bitstop_fees += tx.bitstop_fee || 0;
         });
 
+        // Apply bitstop fee overrides for Bitstop ATMs
+        let has_override = false;
+        if (profile.platform?.toLowerCase() === 'bitstop') {
+          // Group fees by month for per-month override application
+          const feesByMonth = new Map<string, number>();
+          atmTransactions.forEach(tx => {
+            if (tx.date) {
+              const [y, m] = tx.date.split('-');
+              const ym = `${y}-${m}`;
+              feesByMonth.set(ym, (feesByMonth.get(ym) || 0) + (tx.fee || 0));
+            }
+          });
+
+          let overriddenTotal = 0;
+          for (let m = startMonthNum; m <= endMonthNum; m++) {
+            const ym = `${selectedYear}-${String(m).padStart(2, '0')}`;
+            const key = `${profile.atm_id}:${ym}`;
+            if (overrideMap.has(key)) {
+              overriddenTotal += overrideMap.get(key)!;
+              has_override = true;
+            } else {
+              overriddenTotal += feesByMonth.get(ym) || 0;
+            }
+          }
+
+          if (has_override) {
+            total_fees = overriddenTotal;
+          }
+        }
+
         // Calculate fee percentage and net profit
         const fee_pct = total_sales > 0 ? (total_fees / total_sales) * 100 : 0;
         const net_profit = total_fees - bitstop_fees - rent - mgmt_rps - mgmt_rep - commissions;
@@ -446,7 +501,8 @@ export default function ATMProfitLoss() {
           mgmt_rps,
           mgmt_rep,
           commissions,
-          net_profit
+          net_profit,
+          has_override,
         });
       });
 
@@ -469,16 +525,47 @@ export default function ATMProfitLoss() {
     }
   };
 
-  // Sort data based on current sort field and direction
-  const sortedData = [...data].sort((a, b) => {
-    // Primary sort: Platform (ascending)
-    const platformCompare = (a.platform || '').localeCompare(b.platform || '');
-    if (platformCompare !== 0) {
-      return platformCompare;
+  const handleSaveOverride = async (atmId: string, value: string) => {
+    setEditingCell(null);
+
+    const yearMonth = `${selectedYear}-${selectedStartMonth}`;
+    const numValue = parseFloat(value);
+
+    if (isNaN(numValue) || value.trim() === '') {
+      // Delete override → revert to calculated fee
+      await supabase
+        .from('bitstop_fee_overrides')
+        .delete()
+        .eq('atm_id', atmId)
+        .eq('year_month', yearMonth);
+    } else {
+      // Upsert override
+      await supabase
+        .from('bitstop_fee_overrides')
+        .upsert({
+          atm_id: atmId,
+          year_month: yearMonth,
+          actual_fees: numValue,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'atm_id,year_month' });
     }
 
-    // Secondary sort: Net Profit (descending)
-    return b.net_profit - a.net_profit;
+    fetchATMProfitLoss();
+  };
+
+  // Sort data based on current sort field and direction
+  const sortedData = [...data].sort((a, b) => {
+    const aVal = a[sortField];
+    const bVal = b[sortField];
+    let compare = 0;
+
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      compare = (aVal || '').localeCompare(bVal || '');
+    } else {
+      compare = (Number(aVal) || 0) - (Number(bVal) || 0);
+    }
+
+    return sortDirection === 'asc' ? compare : -compare;
   });
 
   // Helper function to format dates as MM/DD/YY
@@ -1324,7 +1411,57 @@ export default function ATMProfitLoss() {
                         ${Math.round(row.total_sales).toLocaleString('en-US')}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        ${Math.round(row.total_fees).toLocaleString('en-US')}
+                        {row.platform?.toLowerCase() === 'bitstop' && isSingleMonth ? (
+                          editingCell === row.atm_id ? (
+                            <div className="flex items-center gap-1 justify-end">
+                              <span className="text-muted-foreground">$</span>
+                              <input
+                                type="number"
+                                className="w-24 bg-background border border-border rounded px-2 py-1 text-right text-sm font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    (e.target as HTMLInputElement).blur();
+                                  }
+                                  if (e.key === 'Escape') {
+                                    escapeRef.current = true;
+                                    setEditingCell(null);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (escapeRef.current) {
+                                    escapeRef.current = false;
+                                    return;
+                                  }
+                                  handleSaveOverride(row.atm_id, editValue);
+                                }}
+                                autoFocus
+                              />
+                            </div>
+                          ) : (
+                            <div
+                              className="group flex items-center gap-1.5 justify-end cursor-pointer"
+                              onClick={() => {
+                                setEditingCell(row.atm_id);
+                                setEditValue(String(Math.round(row.total_fees)));
+                              }}
+                            >
+                              {row.has_override && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400/40 inline-block flex-shrink-0" title="Using vendor override" />
+                              )}
+                              ${Math.round(row.total_fees).toLocaleString('en-US')}
+                              <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
+                            </div>
+                          )
+                        ) : (
+                          <div className="flex items-center gap-1.5 justify-end" title={row.platform?.toLowerCase() === 'bitstop' && !isSingleMonth ? 'Select a single month to edit' : undefined}>
+                            {row.has_override && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400/40 inline-block flex-shrink-0" title="Using vendor override" />
+                            )}
+                            ${Math.round(row.total_fees).toLocaleString('en-US')}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {row.fee_pct.toFixed(2)}%
@@ -1344,7 +1481,7 @@ export default function ATMProfitLoss() {
                       <TableCell className="text-right font-mono">
                         ${Math.round(row.commissions).toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className={`text-right font-mono font-semibold ${row.net_profit < 0 ? 'text-red-400' : ''}`}>
+                      <TableCell className={`text-right font-mono font-semibold ${row.net_profit < 0 ? 'text-red-400' : row.net_profit > 0 ? 'text-green-400' : ''}`}>
                         ${Math.round(row.net_profit).toLocaleString('en-US')}
                       </TableCell>
                     </TableRow>
