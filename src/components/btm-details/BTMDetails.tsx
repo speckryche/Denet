@@ -305,11 +305,17 @@ export default function BTMDetails() {
             return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
           }
         }
-        return sortConfig.direction === 'asc' 
-          ? aValue.localeCompare(bValue) 
+        const cmp = sortConfig.direction === 'asc'
+          ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
+        if (cmp !== 0) return cmp;
+        // Secondary sort by location_name when primary sort values are equal
+        if (sortConfig.key === 'rent_payment_method') {
+          return (a.location_name || '').localeCompare(b.location_name || '');
+        }
+        return 0;
       }
-      
+
       if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
@@ -364,7 +370,12 @@ export default function BTMDetails() {
                   Location {getSortIcon('location_name')}
                 </th>
                 <th className="text-left p-2 text-[#F5F1E8] font-mono">Rent</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Rent Paid</th>
+                <th
+                  className="text-left p-2 text-[#F5F1E8] font-mono cursor-pointer hover:text-[#0066FF]"
+                  onClick={() => handleSort('rent_payment_method')}
+                >
+                  Rent Paid {getSortIcon('rent_payment_method')}
+                </th>
                 <th className="text-left p-2 text-[#F5F1E8] font-mono">Mgmt RPS</th>
                 <th className="text-left p-2 text-[#F5F1E8] font-mono">Mgmt Rep</th>
                 <th className="text-left p-2 text-[#F5F1E8] font-mono">Street</th>
@@ -563,7 +574,7 @@ export default function BTMDetails() {
                       </td>
                       <td className="p-2 text-[#F5F1E8]">{profile.location_name}</td>
                       <td className="p-2 text-[#F5F1E8] font-mono">${profile.monthly_rent}</td>
-                      <td className="p-2 text-[#F5F1E8]">{profile.rent_payment_method}</td>
+                      <td className={`p-2 font-mono ${profile.rent_payment_method === 'ACH' ? 'text-green-400' : profile.rent_payment_method === 'Bill Pay' ? 'text-blue-400' : 'text-[#F5F1E8]'}`}>{profile.rent_payment_method}</td>
                       <td className="p-2 text-[#F5F1E8] font-mono">${profile.cash_management_rps}</td>
                       <td className="p-2 text-[#F5F1E8] font-mono">${profile.cash_management_rep}</td>
                       <td className="p-2 text-[#F5F1E8]">{profile.street_address || '-'}</td>

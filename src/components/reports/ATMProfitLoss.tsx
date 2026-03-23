@@ -60,6 +60,7 @@ export default function ATMProfitLoss() {
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const escapeRef = useRef(false);
+  const savingRef = useRef(false);
 
   const isSingleMonth = selectedStartMonth === selectedEndMonth;
 
@@ -526,6 +527,8 @@ export default function ATMProfitLoss() {
   };
 
   const handleSaveOverride = async (atmId: string, value: string) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setEditingCell(null);
 
     const yearMonth = `${selectedYear}-${selectedStartMonth}`;
@@ -550,7 +553,8 @@ export default function ATMProfitLoss() {
         }, { onConflict: 'atm_id,year_month' });
     }
 
-    fetchATMProfitLoss();
+    await fetchATMProfitLoss();
+    savingRef.current = false;
   };
 
   // Sort data based on current sort field and direction
@@ -1412,7 +1416,7 @@ export default function ATMProfitLoss() {
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {row.platform?.toLowerCase() === 'bitstop' && isSingleMonth ? (
-                          editingCell === row.atm_id ? (
+                          editingCell === String(idx) ? (
                             <div className="flex items-center gap-1 justify-end">
                               <span className="text-muted-foreground">$</span>
                               <input
@@ -1434,6 +1438,7 @@ export default function ATMProfitLoss() {
                                     escapeRef.current = false;
                                     return;
                                   }
+                                  if (savingRef.current) return;
                                   handleSaveOverride(row.atm_id, editValue);
                                 }}
                                 autoFocus
@@ -1443,7 +1448,7 @@ export default function ATMProfitLoss() {
                             <div
                               className="group flex items-center gap-1.5 justify-end cursor-pointer"
                               onClick={() => {
-                                setEditingCell(row.atm_id);
+                                setEditingCell(String(idx));
                                 setEditValue(String(Math.round(row.total_fees)));
                               }}
                             >
