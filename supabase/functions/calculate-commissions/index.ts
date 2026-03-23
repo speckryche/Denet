@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       .from('transactions')
       .select('atm_id, fee, bitstop_fee, sale, date')
       .gte('date', startDate.toISOString().split('T')[0])
-      .lte('date', endDate.toISOString().split('T')[0]);
+      .lte('date', `${endDate.toISOString().split('T')[0]}T23:59:59`);
 
     if (txError) throw txError;
 
@@ -233,6 +233,39 @@ Deno.serve(async (req) => {
           }
         }
       }
+    }
+
+    // Apply Bitstop fee overrides
+    const yearMonth = `${year}-${month.padStart(2, '0')}`;
+    const { data: feeOverrides, error: overrideError } = await supabase
+      .from('bitstop_fee_overrides')
+      .select('atm_id, actual_fees')
+      .eq('year_month', yearMonth);
+
+    if (overrideError) {
+      console.error('Error fetching fee overrides:', overrideError);
+    }
+
+    if (feeOverrides && feeOverrides.length > 0) {
+      const overrideMap = new Map<string, number>();
+      feeOverrides.forEach(o => {
+        overrideMap.set(o.atm_id, Number(o.actual_fees));
+      });
+
+      // Find Bitstop ATMs and apply overrides
+      atmAggregates.forEach((atmData, compositeKey) => {
+        const profile = atmProfiles?.find(p => p.atm_id === atmData.atm_id);
+        if (!profile) return;
+
+        // Check if this ATM is on the Bitstop platform
+        // We need to check the atm_profiles table for platform info
+        // Since we don't have platform in the current query, check by override existence
+        if (overrideMap.has(atmData.atm_id)) {
+          const overrideFee = overrideMap.get(atmData.atm_id)!;
+          console.log(`Applying fee override for ATM ${atmData.atm_id}: $${atmData.total_fees} -> $${overrideFee}`);
+          atmData.total_fees = overrideFee;
+        }
+      });
     }
 
     const commissionDetails: CommissionResult[] = [];

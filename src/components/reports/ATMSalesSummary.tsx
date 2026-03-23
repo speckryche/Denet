@@ -128,7 +128,7 @@ export default function ATMSalesSummary() {
       const startDate = `${selectedYear}-${selectedStartMonth}-01`;
       const endMonth = parseInt(selectedEndMonth);
       const lastDay = new Date(selectedYear, endMonth, 0).getDate();
-      const endDate = `${selectedYear}-${selectedEndMonth}-${lastDay}`;
+      const endDate = `${selectedYear}-${selectedEndMonth}-${lastDay}T23:59:59`;
 
       // Get count first
       let countQuery = supabase
@@ -155,7 +155,7 @@ export default function ATMSalesSummary() {
 
         let query = supabase
           .from('transactions')
-          .select('atm_id, sale, fee, platform')
+          .select('atm_id, sale, fee, platform, date')
           .gte('date', startDate)
           .lte('date', endDate)
           .range(from, to);
@@ -212,6 +212,60 @@ export default function ATMSalesSummary() {
         entry.total_sales += tx.sale || 0;
         entry.total_fees += tx.fee || 0;
       });
+
+      // Fetch bitstop fee overrides for the selected period
+      const startMonthNum = parseInt(selectedStartMonth);
+      const endMonthNum = parseInt(selectedEndMonth);
+      const overrideMonths: string[] = [];
+      for (let m = startMonthNum; m <= endMonthNum; m++) {
+        overrideMonths.push(`${selectedYear}-${String(m).padStart(2, '0')}`);
+      }
+
+      const { data: feeOverrides } = await supabase
+        .from('bitstop_fee_overrides')
+        .select('atm_id, year_month, actual_fees')
+        .in('year_month', overrideMonths);
+
+      const overrideMap = new Map<string, number>();
+      feeOverrides?.forEach(o => {
+        overrideMap.set(`${o.atm_id}:${o.year_month}`, Number(o.actual_fees));
+      });
+
+      // Apply overrides for Bitstop ATMs
+      if (overrideMap.size > 0) {
+        // Group transaction fees by ATM and month
+        const feesByAtmMonth = new Map<string, Map<string, number>>();
+        allTransactions.forEach(tx => {
+          if (!tx.atm_id || tx.platform !== 'bitstop' || !tx.date) return;
+          const [y, m] = tx.date.split('-');
+          const ym = `${y}-${m}`;
+          if (!feesByAtmMonth.has(tx.atm_id)) feesByAtmMonth.set(tx.atm_id, new Map());
+          const monthMap = feesByAtmMonth.get(tx.atm_id)!;
+          monthMap.set(ym, (monthMap.get(ym) || 0) + (tx.fee || 0));
+        });
+
+        atmAggregation.forEach((entry) => {
+          if (entry.platform !== 'bitstop') return;
+          const monthFees = feesByAtmMonth.get(entry.atm_id);
+          if (!monthFees) return;
+
+          let overriddenTotal = 0;
+          let hasOverride = false;
+          for (let m = startMonthNum; m <= endMonthNum; m++) {
+            const ym = `${selectedYear}-${String(m).padStart(2, '0')}`;
+            const key = `${entry.atm_id}:${ym}`;
+            if (overrideMap.has(key)) {
+              overriddenTotal += overrideMap.get(key)!;
+              hasOverride = true;
+            } else {
+              overriddenTotal += monthFees.get(ym) || 0;
+            }
+          }
+          if (hasOverride) {
+            entry.total_fees = overriddenTotal;
+          }
+        });
+      }
 
       // Calculate average transaction for each ATM
       atmAggregation.forEach((entry) => {

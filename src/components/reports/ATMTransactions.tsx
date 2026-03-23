@@ -54,6 +54,7 @@ export default function ATMTransactions() {
   const [atmList, setAtmList] = useState<{ atm_id: string; location_name: string }[]>([]);
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [feeOverrides, setFeeOverrides] = useState<Map<string, number>>(new Map());
 
   const months = [
     { value: '01', label: 'January' },
@@ -147,7 +148,7 @@ export default function ATMTransactions() {
       const startDate = `${selectedYear}-${selectedStartMonth}-01`;
       const endMonth = parseInt(selectedEndMonth);
       const lastDay = new Date(selectedYear, endMonth, 0).getDate();
-      const endDate = `${selectedYear}-${selectedEndMonth}-${lastDay}`;
+      const endDate = `${selectedYear}-${selectedEndMonth}-${lastDay}T23:59:59`;
 
       // Get count with filters
       let countQuery = supabase
@@ -194,6 +195,25 @@ export default function ATMTransactions() {
           allTransactions = allTransactions.concat(data);
         }
       }
+
+      // Fetch bitstop fee overrides for the selected period
+      const startMonthNum = parseInt(selectedStartMonth);
+      const endMonthNum = parseInt(selectedEndMonth);
+      const overrideMonths: string[] = [];
+      for (let m = startMonthNum; m <= endMonthNum; m++) {
+        overrideMonths.push(`${selectedYear}-${String(m).padStart(2, '0')}`);
+      }
+
+      const { data: overrideData } = await supabase
+        .from('bitstop_fee_overrides')
+        .select('atm_id, year_month, actual_fees')
+        .in('year_month', overrideMonths);
+
+      const overrideMap = new Map<string, number>();
+      overrideData?.forEach(o => {
+        overrideMap.set(`${o.atm_id}:${o.year_month}`, Number(o.actual_fees));
+      });
+      setFeeOverrides(overrideMap);
 
       setData(allTransactions.map(tx => ({
         id: tx.id || '',
@@ -270,6 +290,53 @@ export default function ATMTransactions() {
     fee: acc.fee + row.fee,
     bitstop_fee: acc.bitstop_fee + row.bitstop_fee,
   }), { sale: 0, fee: 0, bitstop_fee: 0 });
+
+  // Calculate override-adjusted fee total for Bitstop ATMs
+  const adjustedFeeTotals = (() => {
+    if (feeOverrides.size === 0) return { fee: totals.fee, hasOverrides: false };
+
+    // Group fees by ATM and month
+    const feesByAtmMonth = new Map<string, Map<string, number>>();
+    const atmPlatforms = new Map<string, string>();
+    data.forEach(row => {
+      atmPlatforms.set(row.atm_id, row.platform);
+      if (row.platform !== 'bitstop' || !row.date) return;
+      const [y, m] = row.date.split('-');
+      const ym = `${y}-${m}`;
+      if (!feesByAtmMonth.has(row.atm_id)) feesByAtmMonth.set(row.atm_id, new Map());
+      const monthMap = feesByAtmMonth.get(row.atm_id)!;
+      monthMap.set(ym, (monthMap.get(ym) || 0) + row.fee);
+    });
+
+    // Calculate non-bitstop fee total
+    let nonBitstopFees = 0;
+    data.forEach(row => {
+      if (row.platform !== 'bitstop') nonBitstopFees += row.fee;
+    });
+
+    // Calculate bitstop fees with overrides
+    let bitstopFees = 0;
+    let hasOverrides = false;
+    const startMonthNum = parseInt(selectedStartMonth);
+    const endMonthNum = parseInt(selectedEndMonth);
+
+    const processedAtms = new Set<string>();
+    feesByAtmMonth.forEach((monthFees, atmId) => {
+      processedAtms.add(atmId);
+      for (let m = startMonthNum; m <= endMonthNum; m++) {
+        const ym = `${selectedYear}-${String(m).padStart(2, '0')}`;
+        const key = `${atmId}:${ym}`;
+        if (feeOverrides.has(key)) {
+          bitstopFees += feeOverrides.get(key)!;
+          hasOverrides = true;
+        } else {
+          bitstopFees += monthFees.get(ym) || 0;
+        }
+      }
+    });
+
+    return { fee: nonBitstopFees + bitstopFees, hasOverrides };
+  })();
 
   const dateRangeText = selectedStartMonth === selectedEndMonth
     ? `${months.find(m => m.value === selectedStartMonth)?.label} ${selectedYear}`
@@ -623,7 +690,13 @@ export default function ATMTransactions() {
                       ${Math.round(totals.sale).toLocaleString('en-US')}
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      ${Math.round(totals.fee).toLocaleString('en-US')}
+                      {adjustedFeeTotals.hasOverrides ? (
+                        <span title="Adjusted with Bitstop fee overrides">
+                          ${Math.round(adjustedFeeTotals.fee).toLocaleString('en-US')} *
+                        </span>
+                      ) : (
+                        <>${Math.round(totals.fee).toLocaleString('en-US')}</>
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       ${Math.round(totals.bitstop_fee).toLocaleString('en-US')}
@@ -633,6 +706,11 @@ export default function ATMTransactions() {
               )}
             </TableBody>
           </Table>
+          {adjustedFeeTotals.hasOverrides && (
+            <p className="text-xs text-yellow-400/70 mt-2">
+              * Fee total adjusted with Bitstop actual fee overrides. Individual transaction fees shown are calculated estimates.
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

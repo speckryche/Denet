@@ -36,7 +36,7 @@ export default function Reports() {
 
       <main className="max-w-[95%] mx-auto px-6 py-8 space-y-6 overflow-x-hidden">
         {/* Executive Dashboard nav: large icon+label buttons */}
-        <div className="flex gap-3 max-w-[800px]">
+        <div className="flex gap-3 max-w-[1000px]">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;

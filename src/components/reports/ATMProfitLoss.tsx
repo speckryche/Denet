@@ -161,7 +161,8 @@ export default function ATMProfitLoss() {
       const startDate = `${selectedYear}-${selectedStartMonth}-01`;
       const endMonth = parseInt(selectedEndMonth);
       const lastDay = new Date(selectedYear, endMonth, 0).getDate();
-      const endDate = `${selectedYear}-${selectedEndMonth}-${lastDay}`;
+      const endDateBase = `${selectedYear}-${selectedEndMonth}-${lastDay}`;
+      const endDate = `${endDateBase}T23:59:59`;
 
       // Calculate number of months in the date range
       const startMonthNum = parseInt(selectedStartMonth);
@@ -189,6 +190,11 @@ export default function ATMProfitLoss() {
           if (!p.installed_date) return false;
           if (new Date(p.installed_date) > rangeEnd) return false;
           if (p.removed_date && new Date(p.removed_date) < rangeStart) return false;
+          // If inactive with no removed_date and another profile shares this atm_id, skip it
+          if (!p.removed_date) {
+            const hasActivesibling = atmProfiles?.some(other => other.atm_id === p.atm_id && other.active === true);
+            if (hasActivesibling) return false;
+          }
           return true;
         }
         return false;
@@ -247,7 +253,7 @@ export default function ATMProfitLoss() {
       // Report date range for calculations
       // Parse dates in local timezone to avoid timezone offset issues
       const [reportStartYear, reportStartMonthNum, reportStartDay] = startDate.split('-').map(Number);
-      const [reportEndYear, reportEndMonthNum, reportEndDay] = endDate.split('-').map(Number);
+      const [reportEndYear, reportEndMonthNum, reportEndDay] = endDateBase.split('-').map(Number);
       const reportStartDate = new Date(reportStartYear, reportStartMonthNum - 1, reportStartDay);
       const reportEndDate = new Date(reportEndYear, reportEndMonthNum - 1, reportEndDay);
 
@@ -405,14 +411,41 @@ export default function ATMProfitLoss() {
       // **PROFILE-DRIVEN APPROACH**: Start with all ATM profiles
       const resultData: ATMPLData[] = [];
 
-      atmProfiles?.forEach(profile => {
+      relevantProfiles?.forEach(profile => {
         // Check if this profile should be included based on platform filter
         if (!shouldIncludeProfile(profile)) {
           return;
         }
 
-        // Get transactions for this ATM first
-        const atmTransactions = transactionsByATM.get(profile.atm_id) || [];
+        // Get transactions for this ATM, filtered to this profile's active period
+        const allAtmTransactions = transactionsByATM.get(profile.atm_id) || [];
+
+        // Check if multiple profiles share this atm_id
+        const siblingProfiles = relevantProfiles.filter(p => p.atm_id === profile.atm_id);
+        const hasSiblings = siblingProfiles.length > 1;
+
+        const atmTransactions = allAtmTransactions.filter(tx => {
+          if (!tx.date) return false;
+          const [tYear, tMonth, tDay] = tx.date.split('-').map(Number);
+          const txDate = new Date(tYear, tMonth - 1, tDay);
+
+          if (profile.installed_date) {
+            const [iY, iM, iD] = profile.installed_date.split('-').map(Number);
+            if (txDate < new Date(iY, iM - 1, iD)) return false;
+          }
+          if (profile.removed_date) {
+            const [rY, rM, rD] = profile.removed_date.split('-').map(Number);
+            if (txDate > new Date(rY, rM - 1, rD)) return false;
+          }
+
+          // If this inactive profile shares an atm_id with another profile and has no removed_date,
+          // don't assign transactions that fall within a sibling's active period
+          if (hasSiblings && profile.active === false && !profile.removed_date) {
+            return false;
+          }
+
+          return true;
+        });
 
         // Calculate expense months based on install/removed dates and report period
         const expenseMonths = calculateExpenseMonths(profile, reportStartDate, reportEndDate);
