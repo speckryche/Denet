@@ -10,6 +10,7 @@ import CashManagement from "./components/cash-management/CashManagement";
 import BitstopCommissions from "./components/bitstop/BitstopCommissions";
 import BTMDetails from "./components/btm-details/BTMDetails";
 import CsvUploads from "./components/csv-uploads/CsvUploads";
+import Liquidity from "./components/liquidity/Liquidity";
 import { Layout } from "./components/layout/Layout";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -96,6 +97,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <BTMDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/liquidity"
+            element={
+              <ProtectedRoute>
+                <Liquidity />
               </ProtectedRoute>
             }
           />

@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Server,
   Upload,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -66,6 +67,12 @@ const navItems: NavItem[] = [
     title: 'BTM Machine Details'
   },
 {
+    name: 'Liquidity',
+    path: '/liquidity',
+    icon: <Wallet className="w-5 h-5" />,
+    title: 'Liquidity'
+  },
+  {
     name: 'Settings',
     path: '/settings',
     icon: <Settings className="w-5 h-5" />,
