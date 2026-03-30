@@ -29,9 +29,19 @@ import {
   Calendar,
   Settings2,
   FileSpreadsheet,
+  Upload,
+  Loader2,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { LiquiditySnapshotTable } from './LiquiditySnapshotTable';
 import { AddSnapshotDialog } from './AddSnapshotDialog';
+import { ImportSnapshotsDialog } from './ImportSnapshotsDialog';
 import { CategoryManager } from './CategoryManager';
 import { CryptoInvestments } from './CryptoInvestments';
 
@@ -81,6 +91,8 @@ export default function Liquidity() {
     useState<LiquiditySnapshot | null>(null);
   const [deleteSnapshotId, setDeleteSnapshotId] = useState<string | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [showCount, setShowCount] = useState<number | 'all'>(5);
 
   useEffect(() => {
     fetchData();
@@ -145,6 +157,63 @@ export default function Liquidity() {
     setEditingSnapshot(null);
     setSnapshotDialogOpen(true);
   };
+
+  // Backfill missing BTC prices from CoinGecko historical API
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const handleBackfillPrices = async () => {
+    const missing = snapshots.filter((s) => !s.bitcoin_price || s.bitcoin_price === 0);
+    if (missing.length === 0) return;
+    setIsBackfilling(true);
+
+    for (const snap of missing) {
+      try {
+        const [y, m, d] = snap.snapshot_date.split('-');
+        const cgDate = `${d}-${m}-${y}`;
+        const res = await fetch(
+          `https://api.coingecko.com/api/v3/coins/bitcoin/history?date=${cgDate}&localization=false`
+        );
+        const data = await res.json();
+        const price = data?.market_data?.current_price?.usd;
+        if (price) {
+          const btcPrice = Math.round(price);
+          await supabase
+            .from('liquidity_snapshots')
+            .update({ bitcoin_price: btcPrice })
+            .eq('id', snap.id);
+
+          // Also update crypto quantities where missing
+          const vals = snap.liquidity_snapshot_values || [];
+          for (const v of vals) {
+            const cat = categories.find((c) => c.id === v.category_id);
+            if (
+              cat?.type === 'crypto' &&
+              cat.coin_id === 'bitcoin' &&
+              v.value > 0 &&
+              (!v.quantity || v.quantity === 0)
+            ) {
+              const estQty = parseFloat((v.value / btcPrice).toFixed(4));
+              await supabase
+                .from('liquidity_snapshot_values')
+                .update({ quantity: estQty })
+                .eq('snapshot_id', snap.id)
+                .eq('category_id', v.category_id);
+            }
+          }
+        }
+        // Rate limit
+        await new Promise((r) => setTimeout(r, 1500));
+      } catch (err) {
+        console.error(`Failed to fetch price for ${snap.snapshot_date}:`, err);
+      }
+    }
+
+    setIsBackfilling(false);
+    fetchSnapshots();
+  };
+
+  const missingPriceCount = snapshots.filter(
+    (s) => !s.bitcoin_price || s.bitcoin_price === 0
+  ).length;
 
   // Compute summary from latest snapshot (last in array since sorted ascending)
   const latestSnapshot =
@@ -599,6 +668,31 @@ export default function Liquidity() {
               Liquidity Snapshots
             </CardTitle>
             <div className="flex items-center gap-2">
+              <Select
+                value={String(showCount)}
+                onValueChange={(v) =>
+                  setShowCount(v === 'all' ? 'all' : parseInt(v))
+                }
+              >
+                <SelectTrigger className="w-[130px] h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">Last 3</SelectItem>
+                  <SelectItem value="5">Last 5</SelectItem>
+                  <SelectItem value="10">Last 10</SelectItem>
+                  <SelectItem value="20">Last 20</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportDialogOpen(true)}
+              >
+                <Upload className="w-4 h-4 mr-1.5" />
+                Import CSV
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -624,8 +718,35 @@ export default function Liquidity() {
             </div>
           </CardHeader>
           <CardContent>
+            {missingPriceCount > 0 && (
+              <div className="mb-4 flex items-center justify-between bg-amber-400/10 border border-amber-400/20 rounded-md px-4 py-2.5">
+                <span className="text-sm text-amber-400">
+                  {missingPriceCount} snapshot{missingPriceCount !== 1 ? 's' : ''} missing Bitcoin price data
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBackfillPrices}
+                  disabled={isBackfilling}
+                  className="border-amber-400/30 text-amber-400 hover:text-amber-300"
+                >
+                  {isBackfilling ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      Fetching prices...
+                    </>
+                  ) : (
+                    'Fetch Missing Prices'
+                  )}
+                </Button>
+              </div>
+            )}
             <LiquiditySnapshotTable
-              snapshots={snapshots}
+              snapshots={
+                showCount === 'all'
+                  ? snapshots
+                  : snapshots.slice(-showCount)
+              }
               categories={categories}
               onEdit={handleEditSnapshot}
               onDelete={(id) => setDeleteSnapshotId(id)}
@@ -664,6 +785,14 @@ export default function Liquidity() {
         {/* Crypto Investments */}
         <CryptoInvestments />
       </main>
+
+      {/* Import CSV Dialog */}
+      <ImportSnapshotsDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        categories={categories}
+        onImported={fetchSnapshots}
+      />
 
       {/* Snapshot Add/Edit Dialog */}
       <AddSnapshotDialog
