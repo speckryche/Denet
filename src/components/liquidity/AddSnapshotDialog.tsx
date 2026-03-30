@@ -128,21 +128,23 @@ export function AddSnapshotDialog({
         setSnapshotDate(getPacificDateString());
         setCategoryValues({});
         setCategoryQuantities({});
-        fetchAllPrices();
       }
+      // Always fetch prices when dialog opens (use current categories)
+      fetchAllPrices(neededCoinIds);
     }
-  }, [open, editingSnapshot]);
+  }, [open, editingSnapshot, categories]);
 
-  const fetchAllPrices = async () => {
+  const fetchAllPrices = async (coinIds: string[]) => {
+    if (coinIds.length === 0) return;
     setIsFetchingPrices(true);
     try {
-      const ids = neededCoinIds.join(',');
+      const ids = coinIds.join(',');
       const response = await fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`
       );
       const data = await response.json();
       const prices: Record<string, number> = {};
-      for (const coinId of neededCoinIds) {
+      for (const coinId of coinIds) {
         if (data?.[coinId]?.usd) {
           prices[coinId] = data[coinId].usd;
         }
@@ -158,11 +160,19 @@ export function AddSnapshotDialog({
     }
   };
 
+  // Get the current price for a coin, using BTC price field as fallback for bitcoin
+  const getCoinPrice = (coinId: string | null): number => {
+    if (!coinId) return 0;
+    if (coinId === 'bitcoin') {
+      return coinPrices.bitcoin || parseFloat(bitcoinPrice) || 0;
+    }
+    return coinPrices[coinId] || 0;
+  };
+
   // Compute crypto value from quantity * price
   const getCryptoValue = (cat: LiquidityCategory): number => {
     const qty = parseFloat(categoryQuantities[cat.id] || '0') || 0;
-    const price = cat.coin_id ? coinPrices[cat.coin_id] || 0 : 0;
-    return qty * price;
+    return qty * getCoinPrice(cat.coin_id);
   };
 
   // When quantity changes for a crypto category, update the computed value
@@ -171,7 +181,7 @@ export function AddSnapshotDialog({
     const cat = cryptoCategories.find((c) => c.id === catId);
     if (cat?.coin_id) {
       const qty = parseFloat(quantity) || 0;
-      const price = coinPrices[cat.coin_id] || 0;
+      const price = getCoinPrice(cat.coin_id);
       const value = Math.round(qty * price);
       setCategoryValues((prev) => ({
         ...prev,
@@ -327,7 +337,7 @@ export function AddSnapshotDialog({
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={fetchAllPrices}
+                  onClick={() => fetchAllPrices(neededCoinIds)}
                   disabled={isFetchingPrices}
                   title="Fetch current prices"
                 >
@@ -384,9 +394,6 @@ export function AddSnapshotDialog({
               <div className="grid gap-3">
                 {cryptoCategories.map((cat) => {
                   const computedValue = getCryptoValue(cat);
-                  const coinPrice = cat.coin_id
-                    ? coinPrices[cat.coin_id] || 0
-                    : 0;
                   return (
                     <div key={cat.id} className="space-y-1">
                       <div className="flex items-center gap-3">
@@ -410,7 +417,7 @@ export function AddSnapshotDialog({
                         <div className="w-[180px] shrink-0" />
                         <div className="flex-1 flex items-center justify-between text-xs text-muted-foreground px-1">
                           <span>
-                            {cat.ticker} @ {formatCurrency(coinPrice)}
+                            {cat.ticker} @ {formatCurrency(getCoinPrice(cat.coin_id))}
                           </span>
                           <span className="font-mono font-medium text-foreground">
                             = {formatCurrency(computedValue)}

@@ -41,7 +41,6 @@ interface LiquidityCategory {
   ticker: string | null;
 }
 
-// Ticker lookup from coin_id
 const COIN_TICKERS: Record<string, string> = {
   bitcoin: 'BTC',
   solana: 'SOL',
@@ -58,6 +57,32 @@ interface CategoryManagerProps {
   categories: LiquidityCategory[];
   onChanged: () => void;
 }
+
+const SECTIONS: {
+  type: 'asset' | 'crypto' | 'liability';
+  label: string;
+  color: string;
+  borderColor: string;
+}[] = [
+  {
+    type: 'asset',
+    label: 'Cash Assets',
+    color: 'text-green-400/80',
+    borderColor: 'border-green-400/20',
+  },
+  {
+    type: 'crypto',
+    label: 'Crypto Assets',
+    color: 'text-amber-400/80',
+    borderColor: 'border-amber-400/20',
+  },
+  {
+    type: 'liability',
+    label: 'Liabilities',
+    color: 'text-red-400/80',
+    borderColor: 'border-red-400/20',
+  },
+];
 
 export function CategoryManager({
   categories,
@@ -76,6 +101,9 @@ export function CategoryManager({
   const activeCategories = categories
     .filter((c) => c.active)
     .sort((a, b) => a.display_order - b.display_order);
+
+  const getCategoriesByType = (type: string) =>
+    activeCategories.filter((c) => c.type === type);
 
   const startEdit = (cat: LiquidityCategory) => {
     setEditingId(cat.id);
@@ -144,13 +172,14 @@ export function CategoryManager({
 
   const moveCategory = async (
     cat: LiquidityCategory,
-    direction: 'up' | 'down'
+    direction: 'up' | 'down',
+    sectionItems: LiquidityCategory[]
   ) => {
-    const idx = activeCategories.findIndex((c) => c.id === cat.id);
+    const idx = sectionItems.findIndex((c) => c.id === cat.id);
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= activeCategories.length) return;
+    if (swapIdx < 0 || swapIdx >= sectionItems.length) return;
 
-    const other = activeCategories[swapIdx];
+    const other = sectionItems[swapIdx];
     const tempOrder = cat.display_order;
 
     await supabase
@@ -165,123 +194,136 @@ export function CategoryManager({
     onChanged();
   };
 
-  const typeBadgeClass = (type: string) => {
-    switch (type) {
-      case 'liability':
-        return 'border-red-400/30 text-red-400/80 text-[10px]';
-      case 'crypto':
-        return 'border-amber-400/30 text-amber-400/80 text-[10px]';
-      default:
-        return 'border-green-400/30 text-green-400/80 text-[10px]';
-    }
-  };
+  const renderCategoryRow = (
+    cat: LiquidityCategory,
+    idx: number,
+    sectionItems: LiquidityCategory[]
+  ) => (
+    <div
+      key={cat.id}
+      className="flex items-center gap-3 py-2 px-1 group"
+    >
+      {/* Order controls */}
+      <div className="flex flex-col gap-0.5">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => moveCategory(cat, 'up', sectionItems)}
+          disabled={idx === 0}
+        >
+          <ChevronUp className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => moveCategory(cat, 'down', sectionItems)}
+          disabled={idx === sectionItems.length - 1}
+        >
+          <ChevronDown className="h-3 w-3" />
+        </Button>
+      </div>
+
+      {/* Name */}
+      <div className="flex-1 min-w-0">
+        {editingId === cat.id ? (
+          <div className="flex items-center gap-2">
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="h-8 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveEdit();
+                if (e.key === 'Escape') cancelEdit();
+              }}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-green-400 hover:text-green-300"
+              onClick={saveEdit}
+            >
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground"
+              onClick={cancelEdit}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <span className="text-sm font-medium">{cat.name}</span>
+        )}
+      </div>
+
+      {/* Coin badge for crypto */}
+      {cat.type === 'crypto' && cat.ticker && (
+        <Badge
+          variant="outline"
+          className="border-amber-400/20 text-amber-400/60 text-[10px]"
+        >
+          {cat.ticker}
+        </Badge>
+      )}
+
+      {/* Actions */}
+      {editingId !== cat.id && (
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            onClick={() => startEdit(cat)}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-red-400"
+            onClick={() => setDeactivateTarget(cat)}
+          >
+            <EyeOff className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="space-y-3">
-      {/* Category list */}
-      <div className="divide-y divide-white/5">
-        {activeCategories.map((cat, idx) => (
-          <div
-            key={cat.id}
-            className="flex items-center gap-3 py-2.5 px-1 group"
-          >
-            {/* Order controls */}
-            <div className="flex flex-col gap-0.5">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => moveCategory(cat, 'up')}
-                disabled={idx === 0}
-              >
-                <ChevronUp className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => moveCategory(cat, 'down')}
-                disabled={idx === activeCategories.length - 1}
-              >
-                <ChevronDown className="h-3 w-3" />
-              </Button>
+    <div className="space-y-6">
+      {/* Sections */}
+      {SECTIONS.map((section) => {
+        const items = getCategoriesByType(section.type);
+        return (
+          <div key={section.type}>
+            <div
+              className={`text-xs font-semibold uppercase tracking-wider ${section.color} border-b ${section.borderColor} pb-2 mb-1`}
+            >
+              {section.label}
+              <span className="ml-2 text-[10px] font-normal text-muted-foreground normal-case">
+                {items.length} {items.length === 1 ? 'item' : 'items'}
+              </span>
             </div>
-
-            {/* Name */}
-            <div className="flex-1 min-w-0">
-              {editingId === cat.id ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="h-8 text-sm"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveEdit();
-                      if (e.key === 'Escape') cancelEdit();
-                    }}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-green-400 hover:text-green-300"
-                    onClick={saveEdit}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground"
-                    onClick={cancelEdit}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <span className="text-sm font-medium">{cat.name}</span>
-              )}
-            </div>
-
-            {/* Type badge */}
-            <Badge variant="outline" className={typeBadgeClass(cat.type)}>
-              {cat.type}
-            </Badge>
-
-            {/* Coin badge for crypto */}
-            {cat.type === 'crypto' && cat.ticker && (
-              <Badge
-                variant="outline"
-                className="border-amber-400/20 text-amber-400/60 text-[10px]"
-              >
-                {cat.ticker}
-              </Badge>
-            )}
-
-            {/* Actions */}
-            {editingId !== cat.id && (
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                  onClick={() => startEdit(cat)}
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-red-400"
-                  onClick={() => setDeactivateTarget(cat)}
-                >
-                  <EyeOff className="h-3 w-3" />
-                </Button>
+            {items.length === 0 ? (
+              <div className="py-3 px-1 text-sm text-muted-foreground italic">
+                No categories
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {items.map((cat, idx) =>
+                  renderCategoryRow(cat, idx, items)
+                )}
               </div>
             )}
           </div>
-        ))}
-      </div>
+        );
+      })}
 
       {/* Add new category */}
       <div className="flex items-center gap-3 pt-3 border-t border-white/10">

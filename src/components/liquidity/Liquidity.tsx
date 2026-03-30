@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import XLSX from 'xlsx-js-style';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import {
   DollarSign,
   Calendar,
   Settings2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { LiquiditySnapshotTable } from './LiquiditySnapshotTable';
 import { AddSnapshotDialog } from './AddSnapshotDialog';
@@ -64,6 +66,11 @@ const formatCurrency = (value: number) =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
+
+const formatDate = (dateStr: string): string => {
+  const [year, month, day] = dateStr.split('-');
+  return `${month}/${day}/${year.slice(2)}`;
+};
 
 export default function Liquidity() {
   const [categories, setCategories] = useState<LiquidityCategory[]>([]);
@@ -108,7 +115,7 @@ export default function Liquidity() {
         )
       `
       )
-      .order('snapshot_date', { ascending: false });
+      .order('snapshot_date', { ascending: true });
     if (error) console.error('Error fetching snapshots:', error);
     else setSnapshots(data || []);
   };
@@ -139,36 +146,368 @@ export default function Liquidity() {
     setSnapshotDialogOpen(true);
   };
 
-  // Compute summary from latest snapshot
-  const latestSnapshot = snapshots[0];
+  // Compute summary from latest snapshot (last in array since sorted ascending)
+  const latestSnapshot =
+    snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
   let summaryTotal = 0;
   let summaryGain = 0;
   let summaryDailyAvg = 0;
 
-  if (latestSnapshot) {
-    const activeCategories = categories.filter((c) => c.active);
+  const activeCategories = categories.filter((c) => c.active);
+  const assets = activeCategories.filter((c) => c.type === 'asset');
+  const cryptos = activeCategories.filter((c) => c.type === 'crypto');
+  const liabilities = activeCategories.filter((c) => c.type === 'liability');
+
+  const computeSnapshotTotals = (snapshot: LiquiditySnapshot) => {
     const valueMap = new Map(
-      latestSnapshot.liquidity_snapshot_values.map((v) => [
-        v.category_id,
-        v.value,
-      ])
+      snapshot.liquidity_snapshot_values.map((v) => [v.category_id, v.value])
     );
     let assetTotal = 0;
     let liabilityTotal = 0;
     activeCategories.forEach((cat) => {
       const val = valueMap.get(cat.id) || 0;
       if (cat.type === 'liability') liabilityTotal += val;
-      else assetTotal += val; // both 'asset' and 'crypto' are assets
+      else assetTotal += val;
     });
-    summaryTotal = assetTotal - liabilityTotal;
-    summaryGain = summaryTotal - STARTING_LIQUIDITY;
+    const total = assetTotal - liabilityTotal;
+    const gain = total - STARTING_LIQUIDITY;
     const daysSinceStart = Math.floor(
-      (new Date(latestSnapshot.snapshot_date).getTime() -
+      (new Date(snapshot.snapshot_date).getTime() -
         DENET_START_DATE.getTime()) /
         86400000
     );
-    summaryDailyAvg = daysSinceStart > 0 ? summaryGain / daysSinceStart : 0;
+    const dailyAvg = daysSinceStart > 0 ? gain / daysSinceStart : 0;
+    return { total, gain, dailyAvg };
+  };
+
+  if (latestSnapshot) {
+    const totals = computeSnapshotTotals(latestSnapshot);
+    summaryTotal = totals.total;
+    summaryGain = totals.gain;
+    summaryDailyAvg = totals.dailyAvg;
   }
+
+  // ── Excel Export ──────────────────────────────────────────────
+  const exportToExcel = (snapshotsToExport: LiquiditySnapshot[], filename: string) => {
+    const numCols = snapshotsToExport.length;
+    const data: any[][] = [];
+
+    const border = {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    };
+
+    const headerStyle = {
+      font: { bold: true, sz: 12, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '1F2937' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border,
+    };
+
+    const labelStyle = {
+      font: { sz: 11 },
+      alignment: { horizontal: 'left', vertical: 'center' },
+      border,
+    };
+
+    const currencyStyle = {
+      font: { sz: 11 },
+      alignment: { horizontal: 'right', vertical: 'center' },
+      border,
+      numFmt: '$#,##0',
+    };
+
+    const sectionHeaderFont = (rgb: string) => ({
+      font: { bold: true, sz: 10, color: { rgb } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+    });
+
+    const totalLabelStyle = {
+      font: { bold: true, sz: 12 },
+      fill: { fgColor: { rgb: 'D1D5DB' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+      border,
+    };
+
+    const totalValueStyle = {
+      font: { bold: true, sz: 12 },
+      fill: { fgColor: { rgb: 'D1D5DB' } },
+      alignment: { horizontal: 'right', vertical: 'center' },
+      border,
+      numFmt: '$#,##0',
+    };
+
+    // Row 0: Title
+    data.push(['DeNet Liquidity Tracking', ...Array(numCols).fill('')]);
+
+    // Row 1: empty spacer
+    data.push(Array(numCols + 1).fill(''));
+
+    // Row 2: Date headers
+    data.push(['Asset', ...snapshotsToExport.map((s) => formatDate(s.snapshot_date))]);
+
+    // Row 3: Bitcoin Price
+    data.push(['Bitcoin Price', ...snapshotsToExport.map((s) => s.bitcoin_price)]);
+
+    // Row 4: empty spacer
+    data.push(Array(numCols + 1).fill(''));
+
+    // Track row index for styling
+    let rowIdx = 5;
+
+    // CASH ASSETS section header
+    data.push(['CASH ASSETS', ...Array(numCols).fill('')]);
+    const cashHeaderRow = rowIdx++;
+
+    // Cash asset rows
+    const cashRows: number[] = [];
+    assets.forEach((cat) => {
+      const row: any[] = [cat.name];
+      snapshotsToExport.forEach((snap) => {
+        const val = snap.liquidity_snapshot_values.find((v) => v.category_id === cat.id)?.value || 0;
+        row.push(val);
+      });
+      data.push(row);
+      cashRows.push(rowIdx++);
+    });
+
+    // Empty row
+    data.push(Array(numCols + 1).fill(''));
+    rowIdx++;
+
+    // CRYPTO ASSETS section header
+    data.push(['CRYPTO ASSETS', ...Array(numCols).fill('')]);
+    const cryptoHeaderRow = rowIdx++;
+
+    // Crypto asset rows
+    const cryptoRows: number[] = [];
+    cryptos.forEach((cat) => {
+      const row: any[] = [cat.name];
+      snapshotsToExport.forEach((snap) => {
+        const snapVal = snap.liquidity_snapshot_values.find((v) => v.category_id === cat.id);
+        const val = snapVal?.value || 0;
+        const qty = snapVal?.quantity;
+        if (qty != null && qty > 0) {
+          row.push(val); // Store numeric value; we'll add quantity as a note via comment-style
+        } else {
+          row.push(val);
+        }
+      });
+      data.push(row);
+      cryptoRows.push(rowIdx++);
+    });
+
+    // Empty row
+    data.push(Array(numCols + 1).fill(''));
+    rowIdx++;
+
+    // LIABILITIES section header
+    data.push(['LIABILITIES', ...Array(numCols).fill('')]);
+    const liabHeaderRow = rowIdx++;
+
+    // Liability rows
+    const liabRows: number[] = [];
+    liabilities.forEach((cat) => {
+      const row: any[] = [cat.name];
+      snapshotsToExport.forEach((snap) => {
+        const val = snap.liquidity_snapshot_values.find((v) => v.category_id === cat.id)?.value || 0;
+        row.push(val > 0 ? -val : 0);
+      });
+      data.push(row);
+      liabRows.push(rowIdx++);
+    });
+
+    // Empty row
+    data.push(Array(numCols + 1).fill(''));
+    rowIdx++;
+
+    // TOTAL row
+    const totalRowIdx = rowIdx++;
+    {
+      const row: any[] = ['Total'];
+      snapshotsToExport.forEach((snap) => {
+        const { total } = computeSnapshotTotals(snap);
+        row.push(total);
+      });
+      data.push(row);
+    }
+
+    // Starting Liquidity
+    const startingRow = rowIdx++;
+    data.push(['Starting Liquidity', ...snapshotsToExport.map(() => STARTING_LIQUIDITY)]);
+
+    // Gain in Liquidity
+    const gainRow = rowIdx++;
+    {
+      const row: any[] = ['Gain in Liquidity'];
+      snapshotsToExport.forEach((snap) => {
+        const { gain } = computeSnapshotTotals(snap);
+        row.push(gain);
+      });
+      data.push(row);
+    }
+
+    // Daily Profit Avg
+    const dailyRow = rowIdx++;
+    {
+      const row: any[] = ['Daily Profit Avg'];
+      snapshotsToExport.forEach((snap) => {
+        const { dailyAvg } = computeSnapshotTotals(snap);
+        row.push(Math.round(dailyAvg));
+      });
+      data.push(row);
+    }
+
+    // Build worksheet
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // Column widths
+    ws['!cols'] = [
+      { wch: 25 },
+      ...snapshotsToExport.map(() => ({ wch: 16 })),
+    ];
+
+    // Merge title row
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: numCols } },
+    ];
+
+    // Helper to get cell ref
+    const cell = (r: number, c: number) => XLSX.utils.encode_cell({ r, c });
+
+    // Style title row
+    const titleCell = ws[cell(0, 0)];
+    if (titleCell) {
+      titleCell.s = {
+        font: { bold: true, sz: 14, color: { rgb: '1F2937' } },
+        fill: { fgColor: { rgb: 'D1D5DB' } },
+        alignment: { horizontal: 'left', vertical: 'center' },
+      };
+    }
+
+    // Style date header row (row 2)
+    for (let c = 0; c <= numCols; c++) {
+      const ref = cell(2, c);
+      if (ws[ref]) ws[ref].s = headerStyle;
+    }
+
+    // Style BTC price row (row 3)
+    for (let c = 0; c <= numCols; c++) {
+      const ref = cell(3, c);
+      if (ws[ref]) {
+        ws[ref].s = {
+          font: { bold: true, sz: 11, color: { rgb: 'B45309' } },
+          fill: { fgColor: { rgb: 'FEF3C7' } },
+          alignment: { horizontal: c === 0 ? 'left' : 'right', vertical: 'center' },
+          border,
+          numFmt: c > 0 ? '$#,##0' : undefined,
+        };
+      }
+    }
+
+    // Style section headers
+    [
+      { row: cashHeaderRow, color: '16A34A' },
+      { row: cryptoHeaderRow, color: 'D97706' },
+      { row: liabHeaderRow, color: 'DC2626' },
+    ].forEach(({ row, color }) => {
+      const ref = cell(row, 0);
+      if (ws[ref]) ws[ref].s = sectionHeaderFont(color);
+    });
+
+    // Style data rows
+    const allDataRows = [...cashRows, ...cryptoRows, ...liabRows];
+    allDataRows.forEach((r) => {
+      const labelRef = cell(r, 0);
+      if (ws[labelRef]) ws[labelRef].s = labelStyle;
+      for (let c = 1; c <= numCols; c++) {
+        const ref = cell(r, c);
+        if (ws[ref]) {
+          const isLiab = liabRows.includes(r);
+          ws[ref].s = {
+            ...currencyStyle,
+            font: {
+              sz: 11,
+              ...(isLiab ? { color: { rgb: 'DC2626' } } : {}),
+            },
+          };
+        }
+      }
+    });
+
+    // Style total row
+    {
+      const ref = cell(totalRowIdx, 0);
+      if (ws[ref]) ws[ref].s = totalLabelStyle;
+      for (let c = 1; c <= numCols; c++) {
+        const r = cell(totalRowIdx, c);
+        if (ws[r]) ws[r].s = totalValueStyle;
+      }
+    }
+
+    // Style starting liquidity row
+    {
+      const ref = cell(startingRow, 0);
+      if (ws[ref]) ws[ref].s = labelStyle;
+      for (let c = 1; c <= numCols; c++) {
+        const r = cell(startingRow, c);
+        if (ws[r]) ws[r].s = currencyStyle;
+      }
+    }
+
+    // Style gain row
+    {
+      const ref = cell(gainRow, 0);
+      if (ws[ref]) {
+        ws[ref].s = {
+          font: { bold: true, sz: 11, color: { rgb: '16A34A' } },
+          fill: { fgColor: { rgb: 'D1FAE5' } },
+          alignment: { horizontal: 'left', vertical: 'center' },
+          border,
+        };
+      }
+      for (let c = 1; c <= numCols; c++) {
+        const r = cell(gainRow, c);
+        if (ws[r]) {
+          const val = ws[r].v as number;
+          ws[r].s = {
+            font: { bold: true, sz: 11, color: { rgb: val >= 0 ? '16A34A' : 'DC2626' } },
+            fill: { fgColor: { rgb: val >= 0 ? 'D1FAE5' : 'FEE2E2' } },
+            alignment: { horizontal: 'right', vertical: 'center' },
+            border,
+            numFmt: '$#,##0',
+          };
+        }
+      }
+    }
+
+    // Style daily avg row
+    {
+      const ref = cell(dailyRow, 0);
+      if (ws[ref]) ws[ref].s = labelStyle;
+      for (let c = 1; c <= numCols; c++) {
+        const r = cell(dailyRow, c);
+        if (ws[r]) ws[r].s = currencyStyle;
+      }
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Liquidity');
+    XLSX.writeFile(wb, filename);
+  };
+
+  const handleExportAll = () => {
+    if (snapshots.length === 0) return;
+    exportToExcel(snapshots, 'denet-liquidity-all.xlsx');
+  };
+
+  const handleExportLatest = () => {
+    if (!latestSnapshot) return;
+    const date = latestSnapshot.snapshot_date;
+    exportToExcel([latestSnapshot], `denet-liquidity-${date}.xlsx`);
+  };
 
   const summaryCards = [
     {
@@ -259,10 +598,30 @@ export default function Liquidity() {
               <Wallet className="w-5 h-5 text-primary" />
               Liquidity Snapshots
             </CardTitle>
-            <Button size="sm" onClick={handleAddNew}>
-              <Plus className="w-4 h-4 mr-1.5" />
-              Add Snapshot
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportAll}
+                disabled={snapshots.length === 0}
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+                Export All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportLatest}
+                disabled={!latestSnapshot}
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+                Export Latest
+              </Button>
+              <Button size="sm" onClick={handleAddNew}>
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add Snapshot
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <LiquiditySnapshotTable
