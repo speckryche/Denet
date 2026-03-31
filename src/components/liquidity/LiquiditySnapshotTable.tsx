@@ -16,6 +16,7 @@ interface LiquiditySnapshot {
   id: string;
   snapshot_date: string;
   bitcoin_price: number;
+  solana_price: number;
   liquidity_snapshot_values: {
     category_id: string;
     value: number;
@@ -47,7 +48,8 @@ const formatDate = (dateStr: string): string => {
 };
 
 const cellPad = 'px-5 py-2.5';
-const stickyBg = 'bg-[#161B22]';
+const colBorder = 'border-l border-white/[0.06]';
+const stickyBg = 'bg-[#0a0a0a]';
 
 export function LiquiditySnapshotTable({
   snapshots,
@@ -100,8 +102,8 @@ export function LiquiditySnapshotTable({
     const snapVal = snap.liquidity_snapshot_values.find(
       (v) => v.category_id === cat.id
     );
-    const val = snapVal?.value || 0;
-    const qty = snapVal?.quantity;
+    const val = Number(snapVal?.value) || 0;
+    const qty = Number(snapVal?.quantity) || 0;
     const isLiability = cat.type === 'liability';
     const isCrypto = cat.type === 'crypto';
 
@@ -110,11 +112,12 @@ export function LiquiditySnapshotTable({
         key={snap.id}
         className={cn(
           cellPad,
+          colBorder,
           'text-right font-mono tabular-nums text-base',
           isLiability && val > 0 && 'text-red-400'
         )}
       >
-        {isCrypto && qty != null && qty > 0 ? (
+        {isCrypto ? (
           <div>
             <div className="text-xs text-amber-400/60 mb-0.5">
               {qty.toLocaleString('en-US', {
@@ -125,43 +128,46 @@ export function LiquiditySnapshotTable({
             </div>
             <div>{formatCurrency(val)}</div>
           </div>
-        ) : val === 0 ? (
-          <span className="text-white/15">$0</span>
         ) : (
-          formatCurrency(isLiability ? -val : val)
+          formatCurrency(isLiability && val > 0 ? -val : val)
         )}
       </td>
     );
   };
 
-  const renderSectionHeader = (label: string, color: string) => (
-    <tr>
+  const sectionHeaderBg: Record<string, string> = {
+    asset:     'bg-green-500/[0.08]',
+    crypto:    'bg-amber-500/[0.08]',
+    liability: 'bg-red-500/[0.08]',
+  };
+
+  const renderSectionHeader = (label: string, color: string, tintKey: string) => (
+    <tr className={sectionHeaderBg[tintKey]}>
       <td
         className={cn(
           'sticky left-0 z-20',
           stickyBg,
           'px-5 pt-5 pb-1.5 text-xs font-bold uppercase tracking-widest',
+          sectionHeaderBg[tintKey],
           color
         )}
       >
         {label}
       </td>
       {snapshots.map((snap) => (
-        <td key={snap.id} className="pt-5 pb-1.5" />
+        <td key={snap.id} className={cn('pt-5 pb-1.5', colBorder)} />
       ))}
     </tr>
   );
 
-  const renderCategoryRow = (cat: LiquidityCategory, isEven: boolean) => {
+  const renderCategoryRow = (cat: LiquidityCategory) => {
     const isLiability = cat.type === 'liability';
     const isCrypto = cat.type === 'crypto';
+    const isAsset = cat.type === 'asset';
     return (
       <tr
         key={cat.id}
-        className={cn(
-          'border-b border-white/[0.04] transition-colors hover:bg-white/[0.03]',
-          isEven && 'bg-white/[0.015]'
-        )}
+        className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.03]"
       >
         <td
           className={cn(
@@ -169,10 +175,10 @@ export function LiquiditySnapshotTable({
             stickyBg,
             cellPad,
             'font-medium whitespace-nowrap text-sm',
-            isLiability && 'text-red-400/90',
-            isCrypto && 'text-amber-400/90'
+            isAsset && 'text-green-400/90',
+            isCrypto && 'text-amber-400/90',
+            isLiability && 'text-red-400/90'
           )}
-          style={isEven ? { backgroundColor: 'rgba(255,255,255,0.015)' } : undefined}
         >
           {cat.name}
         </td>
@@ -183,7 +189,7 @@ export function LiquiditySnapshotTable({
 
   return (
     <div className="overflow-x-auto -mx-6">
-      <table className="border-collapse" style={{ minWidth: 'auto' }}>
+      <table className="border-collapse bg-[#0a0a0a]" style={{ minWidth: 'auto' }}>
         <colgroup>
           <col style={{ width: '220px', minWidth: '220px' }} />
           {snapshots.map((snap) => (
@@ -197,14 +203,14 @@ export function LiquiditySnapshotTable({
               className={cn(
                 'sticky left-0 z-20',
                 stickyBg,
-                'px-5 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground'
+                'px-5 py-3 text-left text-sm font-bold uppercase tracking-widest text-white'
               )}
             >
               Asset
             </th>
             {snapshots.map((snap) => (
-              <th key={snap.id} className="px-5 py-3 text-right">
-                <div className="flex items-center justify-end gap-2">
+              <th key={snap.id} className={cn('px-5 py-3 text-center', colBorder)}>
+                <div className="flex flex-col items-center gap-1">
                   <span className="font-bold text-primary text-base whitespace-nowrap">
                     {formatDate(snap.snapshot_date)}
                   </span>
@@ -244,9 +250,29 @@ export function LiquiditySnapshotTable({
             {snapshots.map((snap) => (
               <td
                 key={snap.id}
-                className="px-5 py-2 text-right text-sm font-mono font-semibold text-amber-400/80"
+                className={cn('px-5 py-2 text-right text-sm font-mono font-semibold text-amber-400/80', colBorder)}
               >
                 {formatCurrency(snap.bitcoin_price)}
+              </td>
+            ))}
+          </tr>
+          {/* SOL Price row */}
+          <tr className="border-b border-white/[0.06] bg-purple-400/[0.03]">
+            <td
+              className={cn(
+                'sticky left-0 z-20',
+                stickyBg,
+                'px-5 py-2 text-sm text-purple-400/70 font-medium bg-purple-400/[0.03]'
+              )}
+            >
+              Solana Price
+            </td>
+            {snapshots.map((snap) => (
+              <td
+                key={snap.id}
+                className={cn('px-5 py-2 text-right text-sm font-mono font-semibold text-purple-400/80', colBorder)}
+              >
+                {formatCurrency(snap.solana_price)}
               </td>
             ))}
           </tr>
@@ -254,16 +280,16 @@ export function LiquiditySnapshotTable({
 
         <tbody>
           {assets.length > 0 &&
-            renderSectionHeader('Cash Assets', 'text-green-400/60')}
-          {assets.map((cat, idx) => renderCategoryRow(cat, idx % 2 === 1))}
+            renderSectionHeader('Cash Assets', 'text-green-400/60', 'asset')}
+          {assets.map((cat, idx) => renderCategoryRow(cat))}
 
           {cryptos.length > 0 &&
-            renderSectionHeader('Crypto Assets', 'text-amber-400/60')}
-          {cryptos.map((cat, idx) => renderCategoryRow(cat, idx % 2 === 1))}
+            renderSectionHeader('Crypto Assets', 'text-amber-400/60', 'crypto')}
+          {cryptos.map((cat, idx) => renderCategoryRow(cat))}
 
           {liabilities.length > 0 &&
-            renderSectionHeader('Liabilities', 'text-red-400/60')}
-          {liabilities.map((cat, idx) => renderCategoryRow(cat, idx % 2 === 1))}
+            renderSectionHeader('Liabilities', 'text-red-400/60', 'liability')}
+          {liabilities.map((cat, idx) => renderCategoryRow(cat))}
         </tbody>
 
         <tfoot>
@@ -282,7 +308,7 @@ export function LiquiditySnapshotTable({
               return (
                 <td
                   key={snap.id}
-                  className="px-5 py-3 text-right font-mono font-bold tabular-nums text-foreground text-lg"
+                  className={cn('px-5 py-3 text-right font-mono font-bold tabular-nums text-foreground text-lg', colBorder)}
                 >
                   {formatCurrency(total)}
                 </td>
@@ -305,6 +331,7 @@ export function LiquiditySnapshotTable({
                 key={snap.id}
                 className={cn(
                   cellPad,
+                  colBorder,
                   'text-right font-mono tabular-nums text-muted-foreground text-base'
                 )}
               >
@@ -330,6 +357,7 @@ export function LiquiditySnapshotTable({
                   key={snap.id}
                   className={cn(
                     cellPad,
+                    colBorder,
                     'text-right font-mono font-bold tabular-nums text-base',
                     gain >= 0 ? 'text-green-400' : 'text-red-400'
                   )}
@@ -357,6 +385,7 @@ export function LiquiditySnapshotTable({
                   key={snap.id}
                   className={cn(
                     cellPad,
+                    colBorder,
                     'text-right font-mono tabular-nums text-muted-foreground text-base'
                   )}
                 >

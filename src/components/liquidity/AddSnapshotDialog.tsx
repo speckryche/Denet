@@ -27,6 +27,7 @@ interface SnapshotToEdit {
   id: string;
   snapshot_date: string;
   bitcoin_price: number;
+  solana_price: number;
   liquidity_snapshot_values: {
     category_id: string;
     value: number;
@@ -80,6 +81,7 @@ export function AddSnapshotDialog({
 }: AddSnapshotDialogProps) {
   const [snapshotDate, setSnapshotDate] = useState(getPacificDateString());
   const [bitcoinPrice, setBitcoinPrice] = useState('');
+  const [solanaPrice, setSolanaPrice] = useState('');
   const [categoryValues, setCategoryValues] = useState<Record<string, string>>(
     {}
   );
@@ -105,8 +107,9 @@ export function AddSnapshotDialog({
         .filter((id): id is string => !!id)
     ),
   ];
-  // Always include bitcoin for the BTC price header field
+  // Always include bitcoin and solana for the price header fields
   if (!neededCoinIds.includes('bitcoin')) neededCoinIds.push('bitcoin');
+  if (!neededCoinIds.includes('solana')) neededCoinIds.push('solana');
 
   useEffect(() => {
     if (open) {
@@ -114,6 +117,12 @@ export function AddSnapshotDialog({
       if (editingSnapshot) {
         setSnapshotDate(editingSnapshot.snapshot_date);
         setBitcoinPrice(editingSnapshot.bitcoin_price.toString());
+        setSolanaPrice(editingSnapshot.solana_price?.toString() || '');
+        // Use the snapshot's stored prices for crypto value calculations
+        const storedPrices: Record<string, number> = {};
+        if (editingSnapshot.bitcoin_price) storedPrices.bitcoin = editingSnapshot.bitcoin_price;
+        if (editingSnapshot.solana_price) storedPrices.solana = editingSnapshot.solana_price;
+        setCoinPrices(storedPrices);
         const vals: Record<string, string> = {};
         const qtys: Record<string, string> = {};
         editingSnapshot.liquidity_snapshot_values.forEach((v) => {
@@ -128,9 +137,9 @@ export function AddSnapshotDialog({
         setSnapshotDate(getPacificDateString());
         setCategoryValues({});
         setCategoryQuantities({});
+        // Only fetch live prices for new snapshots
+        fetchAllPrices(neededCoinIds);
       }
-      // Always fetch prices when dialog opens (use current categories)
-      fetchAllPrices(neededCoinIds);
     }
   }, [open, editingSnapshot, categories]);
 
@@ -153,6 +162,9 @@ export function AddSnapshotDialog({
       if (prices.bitcoin) {
         setBitcoinPrice(Math.round(prices.bitcoin).toString());
       }
+      if (prices.solana) {
+        setSolanaPrice(Math.round(prices.solana * 100 / 100).toString());
+      }
     } catch (err) {
       console.error('Failed to fetch prices:', err);
     } finally {
@@ -160,11 +172,14 @@ export function AddSnapshotDialog({
     }
   };
 
-  // Get the current price for a coin, using BTC price field as fallback for bitcoin
+  // Get the current price for a coin, using price fields as fallback
   const getCoinPrice = (coinId: string | null): number => {
     if (!coinId) return 0;
     if (coinId === 'bitcoin') {
       return coinPrices.bitcoin || parseFloat(bitcoinPrice) || 0;
+    }
+    if (coinId === 'solana') {
+      return coinPrices.solana || parseFloat(solanaPrice) || 0;
     }
     return coinPrices[coinId] || 0;
   };
@@ -195,12 +210,28 @@ export function AddSnapshotDialog({
     setBitcoinPrice(newPrice);
     const btcPrice = parseFloat(newPrice) || 0;
     setCoinPrices((prev) => ({ ...prev, bitcoin: btcPrice }));
-    // Recalculate BTC category values
     cryptoCategories
       .filter((c) => c.coin_id === 'bitcoin')
       .forEach((cat) => {
         const qty = parseFloat(categoryQuantities[cat.id] || '0') || 0;
         const value = Math.round(qty * btcPrice);
+        setCategoryValues((prev) => ({
+          ...prev,
+          [cat.id]: value.toString(),
+        }));
+      });
+  };
+
+  // When SOL price manually changes, recalculate SOL crypto categories
+  const handleSolanaPriceChange = (newPrice: string) => {
+    setSolanaPrice(newPrice);
+    const solPrice = parseFloat(newPrice) || 0;
+    setCoinPrices((prev) => ({ ...prev, solana: solPrice }));
+    cryptoCategories
+      .filter((c) => c.coin_id === 'solana')
+      .forEach((cat) => {
+        const qty = parseFloat(categoryQuantities[cat.id] || '0') || 0;
+        const value = Math.round(qty * solPrice);
         setCategoryValues((prev) => ({
           ...prev,
           [cat.id]: value.toString(),
@@ -214,6 +245,7 @@ export function AddSnapshotDialog({
     setIsSaving(true);
 
     const price = parseFloat(bitcoinPrice);
+    const solPrice = parseFloat(solanaPrice) || 0;
     if (!snapshotDate || isNaN(price)) {
       setError('Date and Bitcoin Price are required.');
       setIsSaving(false);
@@ -229,6 +261,7 @@ export function AddSnapshotDialog({
           .update({
             snapshot_date: snapshotDate,
             bitcoin_price: price,
+            solana_price: solPrice,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingSnapshot.id);
@@ -245,6 +278,7 @@ export function AddSnapshotDialog({
           .insert({
             snapshot_date: snapshotDate,
             bitcoin_price: price,
+            solana_price: solPrice,
           })
           .select('id')
           .single();
@@ -303,8 +337,8 @@ export function AddSnapshotDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Date & BTC Price */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Date & Prices */}
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="snapshot-date">Snapshot Date</Label>
               <Input
@@ -317,19 +351,36 @@ export function AddSnapshotDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="btc-price">Bitcoin Price</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                  $
+                </span>
+                <Input
+                  id="btc-price"
+                  type="number"
+                  step="0.01"
+                  value={bitcoinPrice}
+                  onChange={(e) => handleBitcoinPriceChange(e.target.value)}
+                  placeholder="0"
+                  required
+                  className="pl-7 font-mono"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sol-price">Solana Price</Label>
               <div className="flex gap-1.5">
                 <div className="relative flex-1">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                     $
                   </span>
                   <Input
-                    id="btc-price"
+                    id="sol-price"
                     type="number"
                     step="0.01"
-                    value={bitcoinPrice}
-                    onChange={(e) => handleBitcoinPriceChange(e.target.value)}
+                    value={solanaPrice}
+                    onChange={(e) => handleSolanaPriceChange(e.target.value)}
                     placeholder="0"
-                    required
                     className="pl-7 font-mono"
                   />
                 </div>

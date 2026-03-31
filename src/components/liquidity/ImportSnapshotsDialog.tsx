@@ -97,8 +97,8 @@ export function ImportSnapshotsDialog({
   const activeCategories = categories.filter((c) => c.active);
   const cryptoCategories = activeCategories.filter((c) => c.type === 'crypto');
 
-  // For historical import we only need bitcoin price (to estimate BTC quantities)
-  const neededCoinIds = ['bitcoin'];
+  // For historical import we need bitcoin and solana prices
+  const neededCoinIds = ['bitcoin', 'solana'];
 
   const resetState = () => {
     setParsedRows([]);
@@ -278,6 +278,7 @@ export function ImportSnapshotsDialog({
       // Get prices for this date
       const datePrices = priceMap.get(row.snapshot_date) || {};
       const btcPrice = Math.round(datePrices.bitcoin || 0);
+      const solPrice = Math.round((datePrices.solana || 0) * 100) / 100;
 
       // Insert snapshot
       const { data: snap, error: snapError } = await supabase
@@ -285,6 +286,7 @@ export function ImportSnapshotsDialog({
         .insert({
           snapshot_date: row.snapshot_date,
           bitcoin_price: btcPrice,
+          solana_price: solPrice,
         })
         .select('id')
         .single();

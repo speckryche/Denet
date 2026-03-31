@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2, Bitcoin } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Bitcoin, RefreshCw } from 'lucide-react';
 
 interface CryptoInvestment {
   id: string;
@@ -34,6 +34,32 @@ interface CryptoInvestment {
   current_value: number;
   realized_gain: number;
 }
+
+// Map common crypto names to CoinGecko IDs
+const CRYPTO_TO_COINGECKO: Record<string, string> = {
+  btc: 'bitcoin',
+  bitcoin: 'bitcoin',
+  sol: 'solana',
+  solana: 'solana',
+  eth: 'ethereum',
+  ethereum: 'ethereum',
+  ltc: 'litecoin',
+  litecoin: 'litecoin',
+  doge: 'dogecoin',
+  dogecoin: 'dogecoin',
+  xrp: 'ripple',
+  ripple: 'ripple',
+  ada: 'cardano',
+  cardano: 'cardano',
+  dot: 'polkadot',
+  polkadot: 'polkadot',
+  link: 'chainlink',
+  chainlink: 'chainlink',
+};
+
+const getCoinGeckoId = (name: string): string | null => {
+  return CRYPTO_TO_COINGECKO[name.toLowerCase().trim()] || null;
+};
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', {
@@ -78,10 +104,44 @@ export function CryptoInvestments() {
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+  const [isFetchingPrices, setIsFetchingPrices] = useState(false);
 
   useEffect(() => {
     fetchInvestments();
   }, []);
+
+  // Fetch live prices whenever investments change
+  useEffect(() => {
+    if (investments.length > 0) fetchLivePrices();
+  }, [investments]);
+
+  const fetchLivePrices = async () => {
+    const coinIds = [
+      ...new Set(
+        investments
+          .map((inv) => getCoinGeckoId(inv.crypto_name))
+          .filter((id): id is string => !!id)
+      ),
+    ];
+    if (coinIds.length === 0) return;
+    setIsFetchingPrices(true);
+    try {
+      const res = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd`
+      );
+      const data = await res.json();
+      const prices: Record<string, number> = {};
+      for (const id of coinIds) {
+        if (data?.[id]?.usd) prices[id] = data[id].usd;
+      }
+      setLivePrices(prices);
+    } catch (err) {
+      console.error('Failed to fetch live prices:', err);
+    } finally {
+      setIsFetchingPrices(false);
+    }
+  };
 
   const fetchInvestments = async () => {
     const { data, error } = await supabase
@@ -171,12 +231,15 @@ export function CryptoInvestments() {
     fetchInvestments();
   };
 
-  // Compute derived fields
+  // Compute derived fields, using live prices when available
   const enriched = investments.map((inv) => {
+    const coinId = getCoinGeckoId(inv.crypto_name);
+    const livePrice = coinId ? livePrices[coinId] : null;
+    const currentValue = livePrice ? Math.round(inv.quantity * livePrice) : inv.current_value;
     const avgCost = inv.quantity > 0 ? inv.total_cost / inv.quantity : 0;
-    const unrealizedGain = inv.current_value - inv.total_cost;
+    const unrealizedGain = currentValue - inv.total_cost;
     const totalGain = unrealizedGain + inv.realized_gain;
-    return { ...inv, avgCost, unrealizedGain, totalGain };
+    return { ...inv, current_value: currentValue, avgCost, unrealizedGain, totalGain };
   });
 
   const totals = enriched.reduce(
@@ -208,10 +271,22 @@ export function CryptoInvestments() {
             <Bitcoin className="w-5 h-5 text-amber-400" />
             Crypto Investments
           </CardTitle>
-          <Button size="sm" onClick={openAdd}>
-            <Plus className="w-4 h-4 mr-1.5" />
-            Add Crypto
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchLivePrices}
+              disabled={isFetchingPrices}
+              title="Refresh live prices"
+            >
+              <RefreshCw className={cn('w-4 h-4 mr-1.5', isFetchingPrices && 'animate-spin')} />
+              Refresh Prices
+            </Button>
+            <Button size="sm" onClick={openAdd}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Add Crypto
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -224,11 +299,27 @@ export function CryptoInvestments() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-fixed">
+                <colgroup>
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '4%' }} />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-white/10">
                     <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Crypto
+                    </th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Current Price
                     </th>
                     <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       As Of
@@ -264,6 +355,13 @@ export function CryptoInvestments() {
                       className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
                     >
                       <td className="px-3 py-2.5 font-medium">{inv.crypto_name}</td>
+                      <td className="px-3 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
+                        {(() => {
+                          const coinId = getCoinGeckoId(inv.crypto_name);
+                          const price = coinId ? livePrices[coinId] : null;
+                          return price ? formatCurrency(price) : '—';
+                        })()}
+                      </td>
                       <td className="px-3 py-2.5 text-center text-muted-foreground">
                         {formatDate(inv.as_of_date)}
                       </td>
@@ -335,7 +433,7 @@ export function CryptoInvestments() {
                 {enriched.length > 1 && (
                   <tfoot>
                     <tr className="border-t-2 border-primary/30 bg-white/[0.03]">
-                      <td className="px-3 py-3 font-bold" colSpan={3}>
+                      <td className="px-3 py-3 font-bold" colSpan={4}>
                         Totals
                       </td>
                       <td className="px-3 py-3 text-right font-mono font-bold tabular-nums">

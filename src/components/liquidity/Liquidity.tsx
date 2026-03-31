@@ -59,6 +59,7 @@ interface LiquiditySnapshot {
   id: string;
   snapshot_date: string;
   bitcoin_price: number;
+  solana_price: number;
   liquidity_snapshot_values: {
     category_id: string;
     value: number;
@@ -120,6 +121,7 @@ export default function Liquidity() {
         id,
         snapshot_date,
         bitcoin_price,
+        solana_price,
         liquidity_snapshot_values (
           category_id,
           value,
@@ -158,10 +160,12 @@ export default function Liquidity() {
     setSnapshotDialogOpen(true);
   };
 
-  // Backfill missing BTC prices from CoinGecko historical API
+  // Backfill missing BTC/SOL prices from CoinGecko historical API
   const [isBackfilling, setIsBackfilling] = useState(false);
   const handleBackfillPrices = async () => {
-    const missing = snapshots.filter((s) => !s.bitcoin_price || s.bitcoin_price === 0);
+    const missing = snapshots.filter(
+      (s) => !s.bitcoin_price || s.bitcoin_price === 0 || !s.solana_price || s.solana_price === 0
+    );
     if (missing.length === 0) return;
     setIsBackfilling(true);
 
@@ -169,25 +173,52 @@ export default function Liquidity() {
       try {
         const [y, m, d] = snap.snapshot_date.split('-');
         const cgDate = `${d}-${m}-${y}`;
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/coins/bitcoin/history?date=${cgDate}&localization=false`
-        );
-        const data = await res.json();
-        const price = data?.market_data?.current_price?.usd;
-        if (price) {
-          const btcPrice = Math.round(price);
+
+        // Fetch BTC price if missing
+        const needsBtc = !snap.bitcoin_price || snap.bitcoin_price === 0;
+        const needsSol = !snap.solana_price || snap.solana_price === 0;
+
+        const updates: Record<string, number> = {};
+
+        if (needsBtc) {
+          const res = await fetch(
+            `https://api.coingecko.com/api/v3/coins/bitcoin/history?date=${cgDate}&localization=false`
+          );
+          const data = await res.json();
+          const price = data?.market_data?.current_price?.usd;
+          if (price) {
+            updates.bitcoin_price = Math.round(price);
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+
+        if (needsSol) {
+          const res = await fetch(
+            `https://api.coingecko.com/api/v3/coins/solana/history?date=${cgDate}&localization=false`
+          );
+          const data = await res.json();
+          const price = data?.market_data?.current_price?.usd;
+          if (price) {
+            updates.solana_price = Math.round(price * 100) / 100;
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+
+        if (Object.keys(updates).length > 0) {
           await supabase
             .from('liquidity_snapshots')
-            .update({ bitcoin_price: btcPrice })
+            .update(updates)
             .eq('id', snap.id);
 
           // Also update crypto quantities where missing
+          const btcPrice = updates.bitcoin_price || snap.bitcoin_price;
           const vals = snap.liquidity_snapshot_values || [];
           for (const v of vals) {
             const cat = categories.find((c) => c.id === v.category_id);
             if (
               cat?.type === 'crypto' &&
               cat.coin_id === 'bitcoin' &&
+              btcPrice > 0 &&
               v.value > 0 &&
               (!v.quantity || v.quantity === 0)
             ) {
@@ -200,8 +231,6 @@ export default function Liquidity() {
             }
           }
         }
-        // Rate limit
-        await new Promise((r) => setTimeout(r, 1500));
       } catch (err) {
         console.error(`Failed to fetch price for ${snap.snapshot_date}:`, err);
       }
@@ -212,7 +241,7 @@ export default function Liquidity() {
   };
 
   const missingPriceCount = snapshots.filter(
-    (s) => !s.bitcoin_price || s.bitcoin_price === 0
+    (s) => !s.bitcoin_price || s.bitcoin_price === 0 || !s.solana_price || s.solana_price === 0
   ).length;
 
   // Compute summary from latest snapshot (last in array since sorted ascending)
@@ -320,11 +349,14 @@ export default function Liquidity() {
     // Row 3: Bitcoin Price
     data.push(['Bitcoin Price', ...snapshotsToExport.map((s) => s.bitcoin_price)]);
 
-    // Row 4: empty spacer
+    // Row 4: Solana Price
+    data.push(['Solana Price', ...snapshotsToExport.map((s) => s.solana_price)]);
+
+    // Row 5: empty spacer
     data.push(Array(numCols + 1).fill(''));
 
     // Track row index for styling
-    let rowIdx = 5;
+    let rowIdx = 6;
 
     // CASH ASSETS section header
     data.push(['CASH ASSETS', ...Array(numCols).fill('')]);
@@ -462,17 +494,19 @@ export default function Liquidity() {
       if (ws[ref]) ws[ref].s = headerStyle;
     }
 
-    // Style BTC price row (row 3)
-    for (let c = 0; c <= numCols; c++) {
-      const ref = cell(3, c);
-      if (ws[ref]) {
-        ws[ref].s = {
-          font: { bold: true, sz: 11, color: { rgb: 'B45309' } },
-          fill: { fgColor: { rgb: 'FEF3C7' } },
-          alignment: { horizontal: c === 0 ? 'left' : 'right', vertical: 'center' },
-          border,
-          numFmt: c > 0 ? '$#,##0' : undefined,
-        };
+    // Style BTC price row (row 3) and SOL price row (row 4)
+    for (const priceRow of [3, 4]) {
+      for (let c = 0; c <= numCols; c++) {
+        const ref = cell(priceRow, c);
+        if (ws[ref]) {
+          ws[ref].s = {
+            font: { bold: true, sz: 11, color: { rgb: 'B45309' } },
+            fill: { fgColor: { rgb: 'FEF3C7' } },
+            alignment: { horizontal: c === 0 ? 'left' : 'right', vertical: 'center' },
+            border,
+            numFmt: c > 0 ? '$#,##0' : undefined,
+          };
+        }
       }
     }
 
@@ -721,7 +755,7 @@ export default function Liquidity() {
             {missingPriceCount > 0 && (
               <div className="mb-4 flex items-center justify-between bg-amber-400/10 border border-amber-400/20 rounded-md px-4 py-2.5">
                 <span className="text-sm text-amber-400">
-                  {missingPriceCount} snapshot{missingPriceCount !== 1 ? 's' : ''} missing Bitcoin price data
+                  {missingPriceCount} snapshot{missingPriceCount !== 1 ? 's' : ''} missing price data
                 </span>
                 <Button
                   variant="outline"
@@ -754,6 +788,9 @@ export default function Liquidity() {
           </CardContent>
         </Card>
 
+        {/* Crypto Investments */}
+        <CryptoInvestments />
+
         {/* Asset Categories (Collapsible) */}
         <Collapsible open={categoriesOpen} onOpenChange={setCategoriesOpen}>
           <Card className="bg-card/30 border-white/10">
@@ -781,9 +818,6 @@ export default function Liquidity() {
             </CollapsibleContent>
           </Card>
         </Collapsible>
-
-        {/* Crypto Investments */}
-        <CryptoInvestments />
       </main>
 
       {/* Import CSV Dialog */}
