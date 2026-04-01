@@ -419,8 +419,8 @@ export function Deposits({ onUpdate }: DepositsProps) {
 
   // Group deposits by month
   const depositsByMonth = deposits.reduce((acc, deposit) => {
-    const date = new Date(deposit.deposit_date);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const [year, month] = deposit.deposit_date.split('-');
+    const monthKey = `${year}-${month}`;
     if (!acc[monthKey]) {
       acc[monthKey] = [];
     }
