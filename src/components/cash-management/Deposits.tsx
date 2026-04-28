@@ -60,6 +60,14 @@ interface AvailablePickup {
   remaining_balance: number;
 }
 
+interface LinkedPickupDetail {
+  pickup_id: string;
+  pickup_date: string;
+  atm_name: string;
+  person_name: string;
+  link_amount: number;
+}
+
 interface DepositsProps {
   onUpdate: () => void;
 }
@@ -79,6 +87,12 @@ export function Deposits({ onUpdate }: DepositsProps) {
   const [availablePickups, setAvailablePickups] = useState<AvailablePickup[]>([]);
   const [linkAmounts, setLinkAmounts] = useState<Record<string, number>>({});
   const [alreadyLinkedAmount, setAlreadyLinkedAmount] = useState(0);
+
+  // View Linked Pickups Detail
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailDeposit, setDetailDeposit] = useState<Deposit | null>(null);
+  const [detailPickups, setDetailPickups] = useState<LinkedPickupDetail[]>([]);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
   const [formData, setFormData] = useState({
     deposit_date: new Date().toISOString().split('T')[0],
@@ -259,6 +273,43 @@ export function Deposits({ onUpdate }: DepositsProps) {
       notes: '',
     });
     setIsDialogOpen(true);
+  };
+
+  const handleViewLinkedPickups = async (deposit: Deposit) => {
+    setDetailDeposit(deposit);
+    setDetailPickups([]);
+    setDetailDialogOpen(true);
+    setIsLoadingDetail(true);
+
+    try {
+      const { data: links } = await supabase
+        .from('deposit_pickup_links')
+        .select(`
+          amount,
+          cash_pickups!deposit_pickup_links_pickup_id_fkey (
+            id,
+            pickup_date,
+            people!cash_pickups_person_id_fkey(name),
+            atm_profiles!cash_pickups_atm_profile_id_fkey(location_name)
+          )
+        `)
+        .eq('deposit_id', deposit.id);
+
+      const details: LinkedPickupDetail[] = (links || []).map((link: any) => ({
+        pickup_id: link.cash_pickups?.id || '',
+        pickup_date: link.cash_pickups?.pickup_date || '',
+        atm_name: link.cash_pickups?.atm_profiles?.location_name || 'Unknown',
+        person_name: link.cash_pickups?.people?.name || 'Unknown',
+        link_amount: parseFloat(link.amount?.toString() || '0'),
+      }));
+
+      details.sort((a, b) => b.pickup_date.localeCompare(a.pickup_date));
+      setDetailPickups(details);
+    } catch (err) {
+      console.error('Error fetching linked pickups:', err);
+    } finally {
+      setIsLoadingDetail(false);
+    }
   };
 
   const handleOpenLinkDialog = async (deposit: Deposit) => {
@@ -626,7 +677,17 @@ export function Deposits({ onUpdate }: DepositsProps) {
                               ${deposit.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-right font-mono">
-                              ${deposit.amount_above.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {deposit.amount_above > 0 ? (
+                                <button
+                                  onClick={() => handleViewLinkedPickups(deposit)}
+                                  className="text-primary hover:text-primary/80 underline underline-offset-2 cursor-pointer"
+                                  title="View linked pickup details"
+                                >
+                                  ${deposit.amount_above.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </button>
+                              ) : (
+                                <span>${deposit.amount_above.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              )}
                             </TableCell>
                             <TableCell className={`text-right font-mono ${
                               deposit.difference === 0 ? 'text-green-500' : 'text-red-500 font-bold'
@@ -801,6 +862,63 @@ export function Deposits({ onUpdate }: DepositsProps) {
               Link ${addingNowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} to {linkingDeposit?.deposit_id}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Linked Pickups Detail Dialog */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              Linked Pickups for {detailDeposit?.deposit_id}
+            </DialogTitle>
+            <DialogDescription>
+              Deposit of ${detailDeposit?.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} on{' '}
+              {detailDeposit ? new Date(detailDeposit.deposit_date + 'T00:00:00').toLocaleDateString() : ''}
+              {' '}by {detailDeposit?.person_name}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingDetail ? (
+            <div className="text-center py-6 text-muted-foreground">Loading...</div>
+          ) : detailPickups.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">No linked pickups found.</div>
+          ) : (
+            <div className="overflow-auto max-h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Pickup Date</TableHead>
+                    <TableHead>Person</TableHead>
+                    <TableHead>ATM</TableHead>
+                    <TableHead className="text-right">Amount Linked</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {detailPickups.map((p, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>
+                        {new Date(p.pickup_date + 'T00:00:00').toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>{p.person_name}</TableCell>
+                      <TableCell>{p.atm_name}</TableCell>
+                      <TableCell className="text-right font-mono">
+                        ${p.link_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="flex justify-between items-center px-2 py-3 border-t border-white/10 mt-2">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {detailPickups.length} pickup{detailPickups.length !== 1 ? 's' : ''} linked
+                </span>
+                <span className="font-mono font-bold">
+                  ${detailPickups.reduce((sum, p) => sum + p.link_amount, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </Card>
