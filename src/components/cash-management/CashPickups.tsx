@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight, ListFilter } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -29,6 +29,13 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 interface CashPickup {
   id: string;
@@ -73,7 +80,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filterPerson, setFilterPerson] = useState<string>('all');
-  const [filterDeposited, setFilterDeposited] = useState<string>('all');
+  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
   const getPacificDateString = () => {
@@ -91,7 +98,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
 
   useEffect(() => {
     fetchData();
-  }, [filterPerson, filterDeposited]);
+  }, [filterPerson, filterStatuses]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -192,14 +199,9 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
         };
       }) || [];
 
-      // Apply deposit status filter
-      if (filterDeposited !== 'all') {
-        formattedPickups = formattedPickups.filter(p => {
-          if (filterDeposited === 'full') return p.deposit_status === 'full';
-          if (filterDeposited === 'partial') return p.deposit_status === 'partial';
-          if (filterDeposited === 'undeposited') return p.deposit_status === 'undeposited';
-          return true;
-        });
+      // Apply deposit status filter (multi-select)
+      if (filterStatuses.size > 0) {
+        formattedPickups = formattedPickups.filter(p => filterStatuses.has(p.deposit_status));
       }
 
       setPickups(formattedPickups);
@@ -480,18 +482,53 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-48">
-            <Select value={filterDeposited} onValueChange={setFilterDeposited}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="full">Fully Deposited</SelectItem>
-                <SelectItem value="partial">Partially Deposited</SelectItem>
-                <SelectItem value="undeposited">Undeposited</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="w-56">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full justify-between font-normal">
+                  <span className="flex items-center gap-2">
+                    <ListFilter className="h-4 w-4" />
+                    {filterStatuses.size === 0
+                      ? 'All Statuses'
+                      : `${filterStatuses.size} status${filterStatuses.size > 1 ? 'es' : ''} selected`}
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                {[
+                  { value: 'full', label: 'Fully Deposited' },
+                  { value: 'partial', label: 'Partially Deposited' },
+                  { value: 'undeposited', label: 'Undeposited' },
+                ].map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status.value}
+                    checked={filterStatuses.has(status.value)}
+                    onCheckedChange={(checked) => {
+                      setFilterStatuses((prev) => {
+                        const next = new Set(prev);
+                        if (checked) next.add(status.value);
+                        else next.delete(status.value);
+                        return next;
+                      });
+                    }}
+                  >
+                    {status.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {filterStatuses.size > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                      checked={false}
+                      onCheckedChange={() => setFilterStatuses(new Set())}
+                    >
+                      Clear filters
+                    </DropdownMenuCheckboxItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
