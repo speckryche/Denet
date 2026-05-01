@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TrendingUp, DollarSign, BarChart3, Calendar, List } from 'lucide-react';
+import { TrendingUp, DollarSign, BarChart3, Calendar, List, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import MonthlySalesSummary from './MonthlySalesSummary';
@@ -7,6 +7,7 @@ import ATMProfitLoss from './ATMProfitLoss';
 import ATMSalesSummary from './ATMSalesSummary';
 import ATMMonthlySales from './ATMMonthlySales';
 import ATMTransactions from './ATMTransactions';
+import CTRReport from './CTRReport';
 
 const TABS = [
   { key: 'monthly-sales', label: 'Sales - Totals', icon: TrendingUp },
@@ -14,6 +15,7 @@ const TABS = [
   { key: 'atm-pl', label: 'ATM P&L', icon: DollarSign },
   { key: 'atm-summary', label: 'ATM Summary', icon: BarChart3 },
   { key: 'atm-transactions', label: 'ATM Transactions', icon: List },
+  { key: 'ctr-filings', label: 'CTR Filings', icon: Shield },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -24,6 +26,7 @@ const TAB_CONTENT: Record<TabKey, React.FC> = {
   'atm-pl': ATMProfitLoss,
   'atm-summary': ATMSalesSummary,
   'atm-transactions': ATMTransactions,
+  'ctr-filings': CTRReport,
 };
 
 export default function Reports() {

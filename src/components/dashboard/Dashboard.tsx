@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MetricsGrid } from './MetricsGrid';
 import { DataTable } from './DataTable';
 import DatePickerWithRange from '@/components/ui/date-picker-with-range';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, Filter, Search } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Filter, Search } from 'lucide-react';
 import UserMenu from '@/components/layout/UserMenu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -18,11 +19,13 @@ import { supabase } from '@/lib/supabase';
 import { DateRange } from 'react-day-picker';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
   const [atmIdFilter, setAtmIdFilter] = useState<string>('');
+  const [pendingCTRCount, setPendingCTRCount] = useState(0);
 
   // Default date range: 1st of current month to today
   const getCurrentMonthDateRange = (): DateRange => {
@@ -230,6 +233,50 @@ export default function Dashboard() {
     fetchMetrics();
   }, [selectedPlatform, dateRange, atmIdFilter]);
 
+  // Check for pending CTR filings
+  useEffect(() => {
+    const checkCTR = async () => {
+      try {
+        const now = new Date();
+        const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        const fromDate = threeMonthsAgo.toISOString().split('T')[0];
+
+        const { data: txData } = await supabase
+          .from('transactions')
+          .select('customer_id, customer_first_name, customer_last_name, sale, date')
+          .eq('platform', 'denet')
+          .not('customer_id', 'is', null)
+          .gte('date', fromDate);
+
+        const { data: filings } = await supabase
+          .from('ctr_filings')
+          .select('customer_id, trigger_date')
+          .eq('filed', true);
+
+        const filedSet = new Set(filings?.map((f: any) => `${f.customer_id}|${f.trigger_date}`) || []);
+
+        // Group by customer+date, find those >= $10,001
+        const grouped = new Map<string, number>();
+        txData?.forEach((tx: any) => {
+          if (!tx.customer_id) return;
+          const dateOnly = tx.date?.split('T')[0] || tx.date;
+          const key = `${tx.customer_id}|${dateOnly}`;
+          grouped.set(key, (grouped.get(key) || 0) + (parseFloat(tx.sale?.toString() || '0')));
+        });
+
+        let pending = 0;
+        grouped.forEach((total, key) => {
+          if (total >= 10001 && !filedSet.has(key)) pending++;
+        });
+
+        setPendingCTRCount(pending);
+      } catch (err) {
+        console.error('Error checking CTR status:', err);
+      }
+    };
+    checkCTR();
+  }, []);
+
   const dbColumns = [
     "id",
     "platform",
@@ -308,6 +355,18 @@ export default function Dashboard() {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* CTR Alert Banner */}
+        {pendingCTRCount > 0 && (
+          <Alert className="mb-6 border-red-400/30 bg-red-500/[0.06] animate-in slide-in-from-top-2 cursor-pointer" onClick={() => navigate('/reports')}>
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            <AlertTitle className="text-red-400">CTR Filing Required</AlertTitle>
+            <AlertDescription className="text-red-400/80">
+              {pendingCTRCount} customer{pendingCTRCount !== 1 ? 's' : ''} ha{pendingCTRCount !== 1 ? 've' : 's'} exceeded $10,001 in daily transactions and need{pendingCTRCount === 1 ? 's' : ''} a CTR filed.{' '}
+              <span className="underline underline-offset-2">View CTR Filings →</span>
+            </AlertDescription>
           </Alert>
         )}
 
