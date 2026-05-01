@@ -360,7 +360,7 @@ export default function Dashboard() {
 
         {/* CTR Alert Banner */}
         {pendingCTRCount > 0 && (
-          <Alert className="mb-6 border-red-400/30 bg-red-500/[0.06] animate-in slide-in-from-top-2 cursor-pointer" onClick={() => navigate('/reports')}>
+          <Alert className="mb-6 border-red-400/30 bg-red-500/[0.06] animate-in slide-in-from-top-2 cursor-pointer" onClick={() => navigate('/reports?tab=ctr-filings')}>
             <AlertTriangle className="h-4 w-4 text-red-400" />
             <AlertTitle className="text-red-400">CTR Filing Required</AlertTitle>
             <AlertDescription className="text-red-400/80">

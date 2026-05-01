@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { TrendingUp, DollarSign, BarChart3, Calendar, List, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -30,7 +31,16 @@ const TAB_CONTENT: Record<TabKey, React.FC> = {
 };
 
 export default function Reports() {
-  const [activeTab, setActiveTab] = useState<TabKey>('monthly-sales');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialTab = TABS.some((t) => t.key === tabParam) ? (tabParam as TabKey) : 'monthly-sales';
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
+
+  useEffect(() => {
+    if (tabParam && TABS.some((t) => t.key === tabParam)) {
+      setActiveTab(tabParam as TabKey);
+    }
+  }, [tabParam]);
   const ActiveContent = TAB_CONTENT[activeTab];
 
   return (
