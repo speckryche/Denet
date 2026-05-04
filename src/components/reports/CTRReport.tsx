@@ -37,6 +37,7 @@ const CTR_THRESHOLD = 10001;
 interface CTRItem {
   customer_id: string;
   customer_name: string;
+  customer_address: string;
   trigger_date: string;
   total_amount: number;
   transaction_count: number;
@@ -91,7 +92,7 @@ export default function CTRReport() {
       // Fetch Denet transactions with customer data in the date range
       const { data: transactions, error: txError } = await supabase
         .from('transactions')
-        .select('id, customer_id, customer_first_name, customer_last_name, sale, date, atm_id, atm_name')
+        .select('id, customer_id, customer_first_name, customer_last_name, customer_address, customer_city, customer_state, customer_zipcode, sale, date, atm_id, atm_name')
         .eq('platform', 'denet')
         .not('customer_id', 'is', null)
         .gte('date', fromDate)
@@ -127,6 +128,7 @@ export default function CTRReport() {
       const grouped = new Map<string, {
         customer_id: string;
         customer_name: string;
+        customer_address: string;
         trigger_date: string;
         total_amount: number;
         transactions: { id: string; sale: number; atm_name: string; atm_address: string; date: string }[];
@@ -138,11 +140,14 @@ export default function CTRReport() {
         const key = `${tx.customer_id}|${dateOnly}`;
         const sale = parseFloat(tx.sale?.toString() || '0');
         const name = [tx.customer_first_name, tx.customer_last_name].filter(Boolean).join(' ') || 'Unknown';
+        const custAddrParts = [tx.customer_address, tx.customer_city, tx.customer_state, tx.customer_zipcode].filter(Boolean);
+        const custAddr = custAddrParts.join(', ');
 
         if (!grouped.has(key)) {
           grouped.set(key, {
             customer_id: tx.customer_id,
             customer_name: name,
+            customer_address: custAddr,
             trigger_date: dateOnly,
             total_amount: 0,
             transactions: [],
@@ -328,6 +333,7 @@ export default function CTRReport() {
                   <TableHead>Date</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Customer ID</TableHead>
+                  <TableHead>Customer Address</TableHead>
                   <TableHead className="text-right">Daily Total</TableHead>
                   <TableHead className="text-center"># Txns</TableHead>
                   <TableHead className="text-center">Status</TableHead>
@@ -357,6 +363,7 @@ export default function CTRReport() {
                         <TableCell className="font-mono">{formatDate(item.trigger_date)}</TableCell>
                         <TableCell className="font-medium">{item.customer_name}</TableCell>
                         <TableCell className="text-muted-foreground font-mono text-sm">{item.customer_id}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{item.customer_address || '—'}</TableCell>
                         <TableCell className="text-right font-mono font-semibold text-red-400">
                           {formatCurrency(item.total_amount)}
                         </TableCell>
@@ -403,7 +410,7 @@ export default function CTRReport() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow>
-                          <TableCell colSpan={10} className="p-0">
+                          <TableCell colSpan={11} className="p-0">
                             <div className="bg-white/[0.02] border-t border-b border-white/[0.06] px-8 py-3">
                               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                                 Transactions on {formatDate(item.trigger_date)}
