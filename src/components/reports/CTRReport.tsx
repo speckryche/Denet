@@ -40,7 +40,7 @@ interface CTRItem {
   trigger_date: string;
   total_amount: number;
   transaction_count: number;
-  transactions: { id: string; sale: number; atm_name: string; date: string }[];
+  transactions: { id: string; sale: number; atm_name: string; atm_address: string; date: string }[];
   // Filing status from ctr_filings table
   filing_id: string | null;
   filed: boolean;
@@ -91,13 +91,24 @@ export default function CTRReport() {
       // Fetch Denet transactions with customer data in the date range
       const { data: transactions, error: txError } = await supabase
         .from('transactions')
-        .select('id, customer_id, customer_first_name, customer_last_name, sale, date, atm_name')
+        .select('id, customer_id, customer_first_name, customer_last_name, sale, date, atm_id, atm_name')
         .eq('platform', 'denet')
         .not('customer_id', 'is', null)
         .gte('date', fromDate)
         .order('date', { ascending: false });
 
       if (txError) throw txError;
+
+      // Fetch ATM profiles for address lookup
+      const { data: atmProfiles } = await supabase
+        .from('atm_profiles')
+        .select('atm_id, location_name, street_address, city, state, zip_code');
+
+      const atmAddressMap = new Map<string, string>();
+      atmProfiles?.forEach((atm: any) => {
+        const parts = [atm.street_address, atm.city, atm.state, atm.zip_code].filter(Boolean);
+        atmAddressMap.set(atm.atm_id, parts.join(', '));
+      });
 
       // Fetch all CTR filings
       const { data: filings, error: filingsError } = await supabase
@@ -118,7 +129,7 @@ export default function CTRReport() {
         customer_name: string;
         trigger_date: string;
         total_amount: number;
-        transactions: { id: string; sale: number; atm_name: string; date: string }[];
+        transactions: { id: string; sale: number; atm_name: string; atm_address: string; date: string }[];
       }>();
 
       transactions?.forEach((tx: any) => {
@@ -144,6 +155,7 @@ export default function CTRReport() {
           id: tx.id,
           sale,
           atm_name: tx.atm_name || 'Unknown',
+          atm_address: atmAddressMap.get(tx.atm_id) || '',
           date: tx.date,
         });
       });
@@ -401,6 +413,7 @@ export default function CTRReport() {
                                   <tr className="text-xs text-muted-foreground">
                                     <th className="text-left py-1.5 pr-4">Transaction ID</th>
                                     <th className="text-left py-1.5 pr-4">ATM</th>
+                                    <th className="text-left py-1.5 pr-4">ATM Address</th>
                                     <th className="text-right py-1.5">Amount</th>
                                   </tr>
                                 </thead>
@@ -409,6 +422,7 @@ export default function CTRReport() {
                                     <tr key={tx.id} className="border-t border-white/[0.04]">
                                       <td className="py-1.5 pr-4 font-mono text-xs text-muted-foreground">{tx.id}</td>
                                       <td className="py-1.5 pr-4">{tx.atm_name}</td>
+                                      <td className="py-1.5 pr-4 text-muted-foreground">{tx.atm_address || '—'}</td>
                                       <td className="py-1.5 text-right font-mono">{formatCurrency(tx.sale)}</td>
                                     </tr>
                                   ))}
