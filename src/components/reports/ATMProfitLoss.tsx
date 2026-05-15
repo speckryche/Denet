@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import * as XLSX from 'xlsx-js-style';
+import ATMSalesDrillDown from './ATMSalesDrillDown';
+import { TransactionRow } from './TransactionsTable';
 
 interface ATMPLData {
   active: boolean | null;
@@ -37,6 +39,8 @@ interface ATMPLData {
   commissions: number;
   net_profit: number;
   has_override: boolean;
+  /** The exact transactions used to compute total_sales for this row, after install/removed/sibling filtering. */
+  transactions: TransactionRow[];
 }
 
 export default function ATMProfitLoss() {
@@ -61,8 +65,14 @@ export default function ATMProfitLoss() {
   const [editValue, setEditValue] = useState<string>('');
   const escapeRef = useRef(false);
   const savingRef = useRef(false);
+  const [drillDownRow, setDrillDownRow] = useState<ATMPLData | null>(null);
 
   const isSingleMonth = selectedStartMonth === selectedEndMonth;
+
+  // Derive the report's date-range strings (YYYY-MM-DD). Same logic as fetchATMProfitLoss.
+  const reportStartDateStr = `${selectedYear}-${selectedStartMonth}-01`;
+  const reportEndLastDay = new Date(selectedYear, parseInt(selectedEndMonth), 0).getDate();
+  const reportEndDateStr = `${selectedYear}-${selectedEndMonth}-${String(reportEndLastDay).padStart(2, '0')}`;
 
   const months = [
     { value: '01', label: 'January' },
@@ -239,7 +249,7 @@ export default function ATMProfitLoss() {
 
         const { data, error } = await supabase
           .from('transactions')
-          .select('atm_id, sale, fee, bitstop_fee, platform, date')
+          .select('id, atm_id, atm_name, sale, fee, bitstop_fee, platform, date, customer_first_name, customer_last_name, ticker')
           .gte('date', startDate)
           .lte('date', endDate)
           .range(from, to);
@@ -520,6 +530,23 @@ export default function ATMProfitLoss() {
         const fee_pct = total_sales > 0 ? (total_fees / total_sales) * 100 : 0;
         const net_profit = total_fees - bitstop_fees - rent - mgmt_rps - mgmt_rep - commissions;
 
+        // Map the same filtered transactions used for total_sales above into
+        // the shape the drill-down sheet expects. This guarantees that the
+        // sum of `transactions[].sale` equals `total_sales` to the cent.
+        const drillDownTransactions: TransactionRow[] = atmTransactions.map(tx => ({
+          id: tx.id || '',
+          date: tx.date || '',
+          atm_id: tx.atm_id || '',
+          atm_name: tx.atm_name || profile.location_name || profile.atm_id,
+          platform: tx.platform || profile.platform || '',
+          customer_first_name: tx.customer_first_name || '',
+          customer_last_name: tx.customer_last_name || '',
+          ticker: tx.ticker || '',
+          sale: tx.sale || 0,
+          fee: tx.fee || 0,
+          bitstop_fee: tx.bitstop_fee || 0,
+        }));
+
         resultData.push({
           active: profile.active,
           installed_date: profile.installed_date,
@@ -537,6 +564,7 @@ export default function ATMProfitLoss() {
           commissions,
           net_profit,
           has_override,
+          transactions: drillDownTransactions,
         });
       });
 
@@ -1207,6 +1235,17 @@ export default function ATMProfitLoss() {
           </div>
         )}
 
+        {/* Drill-down sheet */}
+        <ATMSalesDrillDown
+          open={drillDownRow !== null}
+          onOpenChange={(open) => { if (!open) setDrillDownRow(null); }}
+          machineName={drillDownRow?.atm_name ?? ''}
+          atmId={drillDownRow?.atm_id ?? ''}
+          startDate={reportStartDateStr}
+          endDate={reportEndDateStr}
+          transactions={drillDownRow?.transactions ?? []}
+        />
+
         {/* Table */}
         <div className="rounded-md border border-white/10 overflow-x-auto">
           <Table>
@@ -1445,7 +1484,18 @@ export default function ATMProfitLoss() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        ${Math.round(row.total_sales).toLocaleString('en-US')}
+                        {row.total_sales > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setDrillDownRow(row)}
+                            className="font-mono hover:underline cursor-pointer focus:outline-none focus-visible:underline"
+                            title="View transactions"
+                          >
+                            ${Math.round(row.total_sales).toLocaleString('en-US')}
+                          </button>
+                        ) : (
+                          <>${Math.round(row.total_sales).toLocaleString('en-US')}</>
+                        )}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {row.platform?.toLowerCase() === 'bitstop' && isSingleMonth ? (

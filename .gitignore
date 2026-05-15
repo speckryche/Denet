@@ -34,3 +34,5 @@ core
 
 **/tempobook/**
 .env
+
+supabase/.temp/

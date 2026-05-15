@@ -1,16 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Download, FileSpreadsheet } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -19,22 +11,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import * as XLSX from 'xlsx-js-style';
-
-interface TransactionRow {
-  id: string;
-  date: string;
-  atm_id: string;
-  atm_name: string;
-  platform: string;
-  customer_first_name: string;
-  customer_last_name: string;
-  ticker: string;
-  sale: number;
-  fee: number;
-  bitstop_fee: number;
-}
-
-type SortField = keyof TransactionRow;
+import TransactionsTable, {
+  TransactionRow,
+  TransactionsSortField,
+  sortTransactionRows,
+  formatTransactionDate,
+} from './TransactionsTable';
 
 export default function ATMTransactions() {
   const today = new Date();
@@ -52,7 +34,7 @@ export default function ATMTransactions() {
   const [selectedATM, setSelectedATM] = useState<string>('all');
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [atmList, setAtmList] = useState<{ atm_id: string; location_name: string }[]>([]);
-  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortField, setSortField] = useState<TransactionsSortField>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [feeOverrides, setFeeOverrides] = useState<Map<string, number>>(new Map());
 
@@ -135,7 +117,7 @@ export default function ATMTransactions() {
 
       if (error) throw error;
       if (data) {
-        setAtmList(data.filter(a => a.atm_id));
+        setAtmList(data.filter(a => a.atm_id) as { atm_id: string; location_name: string }[]);
       }
     } catch (error) {
       console.error('Error fetching ATM list:', error);
@@ -235,16 +217,7 @@ export default function ATMTransactions() {
     }
   };
 
-  const formatDate = (dateStr: string | null): string => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = String(date.getFullYear()).slice(-2);
-    return `${month}/${day}/${year}`;
-  };
-
-  const handleSort = (field: SortField) => {
+  const handleSort = (field: TransactionsSortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -253,90 +226,16 @@ export default function ATMTransactions() {
     }
   };
 
-  const sortedData = [...data].sort((a, b) => {
-    const aValue = a[sortField];
-    const bValue = b[sortField];
-
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortDirection === 'asc'
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-    }
-
-    return 0;
-  });
-
-  const SortButton = ({ field, label, align }: { field: SortField; label: string; align?: 'right' }) => (
-    <button
-      onClick={() => handleSort(field)}
-      className={`flex items-center gap-1 hover:text-foreground/80 ${align === 'right' ? 'ml-auto' : ''}`}
-    >
-      {label}
-      {sortField === field ? (
-        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-      ) : (
-        <ArrowUpDown className="w-4 h-4 opacity-50" />
-      )}
-    </button>
+  const sortedData = useMemo(
+    () => sortTransactionRows(data, sortField, sortDirection),
+    [data, sortField, sortDirection],
   );
 
-  // Calculate totals
   const totals = data.reduce((acc, row) => ({
     sale: acc.sale + row.sale,
     fee: acc.fee + row.fee,
     bitstop_fee: acc.bitstop_fee + row.bitstop_fee,
   }), { sale: 0, fee: 0, bitstop_fee: 0 });
-
-  // Calculate override-adjusted fee total for Bitstop ATMs
-  const adjustedFeeTotals = (() => {
-    if (feeOverrides.size === 0) return { fee: totals.fee, hasOverrides: false };
-
-    // Group fees by ATM and month
-    const feesByAtmMonth = new Map<string, Map<string, number>>();
-    const atmPlatforms = new Map<string, string>();
-    data.forEach(row => {
-      atmPlatforms.set(row.atm_id, row.platform);
-      if (row.platform !== 'bitstop' || !row.date) return;
-      const [y, m] = row.date.split('-');
-      const ym = `${y}-${m}`;
-      if (!feesByAtmMonth.has(row.atm_id)) feesByAtmMonth.set(row.atm_id, new Map());
-      const monthMap = feesByAtmMonth.get(row.atm_id)!;
-      monthMap.set(ym, (monthMap.get(ym) || 0) + row.fee);
-    });
-
-    // Calculate non-bitstop fee total
-    let nonBitstopFees = 0;
-    data.forEach(row => {
-      if (row.platform !== 'bitstop') nonBitstopFees += row.fee;
-    });
-
-    // Calculate bitstop fees with overrides
-    let bitstopFees = 0;
-    let hasOverrides = false;
-    const startMonthNum = parseInt(selectedStartMonth);
-    const endMonthNum = parseInt(selectedEndMonth);
-
-    const processedAtms = new Set<string>();
-    feesByAtmMonth.forEach((monthFees, atmId) => {
-      processedAtms.add(atmId);
-      for (let m = startMonthNum; m <= endMonthNum; m++) {
-        const ym = `${selectedYear}-${String(m).padStart(2, '0')}`;
-        const key = `${atmId}:${ym}`;
-        if (feeOverrides.has(key)) {
-          bitstopFees += feeOverrides.get(key)!;
-          hasOverrides = true;
-        } else {
-          bitstopFees += monthFees.get(ym) || 0;
-        }
-      }
-    });
-
-    return { fee: nonBitstopFees + bitstopFees, hasOverrides };
-  })();
 
   const dateRangeText = selectedStartMonth === selectedEndMonth
     ? `${months.find(m => m.value === selectedStartMonth)?.label} ${selectedYear}`
@@ -346,7 +245,7 @@ export default function ATMTransactions() {
     const headers = ['Date', 'ATM ID', 'ATM Name', 'Platform', 'Customer', 'Ticker', 'Sale', 'Fee', 'Bitstop Fee'];
 
     const rows = sortedData.map(row => [
-      formatDate(row.date),
+      formatTransactionDate(row.date),
       row.atm_id,
       row.atm_name,
       row.platform === 'bitstop' ? 'Bitstop' : 'Denet',
@@ -390,7 +289,7 @@ export default function ATMTransactions() {
 
     sortedData.forEach(row => {
       excelData.push([
-        formatDate(row.date),
+        formatTransactionDate(row.date),
         row.atm_id,
         row.atm_name,
         row.platform === 'bitstop' ? 'Bitstop' : 'Denet',
@@ -522,7 +421,7 @@ export default function ATMTransactions() {
             <CardTitle>ATM Transactions</CardTitle>
             <CardDescription>
               Individual transaction details by ATM
-              {!isLoading && ` \u2022 ${data.length.toLocaleString('en-US')} transactions`}
+              {!isLoading && ` • ${data.length.toLocaleString('en-US')} transactions`}
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -605,113 +504,20 @@ export default function ATMTransactions() {
           </Select>
         </div>
 
-        {/* Table */}
-        <div className="rounded-md border border-white/10 overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-white/10">
-                <TableHead className="font-bold">
-                  <SortButton field="date" label="Date" />
-                </TableHead>
-                <TableHead className="font-bold">
-                  <SortButton field="atm_id" label="ATM ID" />
-                </TableHead>
-                <TableHead className="font-bold">
-                  <SortButton field="atm_name" label="ATM Name" />
-                </TableHead>
-                <TableHead className="font-bold">
-                  <SortButton field="platform" label="Platform" />
-                </TableHead>
-                <TableHead className="font-bold">
-                  <SortButton field="customer_last_name" label="Customer" />
-                </TableHead>
-                <TableHead className="font-bold">
-                  <SortButton field="ticker" label="Ticker" />
-                </TableHead>
-                <TableHead className="text-right font-bold">
-                  <SortButton field="sale" label="Sale" align="right" />
-                </TableHead>
-                <TableHead className="text-right font-bold">
-                  <SortButton field="fee" label="Fee" align="right" />
-                </TableHead>
-                <TableHead className="text-right font-bold">
-                  <SortButton field="bitstop_fee" label="Bitstop Fee" align="right" />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : data.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    No transactions found for selected filters
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <>
-                  {sortedData.map((row, idx) => (
-                    <TableRow key={idx} className="border-white/5">
-                      <TableCell>{formatDate(row.date)}</TableCell>
-                      <TableCell className="font-medium">{row.atm_id}</TableCell>
-                      <TableCell>{row.atm_name}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          row.platform === 'bitstop'
-                            ? 'bg-blue-500/20 text-blue-300'
-                            : 'bg-green-500/20 text-green-300'
-                        }`}>
-                          {row.platform === 'bitstop' ? 'Bitstop' : 'Denet'}
-                        </span>
-                      </TableCell>
-                      <TableCell>{row.customer_first_name} {row.customer_last_name}</TableCell>
-                      <TableCell>{row.ticker}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        ${Math.round(row.sale).toLocaleString('en-US')}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        ${Math.round(row.fee).toLocaleString('en-US')}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        ${Math.round(row.bitstop_fee).toLocaleString('en-US')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {/* Totals Row */}
-                  <TableRow className="border-white/10 bg-white/5 font-bold">
-                    <TableCell colSpan={6}>
-                      TOTAL ({data.length.toLocaleString('en-US')} transactions)
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${Math.round(totals.sale).toLocaleString('en-US')}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {adjustedFeeTotals.hasOverrides ? (
-                        <span title="Adjusted with Bitstop fee overrides">
-                          ${Math.round(adjustedFeeTotals.fee).toLocaleString('en-US')} *
-                        </span>
-                      ) : (
-                        <>${Math.round(totals.fee).toLocaleString('en-US')}</>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${Math.round(totals.bitstop_fee).toLocaleString('en-US')}
-                    </TableCell>
-                  </TableRow>
-                </>
-              )}
-            </TableBody>
-          </Table>
-          {adjustedFeeTotals.hasOverrides && (
-            <p className="text-xs text-yellow-400/70 mt-2">
-              * Fee total adjusted with Bitstop actual fee overrides. Individual transaction fees shown are calculated estimates.
-            </p>
-          )}
-        </div>
+        <TransactionsTable
+          rows={sortedData}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
+          isLoading={isLoading}
+          emptyMessage="No transactions found for selected filters"
+          feeOverrides={feeOverrides}
+          overrideMonthRange={{
+            year: selectedYear,
+            startMonth: selectedStartMonth,
+            endMonth: selectedEndMonth,
+          }}
+        />
       </CardContent>
     </Card>
   );
