@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { TrendingUp, DollarSign, BarChart3, Calendar, List, Shield } from 'lucide-react';
+import { TrendingUp, DollarSign, BarChart3, Calendar, List, Shield, GitCompare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import MonthlySalesSummary from './MonthlySalesSummary';
@@ -9,6 +9,7 @@ import ATMSalesSummary from './ATMSalesSummary';
 import ATMMonthlySales from './ATMMonthlySales';
 import ATMTransactions from './ATMTransactions';
 import CTRReport from './CTRReport';
+import PlatformComparison from './PlatformComparison';
 
 const TABS = [
   { key: 'monthly-sales', label: 'Sales - Totals', icon: TrendingUp },
@@ -17,6 +18,7 @@ const TABS = [
   { key: 'atm-summary', label: 'ATM Summary', icon: BarChart3 },
   { key: 'atm-transactions', label: 'ATM Transactions', icon: List },
   { key: 'ctr-filings', label: 'CTR Filings', icon: Shield },
+  { key: 'platform-comparison', label: 'Platform Comparison', icon: GitCompare },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -28,6 +30,7 @@ const TAB_CONTENT: Record<TabKey, React.FC> = {
   'atm-summary': ATMSalesSummary,
   'atm-transactions': ATMTransactions,
   'ctr-filings': CTRReport,
+  'platform-comparison': PlatformComparison,
 };
 
 export default function Reports() {
