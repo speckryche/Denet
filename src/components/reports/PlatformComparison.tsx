@@ -129,25 +129,15 @@ const formatPct = (value: number) =>
 // Component
 // ──────────────────────────────────────────────────────────────
 export default function PlatformComparison() {
-  // Default date range: trailing 12 months (previous 12 complete months)
+  // Default date range: Jan 1 of the current calendar year through today.
+  // Computed on each mount so the defaults stay current as the calendar advances.
   const today = new Date();
-  const endMonth = today.getMonth(); // 0-indexed, current month (incomplete)
-  const endYear = today.getFullYear();
-  // Go back 12 months from the last complete month
-  const prevMonth = endMonth === 0 ? 11 : endMonth - 1;
-  const prevYear = endMonth === 0 ? endYear - 1 : endYear;
-  const startMonth12 = prevMonth - 11;
-  const defaultStartYear =
-    startMonth12 < 0 ? prevYear - 1 : prevYear;
-  const defaultStartMonth = ((startMonth12 % 12) + 12) % 12; // 0-indexed
+  const currentYear = today.getFullYear();
 
-  const [fromDate, setFromDate] = useState(
-    `${defaultStartYear}-${String(defaultStartMonth + 1).padStart(2, '0')}-01`
+  const [fromDate, setFromDate] = useState(`${currentYear}-01-01`);
+  const [toDate, setToDate] = useState(
+    `${currentYear}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   );
-  const [toDate, setToDate] = useState(() => {
-    const lastDay = new Date(prevYear, prevMonth + 1, 0).getDate();
-    return `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-  });
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -523,6 +513,18 @@ export default function PlatformComparison() {
   const revenueDeltaPct =
     actuals.total_fees !== 0 ? (revenueDelta / Math.abs(actuals.total_fees)) * 100 : 0;
 
+  // Fee % of Sales — revenue as a share of gross sales. Projected side
+  // mathematically equals effectiveRate (sanity check). When total_sales is 0
+  // all three values are null and the row renders as "—".
+  const feePctActual =
+    actuals.total_sales > 0 ? (actuals.total_fees / actuals.total_sales) * 100 : null;
+  const feePctProjected =
+    actuals.total_sales > 0 ? (projectedCommission / actuals.total_sales) * 100 : null;
+  const feePctDelta =
+    feePctActual !== null && feePctProjected !== null
+      ? feePctProjected - feePctActual
+      : null;
+
   // ── Date display ──
   const formatDisplayDate = (d: string) => {
     const date = parseLocalDate(d);
@@ -553,7 +555,15 @@ export default function PlatformComparison() {
       ['Denet Machines', machineCount],
       [],
       ['', 'Actuals (Denet)', 'Projected (Bitstop)', 'Delta $', 'Delta %'],
+      ['Total Sales', actuals.total_sales, actuals.total_sales, 0, ''],
       ['Revenue', actuals.total_fees, projectedCommission, revenueDelta, revenueDeltaPct / 100],
+      [
+        'Fee % of Sales',
+        feePctActual !== null ? feePctActual / 100 : '—',
+        feePctProjected !== null ? feePctProjected / 100 : '—',
+        feePctDelta !== null ? feePctDelta / 100 : '—',
+        '',
+      ],
       ['Bitstop Fees', actuals.bitstop_fees, 'N/A', '', ''],
       ['Rent', actuals.rent, actuals.rent, 0, ''],
       ['Mgmt RPS', actuals.mgmt_rps, actuals.mgmt_rps, 0, ''],
@@ -595,12 +605,13 @@ export default function PlatformComparison() {
       }
     }
 
-    // Data rows (7-13)
-    for (let r = 7; r <= 13; r++) {
+    // Data rows (7-15)
+    for (let r = 7; r <= 15; r++) {
       for (let c = 0; c <= 4; c++) {
         const ref = cell(r, c);
         if (!ws[ref]) continue;
-        const isProfit = r === 13;
+        const isProfit = r === 15;
+        const isFeePct = r === 9; // Fee % of Sales — format cols B–D as percent
         ws[ref].s = {
           font: {
             sz: 11,
@@ -610,7 +621,7 @@ export default function PlatformComparison() {
           alignment: { horizontal: c === 0 ? 'left' : 'right' },
           border,
           ...(c >= 1 && c <= 3 && typeof ws[ref].v === 'number'
-            ? { numFmt: '$#,##0' }
+            ? { numFmt: isFeePct ? '0.00%' : '$#,##0' }
             : {}),
           ...(c === 4 && typeof ws[ref].v === 'number'
             ? { numFmt: '0.0%' }
@@ -630,12 +641,30 @@ export default function PlatformComparison() {
 
   const rows = [
     {
+      // Gross customer transaction volume — identical on both sides because
+      // platform choice doesn't change the sale amount. Same figure that
+      // drives Est. Commission (sales × rate) on the Projected column below.
+      label: 'Total Sales',
+      actual: actuals.total_sales,
+      projected: actuals.total_sales,
+      deltaAmt: null,
+      deltaPct: null,
+    },
+    {
       label: 'Revenue',
       actual: actuals.total_fees,
       projected: projectedCommission,
       deltaAmt: revenueDelta,
       deltaPct: revenueDeltaPct,
       sublabel: { actual: 'Total Fees', projected: 'Est. Commission' },
+    },
+    {
+      label: 'Fee % of Sales',
+      actual: feePctActual,
+      projected: feePctProjected,
+      deltaAmt: feePctDelta,
+      deltaPct: null,
+      format: 'percent' as const,
     },
     {
       label: 'Bitstop Fees',
@@ -861,11 +890,19 @@ export default function PlatformComparison() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-base tabular-nums">
-                        {formatCurrency(row.actual)}
+                        {row.actual !== null ? (
+                          row.format === 'percent'
+                            ? `${row.actual.toFixed(2)}%`
+                            : formatCurrency(row.actual)
+                        ) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-base tabular-nums">
                         {row.projected !== null ? (
-                          formatCurrency(row.projected)
+                          row.format === 'percent'
+                            ? `${row.projected.toFixed(2)}%`
+                            : formatCurrency(row.projected)
                         ) : (
                           <span className="text-muted-foreground/40">—</span>
                         )}
@@ -881,7 +918,9 @@ export default function PlatformComparison() {
                                   : 'text-muted-foreground'
                             }
                           >
-                            {formatCurrency(row.deltaAmt)}
+                            {row.format === 'percent'
+                              ? `${row.deltaAmt >= 0 ? '+' : ''}${row.deltaAmt.toFixed(2)} pp`
+                              : formatCurrency(row.deltaAmt)}
                             {row.deltaPct !== null && row.deltaPct !== 0 && (
                               <span className="ml-1.5 text-xs">
                                 {formatPct(row.deltaPct)}
