@@ -36,3 +36,6 @@ core
 .env
 
 supabase/.temp/
+
+# supabase cli temp files
+supabase/.temp/

@@ -52,6 +52,50 @@ export function BitstopCommissionTracking() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Commission rate setting
+  const [commissionRate, setCommissionRate] = useState('');
+  const [commissionRateOriginal, setCommissionRateOriginal] = useState('');
+  const [isSavingRate, setIsSavingRate] = useState(false);
+
+  const fetchCommissionRate = async () => {
+    const { data } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'bitstop_commission_rate')
+      .single();
+    const val = data?.value || '0.56';
+    const pctStr = (parseFloat(val) * 100).toString();
+    setCommissionRate(pctStr);
+    setCommissionRateOriginal(pctStr);
+  };
+
+  const handleSaveRate = async () => {
+    setIsSavingRate(true);
+    const decimal = parseFloat(commissionRate) / 100;
+    if (isNaN(decimal) || decimal <= 0 || decimal > 1) {
+      setError('Commission rate must be between 0% and 100%');
+      setIsSavingRate(false);
+      return;
+    }
+    const { error: err } = await supabase
+      .from('app_settings')
+      .upsert({
+        key: 'bitstop_commission_rate',
+        value: decimal.toString(),
+        data_type: 'number',
+        description: 'Bitstop affiliate commission rate as decimal (0.56 = 56%)',
+        updated_at: new Date().toISOString(),
+      });
+    if (err) {
+      setError(err.message);
+    } else {
+      setCommissionRateOriginal(commissionRate);
+      setSuccessMessage('Commission rate saved!');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
+    setIsSavingRate(false);
+  };
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
@@ -79,6 +123,7 @@ export function BitstopCommissionTracking() {
 
   useEffect(() => {
     fetchData();
+    fetchCommissionRate();
   }, []);
 
   const handleFieldChange = (id: string, field: keyof BitstopCommission, value: any) => {
@@ -218,6 +263,30 @@ export function BitstopCommissionTracking() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Default Commission Rate */}
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+          <span className="text-sm font-medium text-muted-foreground">Default Commission Rate:</span>
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="number"
+              step="0.01"
+              value={commissionRate}
+              onChange={(e) => setCommissionRate(e.target.value)}
+              className="w-20 h-8 text-sm font-mono text-right"
+            />
+            <span className="text-sm text-muted-foreground">%</span>
+          </div>
+          {commissionRate !== commissionRateOriginal && (
+            <Button size="sm" className="h-8" onClick={handleSaveRate} disabled={isSavingRate}>
+              <Save className="w-3.5 h-3.5 mr-1.5" />
+              {isSavingRate ? 'Saving...' : 'Save'}
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground ml-2">
+            Used for Bitstop CSV import fee calculation (spread x rate)
+          </span>
+        </div>
+
         {successMessage && (
           <Alert className="mb-4 bg-green-500/10 border-green-500/20 text-green-500">
             <AlertDescription>{successMessage}</AlertDescription>

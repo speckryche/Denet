@@ -12,11 +12,13 @@ import { supabase } from '@/lib/supabase';
 export default function CsvUploads() {
   const navigate = useNavigate();
   const [showDedupeBanner, setShowDedupeBanner] = useState(false);
-  const [uploadStats, setUploadStats] = useState({ processed: 0, duplicates: 0 });
+  const [uploadStats, setUploadStats] = useState({ processed: 0, duplicates: 0, negativeSpreadCount: 0 });
   const [error, setError] = useState<string | null>(null);
   const [uploadHistoryKey, setUploadHistoryKey] = useState(0);
   const [newATMIds, setNewATMIds] = useState<string[]>([]);
   const [showNewATMAlert, setShowNewATMAlert] = useState(false);
+  const [newTickerNames, setNewTickerNames] = useState<string[]>([]);
+  const [showNewTickerAlert, setShowNewTickerAlert] = useState(false);
 
   const [transactionDates, setTransactionDates] = useState({
     denetFirst: null as string | null,
@@ -117,12 +119,12 @@ export default function CsvUploads() {
           .select('*');
 
         const tickerMap = new Map(existingTickers?.map(t => [t.original_value, t.display_value || t.original_value]) || []);
-        const feePercentageMap = new Map(existingTickers?.map(t => [t.original_value, t.fee_percentage || 0.10]) || []);
         const atmMap = new Map(existingATMs?.map(a => [a.atm_id, a]) || []);
 
         const newTickers = new Set<string>();
         const newATMsToInsert = new Map<string, { atm_id: string, atm_name: string | null }>();
 
+        // mapTicker: returns display_value if set, otherwise falls back to raw value (never null when input is present)
         const mapTicker = (originalTicker: string | null | undefined): string | null => {
           if (!originalTicker) return null;
           const ticker = originalTicker.toString().trim();
@@ -134,7 +136,6 @@ export default function CsvUploads() {
 
           newTickers.add(ticker);
           tickerMap.set(ticker, ticker);
-          feePercentageMap.set(ticker, 0.10);
           return ticker;
         };
 
@@ -172,6 +173,7 @@ export default function CsvUploads() {
         console.log('Detected Platform:', currentPlatform);
 
         let mappedData: any[] = [];
+        let negativeSpreadCount = 0;
 
         if (currentPlatform === 'denet') {
           mappedData = allData.map(row => {
@@ -206,10 +208,43 @@ export default function CsvUploads() {
           });
           mappedData = mappedData.filter(row => row.id);
         } else if (currentPlatform === 'bitstop') {
+          // ── Bitstop header validation ──
+          const requiredBitstopHeaders = ['id', 'inserted', 'sent', 'cointype', 'createdat'];
+          const atmHeader = headers.some(h => ['atmid', 'atmId'].includes(h.trim()));
+          const atmNameHeader = headers.some(h => ['atm', 'atm.name'].includes(h.trim()));
+          const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+
+          const missingHeaders: string[] = [];
+          for (const req of requiredBitstopHeaders) {
+            if (!normalizedHeaders.includes(req)) {
+              missingHeaders.push(req);
+            }
+          }
+          if (!atmHeader) missingHeaders.push('ATMID/AtmId');
+          if (!atmNameHeader) missingHeaders.push('Atm/Atm.Name');
+
+          if (missingHeaders.length > 0) {
+            setError(`Bitstop CSV is missing required column(s): ${missingHeaders.join(', ')}. Please check the file format.`);
+            return;
+          }
+
+          // ── Fetch commission rate from app_settings ──
+          let commissionRate = 0.56; // fallback default
+          const { data: rateSetting } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'bitstop_commission_rate')
+            .single();
+          if (rateSetting?.value) {
+            commissionRate = parseFloat(rateSetting.value) || 0.56;
+          }
+          console.log('Bitstop commission rate:', commissionRate);
+
           mappedData = allData.map(row => {
             const id = getValue(row, 'Id');
 
             const saleAmount = getValue(row, 'Inserted') ? parseFloat(getValue(row, 'Inserted').toString().replace(/[$,]/g, '')) : null;
+            const sentAmount = getValue(row, 'Sent') ? parseFloat(getValue(row, 'Sent').toString().replace(/[$,]/g, '')) : null;
             const rawTicker = getValue(row, 'CoinType');
             const mappedTicker = mapTicker(rawTicker);
 
@@ -217,8 +252,18 @@ export default function CsvUploads() {
             const rawAtmName = getValue(row, 'Atm') || getValue(row, 'Atm.Name');
             const atmData = mapATM(rawAtmId, rawAtmName);
 
-            const feePercentage = rawTicker ? (feePercentageMap.get(rawTicker.toString().trim()) || 0.10) : 0.10;
-            const calculatedFee = saleAmount ? parseFloat((saleAmount * feePercentage).toFixed(2)) : null;
+            // New fee calculation: spread = Inserted - Sent, fee = spread * commission rate
+            const bitstopSpread = (saleAmount != null && sentAmount != null)
+              ? parseFloat((saleAmount - sentAmount).toFixed(2))
+              : null;
+            const calculatedFee = bitstopSpread != null
+              ? parseFloat((bitstopSpread * commissionRate).toFixed(2))
+              : null;
+
+            // Track negative/zero spreads
+            if (bitstopSpread != null && bitstopSpread <= 0) {
+              negativeSpreadCount++;
+            }
 
             return {
               id: id,
@@ -234,9 +279,10 @@ export default function CsvUploads() {
               location_name: atmData.atm_name,
               ticker: mappedTicker,
               fee: calculatedFee,
-              sent: getValue(row, 'Sent') ? parseFloat(getValue(row, 'Sent').toString().replace(/[$,]/g, '')) : null,
+              sent: sentAmount,
               sale: saleAmount,
               bitstop_fee: 0,
+              bitstop_spread: bitstopSpread,
               date: getValue(row, 'CreatedAt'),
               platform: 'bitstop'
             };
@@ -252,12 +298,12 @@ export default function CsvUploads() {
         }
 
         try {
+          // Auto-create new ticker_mappings rows (without fee_percentage — deprecated)
           if (newTickers.size > 0) {
             console.log(`Inserting ${newTickers.size} new tickers...`);
             const tickersToInsert = Array.from(newTickers).map(ticker => ({
               original_value: ticker,
               display_value: null,
-              fee_percentage: 0.10
             }));
             const { error: tickerError } = await supabase
               .from('ticker_mappings')
@@ -265,11 +311,13 @@ export default function CsvUploads() {
             if (tickerError) console.error('Error inserting tickers:', tickerError);
           }
 
+          // Auto-create new ATM profiles with correct platform
           if (newATMsToInsert.size > 0) {
             console.log(`Inserting ${newATMsToInsert.size} new ATM profiles...`);
             const atmsToInsert = Array.from(newATMsToInsert.values()).map(atm => ({
               atm_id: atm.atm_id,
               location_name: atm.atm_name,
+              platform: currentPlatform,
               monthly_rent: 0,
               cash_management_rps: 0,
               cash_management_rep: 0
@@ -336,19 +384,28 @@ export default function CsvUploads() {
 
           setUploadStats({
             processed: mappedData.length,
-            duplicates: duplicateCount
+            duplicates: duplicateCount,
+            negativeSpreadCount: negativeSpreadCount,
           });
           console.log(`Upload stats: ${mappedData.length} processed, ${duplicateCount} duplicates`);
           setShowDedupeBanner(true);
           setError(null);
           setUploadHistoryKey(prev => prev + 1);
 
+          // New ATM alert
           if (newATMsInUpload.length > 0) {
             console.log(`New ATM IDs detected: ${newATMsInUpload.join(', ')}`);
             setNewATMIds(newATMsInUpload);
             setShowNewATMAlert(true);
           } else {
             console.log('No new ATM IDs detected');
+          }
+
+          // New ticker alert
+          if (newTickers.size > 0) {
+            console.log(`New tickers detected: ${Array.from(newTickers).join(', ')}`);
+            setNewTickerNames(Array.from(newTickers));
+            setShowNewTickerAlert(true);
           }
 
           console.log('Refreshing data after upload...');
@@ -399,9 +456,16 @@ export default function CsvUploads() {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Import Complete</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
-              <span>
-                Processed {uploadStats.processed} records. <span className="font-bold">{uploadStats.duplicates} duplicates were skipped.</span>
-              </span>
+              <div>
+                <span>
+                  Processed {uploadStats.processed} records. <span className="font-bold">{uploadStats.duplicates} duplicates were skipped.</span>
+                </span>
+                {uploadStats.negativeSpreadCount > 0 && (
+                  <div className="mt-1 text-amber-400">
+                    Heads up: {uploadStats.negativeSpreadCount} row{uploadStats.negativeSpreadCount !== 1 ? 's' : ''} had a zero or negative spread — review for accuracy.
+                  </div>
+                )}
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -439,6 +503,36 @@ export default function CsvUploads() {
                   size="sm"
                   className="h-auto p-0 text-yellow-500 hover:text-yellow-400"
                   onClick={() => setShowNewATMAlert(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* New Ticker Alert */}
+        {showNewTickerAlert && (
+          <Alert className="bg-purple-500/10 border-purple-500/20 text-purple-400 animate-in slide-in-from-top-2">
+            <Bell className="h-4 w-4" />
+            <AlertTitle>New Ticker(s) Detected!</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>
+                {newTickerNames.length} new ticker{newTickerNames.length !== 1 ? 's' : ''} detected: <span className="font-mono font-bold">{newTickerNames.join(', ')}</span> — please set display names in Ticker Mappings settings.
+              </p>
+              <div className="flex items-center justify-between pt-2">
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/settings')}
+                  className="bg-purple-500 text-white hover:bg-purple-400"
+                >
+                  Go to Ticker Mappings
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0 text-purple-400 hover:text-purple-300"
+                  onClick={() => setShowNewTickerAlert(false)}
                 >
                   <X className="w-4 h-4" />
                 </Button>
