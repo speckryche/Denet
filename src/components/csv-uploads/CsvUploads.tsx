@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase';
 export default function CsvUploads() {
   const navigate = useNavigate();
   const [showDedupeBanner, setShowDedupeBanner] = useState(false);
-  const [uploadStats, setUploadStats] = useState({ processed: 0, duplicates: 0, negativeSpreadCount: 0 });
+  const [uploadStats, setUploadStats] = useState({ processed: 0, duplicates: 0, negativeSpreadCount: 0, commissionRateWarning: null as string | null });
   const [error, setError] = useState<string | null>(null);
   const [uploadHistoryKey, setUploadHistoryKey] = useState(0);
   const [newATMIds, setNewATMIds] = useState<string[]>([]);
@@ -174,6 +174,7 @@ export default function CsvUploads() {
 
         let mappedData: any[] = [];
         let negativeSpreadCount = 0;
+        let commissionRateWarning: string | null = null;
 
         if (currentPlatform === 'denet') {
           mappedData = allData.map(row => {
@@ -230,13 +231,23 @@ export default function CsvUploads() {
 
           // ── Fetch commission rate from app_settings ──
           let commissionRate = 0.56; // fallback default
-          const { data: rateSetting } = await supabase
+          const { data: rateSetting, error: rateError } = await supabase
             .from('app_settings')
             .select('value')
             .eq('key', 'bitstop_commission_rate')
             .single();
-          if (rateSetting?.value) {
-            commissionRate = parseFloat(rateSetting.value) || 0.56;
+          const fallbackWarning = '⚠️ Could not load commission rate from settings. Used fallback rate of 0.56. Please verify settings and reimport if needed.';
+          if (rateError) {
+            console.error('Error fetching bitstop_commission_rate:', rateError);
+            commissionRateWarning = fallbackWarning;
+          } else {
+            const parsed = parseFloat(rateSetting?.value);
+            if (!parsed || isNaN(parsed)) {
+              console.warn('Invalid bitstop_commission_rate value:', rateSetting?.value);
+              commissionRateWarning = fallbackWarning;
+            } else {
+              commissionRate = parsed;
+            }
           }
           console.log('Bitstop commission rate:', commissionRate);
 
@@ -386,6 +397,7 @@ export default function CsvUploads() {
             processed: mappedData.length,
             duplicates: duplicateCount,
             negativeSpreadCount: negativeSpreadCount,
+            commissionRateWarning: commissionRateWarning,
           });
           console.log(`Upload stats: ${mappedData.length} processed, ${duplicateCount} duplicates`);
           setShowDedupeBanner(true);
@@ -463,6 +475,11 @@ export default function CsvUploads() {
                 {uploadStats.negativeSpreadCount > 0 && (
                   <div className="mt-1 text-amber-400">
                     Heads up: {uploadStats.negativeSpreadCount} row{uploadStats.negativeSpreadCount !== 1 ? 's' : ''} had a zero or negative spread — review for accuracy.
+                  </div>
+                )}
+                {uploadStats.commissionRateWarning && (
+                  <div className="mt-1 text-amber-400">
+                    {uploadStats.commissionRateWarning}
                   </div>
                 )}
               </div>
