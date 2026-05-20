@@ -186,7 +186,8 @@ export default function ATMSalesSummary() {
         atmMap.set(atm.atm_id, atm);
       });
 
-      // Aggregate by ATM
+      // Aggregate by (atm_id, tx.platform) so converted ATMs produce two rows
+      // (one per platform) labeled by the CSV source of truth.
       const atmAggregation = new Map<string, ATMSalesData>();
 
       allTransactions.forEach(tx => {
@@ -194,12 +195,14 @@ export default function ATMSalesSummary() {
 
         const atmProfile = atmMap.get(tx.atm_id);
         const atmName = atmProfile?.location_name || tx.atm_id;
+        const txPlatform = (tx.platform || '').toLowerCase();
+        const bucketKey = `${tx.atm_id}:${txPlatform}`;
 
-        if (!atmAggregation.has(tx.atm_id)) {
-          atmAggregation.set(tx.atm_id, {
+        if (!atmAggregation.has(bucketKey)) {
+          atmAggregation.set(bucketKey, {
             atm_id: tx.atm_id,
             atm_name: atmName,
-            platform: tx.platform,
+            platform: txPlatform,
             transaction_count: 0,
             total_sales: 0,
             total_fees: 0,
@@ -207,7 +210,7 @@ export default function ATMSalesSummary() {
           });
         }
 
-        const entry = atmAggregation.get(tx.atm_id)!;
+        const entry = atmAggregation.get(bucketKey)!;
         entry.transaction_count += 1;
         entry.total_sales += tx.sale || 0;
         entry.total_fees += tx.fee || 0;
