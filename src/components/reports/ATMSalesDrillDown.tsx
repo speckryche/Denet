@@ -19,6 +19,8 @@ interface ATMSalesDrillDownProps {
   /** YYYY-MM-DD */
   endDate: string;
   transactions: TransactionRow[];
+  /** Optional platform label to disambiguate the drill-down for converted ATMs */
+  platformLabel?: string | null;
 }
 
 function sanitizeFilenamePart(s: string): string {
@@ -33,6 +35,7 @@ export default function ATMSalesDrillDown({
   startDate,
   endDate,
   transactions,
+  platformLabel,
 }: ATMSalesDrillDownProps) {
   const [sortField, setSortField] = useState<TransactionsSortField>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -100,7 +103,7 @@ export default function ATMSalesDrillDown({
           <div className="flex items-start justify-between gap-4">
             <div>
               <SheetTitle>
-                {machineName}{atmId ? ` (${atmId})` : ''} — Sales Transactions: {startDate} to {endDate}
+                {machineName}{atmId ? ` (${atmId})` : ''}{platformLabel ? ` — ${platformLabel}` : ''} — Sales Transactions: {startDate} to {endDate}
               </SheetTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {sortedRows.length.toLocaleString('en-US')} transaction{sortedRows.length === 1 ? '' : 's'}

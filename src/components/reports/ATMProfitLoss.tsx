@@ -267,50 +267,48 @@ export default function ATMProfitLoss() {
       const reportStartDate = new Date(reportStartYear, reportStartMonthNum - 1, reportStartDay);
       const reportEndDate = new Date(reportEndYear, reportEndMonthNum - 1, reportEndDay);
 
-      // Helper function: Check if ATM profile should be included based on platform filter
-      const shouldIncludeProfile = (profile: any): boolean => {
-        if (selectedPlatform === 'both') return true;
-
-        // For ATMs with switch dates, determine which platform they were on during the report period
-        if (profile.platform_switch_date) {
-          const [sYear, sMonth, sDay] = profile.platform_switch_date.split('-').map(Number);
-          const switchDate = new Date(sYear, sMonth - 1, sDay);
-
-          // If report period is entirely BEFORE switch date, ATM was on Denet
-          if (reportEndDate < switchDate) {
-            return selectedPlatform === 'denet';
-          }
-
-          // If report period is entirely ON/AFTER switch date, ATM is on current platform (Bitstop)
-          if (reportStartDate >= switchDate) {
-            return profile.platform === selectedPlatform;
-          }
-
-          // If report period SPANS the switch date, include on both platforms
-          // (This shouldn't happen often since we're typically running monthly reports)
-          return true;
-        }
-
-        // No switch date: use current platform
-        return profile.platform === selectedPlatform;
+      // Derive the conversion boundary year-month for a converted ATM. Returns
+      // null when only one tx.platform is present in the supplied buckets.
+      // Boundary = min(month after last Denet tx, first Bitstop tx month).
+      const deriveConversionBoundary = (denetTxs: any[], bitstopTxs: any[]): string | null => {
+        if (denetTxs.length === 0 || bitstopTxs.length === 0) return null;
+        const denetYMs = denetTxs.map(t => (t.date || '').slice(0, 7)).filter(Boolean);
+        const bitstopYMs = bitstopTxs.map(t => (t.date || '').slice(0, 7)).filter(Boolean);
+        if (denetYMs.length === 0 || bitstopYMs.length === 0) return null;
+        const lastDenetYM = denetYMs.reduce((a, b) => (a > b ? a : b));
+        const firstBitstopYM = bitstopYMs.reduce((a, b) => (a < b ? a : b));
+        const [ldY, ldM] = lastDenetYM.split('-').map(Number);
+        const monthAfterLastDenet = ldM === 12
+          ? `${ldY + 1}-01`
+          : `${ldY}-${String(ldM + 1).padStart(2, '0')}`;
+        return monthAfterLastDenet < firstBitstopYM ? monthAfterLastDenet : firstBitstopYM;
       };
 
-      // Helper function: Determine which platform to use for a transaction based on switch date
-      const getEffectivePlatform = (profile: any, transactionDate: Date): string => {
-        // If no switch date, use current platform
-        if (!profile.platform_switch_date) {
-          return profile.platform;
+      // Count months between windowStart and windowEnd that the ATM was active,
+      // applying the same install (first full month = month AFTER install) and
+      // removed-date caps as calculateExpenseMonths.
+      const countMonthsInWindow = (profile: any, windowStart: Date, windowEnd: Date): number => {
+        if (!profile.installed_date) return 0;
+        const [iY, iM, iD] = profile.installed_date.split('-').map(Number);
+        const installDate = new Date(iY, iM - 1, iD);
+        let removalDate: Date | null = null;
+        if (profile.removed_date) {
+          const [rY, rM, rD] = profile.removed_date.split('-').map(Number);
+          removalDate = new Date(rY, rM - 1, rD);
         }
-
-        const [sYear, sMonth, sDay] = profile.platform_switch_date.split('-').map(Number);
-        const switchDate = new Date(sYear, sMonth - 1, sDay);
-
-        // Before switch date, ATM was on Denet; on/after switch date, it's on current platform (Bitstop)
-        if (transactionDate < switchDate) {
-          return 'denet';
-        } else {
-          return profile.platform;
+        const monthAfterInstall = new Date(installDate.getFullYear(), installDate.getMonth() + 1, 1);
+        const winStartMonth = new Date(windowStart.getFullYear(), windowStart.getMonth(), 1);
+        const winEndMonth = new Date(windowEnd.getFullYear(), windowEnd.getMonth(), 1);
+        const effectiveStart = monthAfterInstall > winStartMonth ? monthAfterInstall : winStartMonth;
+        let effectiveEnd = winEndMonth;
+        if (removalDate) {
+          const removalMonth = new Date(removalDate.getFullYear(), removalDate.getMonth(), 1);
+          if (removalMonth < effectiveEnd) effectiveEnd = removalMonth;
         }
+        if (effectiveStart > effectiveEnd) return 0;
+        const monthCount = (effectiveEnd.getFullYear() - effectiveStart.getFullYear()) * 12 +
+          (effectiveEnd.getMonth() - effectiveStart.getMonth()) + 1;
+        return Math.max(0, monthCount);
       };
 
       // Helper function: Calculate expense months considering install/removed dates
@@ -402,11 +400,15 @@ export default function ATMProfitLoss() {
         overrideMap.set(`${o.atm_id}:${o.year_month}`, Number(o.actual_fees));
       });
 
-      // Create a map of commission amounts by ATM
-      const commissionMap = new Map<string, number>();
+      // Map of commission detail rows by ATM (preserved per-month so we can
+      // split commissions across the conversion boundary for converted ATMs).
+      const commissionDetailsByATM = new Map<string, Array<{ month_ym: string; amount: number }>>();
       commissionDetails?.forEach(detail => {
-        const current = commissionMap.get(detail.atm_id) || 0;
-        commissionMap.set(detail.atm_id, current + (detail.commission_amount || 0));
+        const monthYear = (detail.commissions as any)?.month_year;
+        if (!monthYear) return;
+        const arr = commissionDetailsByATM.get(detail.atm_id) || [];
+        arr.push({ month_ym: monthYear.slice(0, 7), amount: detail.commission_amount || 0 });
+        commissionDetailsByATM.set(detail.atm_id, arr);
       });
 
       // Group transactions by ATM ID for easy lookup
@@ -422,11 +424,6 @@ export default function ATMProfitLoss() {
       const resultData: ATMPLData[] = [];
 
       relevantProfiles?.forEach(profile => {
-        // Check if this profile should be included based on platform filter
-        if (!shouldIncludeProfile(profile)) {
-          return;
-        }
-
         // Get transactions for this ATM, filtered to this profile's active period
         const allAtmTransactions = transactionsByATM.get(profile.atm_id) || [];
 
@@ -457,114 +454,178 @@ export default function ATMProfitLoss() {
           return true;
         });
 
-        // Calculate expense months based on install/removed dates and report period
-        const expenseMonths = calculateExpenseMonths(profile, reportStartDate, reportEndDate);
+        const totalExpenseMonths = calculateExpenseMonths(profile, reportStartDate, reportEndDate);
 
-        // Skip this ATM only if BOTH: no expense months AND no transactions
-        if (expenseMonths === 0 && atmTransactions.length === 0) {
+        // Skip ATMs with no transactions AND no expense months
+        if (totalExpenseMonths === 0 && atmTransactions.length === 0) {
           return;
         }
 
-        // Calculate expenses based on actual months the ATM was active
-        // This considers install/removed dates
         const monthlyRent = profile.monthly_rent || 0;
         const monthlyMgmtRps = profile.cash_management_rps || 0;
         const monthlyMgmtRep = profile.cash_management_rep || 0;
+        const atmCommDetails = commissionDetailsByATM.get(profile.atm_id) || [];
+        const totalCommissions = atmCommDetails.reduce((s, d) => s + d.amount, 0);
 
-        const rent = monthlyRent * expenseMonths;
-        const mgmt_rps = monthlyMgmtRps * expenseMonths;
-        const mgmt_rep = monthlyMgmtRep * expenseMonths;
-        const commissions = commissionMap.get(profile.atm_id) || 0;
+        // Zero-tx fallback: keep the row (so rent losses stay visible) and use
+        // atm_profiles.platform as a label-of-last-resort. This is the only
+        // path that reads profile.platform; otherwise we attribute by tx.platform.
+        if (atmTransactions.length === 0) {
+          const fallbackPlatform = (profile.platform || '').toLowerCase() || 'denet';
+          if (selectedPlatform !== 'both' && fallbackPlatform !== selectedPlatform) return;
 
-        console.log(`ATM ${profile.atm_id} (${profile.location_name}): ${expenseMonths} expense months (Rent: $${monthlyRent} × ${expenseMonths} = $${rent})`);
+          const rent = monthlyRent * totalExpenseMonths;
+          const mgmt_rps = monthlyMgmtRps * totalExpenseMonths;
+          const mgmt_rep = monthlyMgmtRep * totalExpenseMonths;
+          const net_profit = -rent - mgmt_rps - mgmt_rep - totalCommissions;
 
-        // Aggregate transaction totals
-        let total_sales = 0;
-        let total_fees = 0;
-        let bitstop_fees = 0;
-
-        atmTransactions.forEach(tx => {
-          // Only include transactions that match the effective platform for this ATM at this transaction date
-          const txDate = new Date(tx.date);
-          const effectivePlatform = getEffectivePlatform(profile, txDate);
-
-          // For platform-switched ATMs: include all transactions regardless of transaction.platform
-          // For non-switched ATMs: transaction.platform should match profile.platform (but we trust CSV data)
-          // Since we're showing current profile platform, we include ALL transactions for this ATM
-          total_sales += tx.sale || 0;
-          total_fees += tx.fee || 0;
-          bitstop_fees += tx.bitstop_fee || 0;
-        });
-
-        // Apply bitstop fee overrides for Bitstop ATMs
-        let has_override = false;
-        if (profile.platform?.toLowerCase() === 'bitstop') {
-          // Group fees by month for per-month override application
-          const feesByMonth = new Map<string, number>();
-          atmTransactions.forEach(tx => {
-            if (tx.date) {
-              const [y, m] = tx.date.split('-');
-              const ym = `${y}-${m}`;
-              feesByMonth.set(ym, (feesByMonth.get(ym) || 0) + (tx.fee || 0));
-            }
+          resultData.push({
+            active: profile.active,
+            installed_date: profile.installed_date,
+            atm_id: profile.atm_id,
+            atm_name: profile.location_name || profile.atm_id,
+            state: profile.state || '',
+            platform: fallbackPlatform,
+            total_sales: 0,
+            total_fees: 0,
+            fee_pct: 0,
+            bitstop_fees: 0,
+            rent,
+            mgmt_rps,
+            mgmt_rep,
+            commissions: totalCommissions,
+            net_profit,
+            has_override: false,
+            transactions: [],
           });
-
-          let overriddenTotal = 0;
-          for (let m = startMonthNum; m <= endMonthNum; m++) {
-            const ym = `${selectedYear}-${String(m).padStart(2, '0')}`;
-            const key = `${profile.atm_id}:${ym}`;
-            if (overrideMap.has(key)) {
-              overriddenTotal += overrideMap.get(key)!;
-              has_override = true;
-            } else {
-              overriddenTotal += feesByMonth.get(ym) || 0;
-            }
-          }
-
-          if (has_override) {
-            total_fees = overriddenTotal;
-          }
+          return;
         }
 
-        // Calculate fee percentage and net profit
-        const fee_pct = total_sales > 0 ? (total_fees / total_sales) * 100 : 0;
-        const net_profit = total_fees - bitstop_fees - rent - mgmt_rps - mgmt_rep - commissions;
+        // Bucket transactions by tx.platform (CSV source of truth)
+        const denetTxs = atmTransactions.filter(tx => (tx.platform || '').toLowerCase() === 'denet');
+        const bitstopTxs = atmTransactions.filter(tx => (tx.platform || '').toLowerCase() === 'bitstop');
 
-        // Map the same filtered transactions used for total_sales above into
-        // the shape the drill-down sheet expects. This guarantees that the
-        // sum of `transactions[].sale` equals `total_sales` to the cent.
-        const drillDownTransactions: TransactionRow[] = atmTransactions.map(tx => ({
-          id: tx.id || '',
-          date: tx.date || '',
-          atm_id: tx.atm_id || '',
-          atm_name: tx.atm_name || profile.location_name || profile.atm_id,
-          platform: tx.platform || profile.platform || '',
-          customer_first_name: tx.customer_first_name || '',
-          customer_last_name: tx.customer_last_name || '',
-          ticker: tx.ticker || '',
-          sale: tx.sale || 0,
-          fee: tx.fee || 0,
-          bitstop_fee: tx.bitstop_fee || 0,
-        }));
+        const boundaryYM = deriveConversionBoundary(denetTxs, bitstopTxs);
 
-        resultData.push({
-          active: profile.active,
-          installed_date: profile.installed_date,
-          atm_id: profile.atm_id,
-          atm_name: profile.location_name || profile.atm_id,
-          state: profile.state || '',
-          platform: profile.platform, // Show current platform from profile (Option A)
-          total_sales,
-          total_fees,
-          fee_pct,
-          bitstop_fees,
-          rent,
-          mgmt_rps,
-          mgmt_rep,
-          commissions,
-          net_profit,
-          has_override,
-          transactions: drillDownTransactions,
+        // Split expense months between buckets
+        let denetExpenseMonths = 0;
+        let bitstopExpenseMonths = 0;
+        if (denetTxs.length > 0 && bitstopTxs.length === 0) {
+          denetExpenseMonths = totalExpenseMonths;
+        } else if (denetTxs.length === 0 && bitstopTxs.length > 0) {
+          bitstopExpenseMonths = totalExpenseMonths;
+        } else if (boundaryYM) {
+          const [bY, bM] = boundaryYM.split('-').map(Number);
+          const boundaryFirstOfMonth = new Date(bY, bM - 1, 1);
+          const denetEnd = new Date(bY, bM - 1, 0); // last day of month BEFORE boundary
+          denetExpenseMonths = countMonthsInWindow(profile, reportStartDate, denetEnd);
+          bitstopExpenseMonths = countMonthsInWindow(profile, boundaryFirstOfMonth, reportEndDate);
+        }
+
+        // Split commissions between buckets at boundary
+        let denetCommissions = 0;
+        let bitstopCommissions = 0;
+        if (denetTxs.length > 0 && bitstopTxs.length === 0) {
+          denetCommissions = totalCommissions;
+        } else if (denetTxs.length === 0 && bitstopTxs.length > 0) {
+          bitstopCommissions = totalCommissions;
+        } else if (boundaryYM) {
+          atmCommDetails.forEach(d => {
+            if (d.month_ym < boundaryYM) denetCommissions += d.amount;
+            else bitstopCommissions += d.amount;
+          });
+        }
+
+        const buckets: Array<{
+          bucketPlatform: 'denet' | 'bitstop';
+          txs: any[];
+          expenseMonths: number;
+          commissions: number;
+        }> = [];
+        if ((selectedPlatform === 'both' || selectedPlatform === 'denet') && denetTxs.length > 0) {
+          buckets.push({ bucketPlatform: 'denet', txs: denetTxs, expenseMonths: denetExpenseMonths, commissions: denetCommissions });
+        }
+        if ((selectedPlatform === 'both' || selectedPlatform === 'bitstop') && bitstopTxs.length > 0) {
+          buckets.push({ bucketPlatform: 'bitstop', txs: bitstopTxs, expenseMonths: bitstopExpenseMonths, commissions: bitstopCommissions });
+        }
+
+        buckets.forEach(bucket => {
+          let total_sales = 0;
+          let total_fees = 0;
+          let bitstop_fees = 0;
+          bucket.txs.forEach(tx => {
+            total_sales += tx.sale || 0;
+            total_fees += tx.fee || 0;
+            bitstop_fees += tx.bitstop_fee || 0;
+          });
+
+          // Apply Bitstop fee overrides to the Bitstop bucket only (gated by
+          // tx.platform via bucket identity, not profile.platform)
+          let has_override = false;
+          if (bucket.bucketPlatform === 'bitstop') {
+            const feesByMonth = new Map<string, number>();
+            bucket.txs.forEach(tx => {
+              if (tx.date) {
+                const ym = tx.date.slice(0, 7);
+                feesByMonth.set(ym, (feesByMonth.get(ym) || 0) + (tx.fee || 0));
+              }
+            });
+
+            let overriddenTotal = 0;
+            for (let m = startMonthNum; m <= endMonthNum; m++) {
+              const ym = `${selectedYear}-${String(m).padStart(2, '0')}`;
+              const key = `${profile.atm_id}:${ym}`;
+              if (overrideMap.has(key)) {
+                overriddenTotal += overrideMap.get(key)!;
+                has_override = true;
+              } else {
+                overriddenTotal += feesByMonth.get(ym) || 0;
+              }
+            }
+            if (has_override) {
+              total_fees = overriddenTotal;
+            }
+          }
+
+          const rent = monthlyRent * bucket.expenseMonths;
+          const mgmt_rps = monthlyMgmtRps * bucket.expenseMonths;
+          const mgmt_rep = monthlyMgmtRep * bucket.expenseMonths;
+          const fee_pct = total_sales > 0 ? (total_fees / total_sales) * 100 : 0;
+          const net_profit = total_fees - bitstop_fees - rent - mgmt_rps - mgmt_rep - bucket.commissions;
+
+          const drillDownTransactions: TransactionRow[] = bucket.txs.map(tx => ({
+            id: tx.id || '',
+            date: tx.date || '',
+            atm_id: tx.atm_id || '',
+            atm_name: tx.atm_name || profile.location_name || profile.atm_id,
+            platform: (tx.platform || bucket.bucketPlatform),
+            customer_first_name: tx.customer_first_name || '',
+            customer_last_name: tx.customer_last_name || '',
+            ticker: tx.ticker || '',
+            sale: tx.sale || 0,
+            fee: tx.fee || 0,
+            bitstop_fee: tx.bitstop_fee || 0,
+          }));
+
+          resultData.push({
+            active: profile.active,
+            installed_date: profile.installed_date,
+            atm_id: profile.atm_id,
+            atm_name: profile.location_name || profile.atm_id,
+            state: profile.state || '',
+            platform: bucket.bucketPlatform,
+            total_sales,
+            total_fees,
+            fee_pct,
+            bitstop_fees,
+            rent,
+            mgmt_rps,
+            mgmt_rep,
+            commissions: bucket.commissions,
+            net_profit,
+            has_override,
+            transactions: drillDownTransactions,
+          });
         });
       });
 
@@ -617,6 +678,17 @@ export default function ATMProfitLoss() {
     await fetchATMProfitLoss();
     savingRef.current = false;
   };
+
+  // ATMs that produced more than one row (a Denet and a Bitstop bucket in range).
+  // Used to label the drill-down sheet header so the user can tell which slice
+  // they're viewing for a converted machine.
+  const convertedAtmIds = (() => {
+    const counts = new Map<string, number>();
+    data.forEach(r => counts.set(r.atm_id, (counts.get(r.atm_id) || 0) + 1));
+    const set = new Set<string>();
+    counts.forEach((n, id) => { if (n > 1) set.add(id); });
+    return set;
+  })();
 
   // Sort data based on current sort field and direction
   const sortedData = [...data].sort((a, b) => {
@@ -1244,6 +1316,11 @@ export default function ATMProfitLoss() {
           startDate={reportStartDateStr}
           endDate={reportEndDateStr}
           transactions={drillDownRow?.transactions ?? []}
+          platformLabel={
+            drillDownRow && convertedAtmIds.has(drillDownRow.atm_id)
+              ? (drillDownRow.platform?.toLowerCase() === 'bitstop' ? 'Bitstop' : 'Denet')
+              : null
+          }
         />
 
         {/* Table */}
