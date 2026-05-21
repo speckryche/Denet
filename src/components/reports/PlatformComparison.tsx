@@ -210,10 +210,16 @@ export default function PlatformComparison() {
     total_sales: 0,
     net_profit: 0,
   });
+  // Platform-wide Denet totals — summed straight from the raw tx list, NOT
+  // through profile attribution. Used for the displayed Total Sales and for
+  // the per-transaction projection (SUM((sale - sent) * rate)). Matches the
+  // raw SQL query byte-for-byte.
+  const [denetSalesTotal, setDenetSalesTotal] = useState(0);
+  const [denetSpreadTotal, setDenetSpreadTotal] = useState(0);
 
   useEffect(() => {
     fetchDefaultRate();
-  }, [fromDate, toDate]);
+  }, []);
 
   useEffect(() => {
     if (defaultRateInfo && !defaultRateInfo.isEmpty) {
@@ -221,64 +227,44 @@ export default function PlatformComparison() {
     }
   }, [fromDate, toDate, defaultRateInfo]);
 
-  // ── Fetch default commission rate ────────────────────────
+  // ── Fetch default commission rate from app_settings ──────
+  // The contractual rate is the source of truth. app_settings stores it as
+  // a decimal (e.g. "0.56"); we multiply by 100 to keep the rest of the
+  // component (which expects a percent value) unchanged.
   const fetchDefaultRate = async () => {
-    if (!isValidYMD(fromDate) || !isValidYMD(toDate)) return;
-    const { data: allRecords } = await supabase
-      .from('bitstop_commissions')
-      .select('month, year, commission_percent, total_sales')
-      .gt('total_sales', 0)
-      .gt('commission_percent', 0);
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'bitstop_commission_rate')
+      .single();
 
-    if (!allRecords || allRecords.length === 0) {
+    if (error || !data?.value) {
       setDefaultRateInfo({
         rate: 0,
-        basis: 'No reconciled commission data available',
+        basis: 'Setting bitstop_commission_rate not found',
         isFallback: false,
         isEmpty: true,
       });
       return;
     }
 
-    // Map month names to numbers
-    const MONTH_MAP: Record<string, number> = {
-      Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6,
-      Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12,
-    };
-
-    // Filter to records within the selected date range
-    const fromParts = fromDate.split('-').map(Number);
-    const toParts = toDate.split('-').map(Number);
-    const fromYM = fromParts[0] * 12 + fromParts[1];
-    const toYM = toParts[0] * 12 + toParts[1];
-
-    const inRange = allRecords.filter((r) => {
-      const mNum = MONTH_MAP[r.month] || 0;
-      const ym = r.year * 12 + mNum;
-      return ym >= fromYM && ym <= toYM;
-    });
-
-    if (inRange.length > 0) {
-      const avg =
-        inRange.reduce((sum, r) => sum + r.commission_percent, 0) /
-        inRange.length;
+    const parsed = parseFloat(data.value);
+    if (!isFinite(parsed) || parsed <= 0) {
       setDefaultRateInfo({
-        rate: Math.round(avg * 100) / 100,
-        basis: `avg of ${inRange.length} reconciled month${inRange.length !== 1 ? 's' : ''} in range`,
+        rate: 0,
+        basis: 'Setting bitstop_commission_rate is invalid',
         isFallback: false,
-        isEmpty: false,
+        isEmpty: true,
       });
-    } else {
-      const avg =
-        allRecords.reduce((sum, r) => sum + r.commission_percent, 0) /
-        allRecords.length;
-      setDefaultRateInfo({
-        rate: Math.round(avg * 100) / 100,
-        basis: `all-time fallback — no reconciled data in range`,
-        isFallback: true,
-        isEmpty: false,
-      });
+      return;
     }
+
+    setDefaultRateInfo({
+      rate: parsed * 100,
+      basis: 'contractual rate (from settings)',
+      isFallback: false,
+      isEmpty: false,
+    });
   };
 
   // ── Fetch report data (mirrors ATM P&L logic for Denet only) ──
@@ -352,7 +338,7 @@ export default function PlatformComparison() {
         const { data, error: txError } = await supabase
           .from('transactions')
           .select(
-            'id, atm_id, atm_name, sale, fee, bitstop_fee, platform, date'
+            'id, atm_id, atm_name, sale, fee, bitstop_fee, sent, platform, date'
           )
           .gte('date', startDate)
           .lte('date', endDate)
@@ -360,6 +346,20 @@ export default function PlatformComparison() {
         if (txError) throw txError;
         if (data) allTransactions = allTransactions.concat(data);
       }
+
+      // Platform-wide Denet totals — independent of profile attribution so
+      // these match the underlying SQL query exactly. Projection is now a
+      // deterministic per-tx calculation: SUM((sale - sent) * rate).
+      const allDenetTxs = allTransactions.filter(
+        (tx) => (tx.platform || '').toLowerCase() === 'denet'
+      );
+      const newDenetSales = allDenetTxs.reduce((s, tx) => s + (tx.sale || 0), 0);
+      const newDenetSpread = allDenetTxs.reduce(
+        (s, tx) => s + ((tx.sale || 0) - (tx.sent || 0)),
+        0
+      );
+      setDenetSalesTotal(newDenetSales);
+      setDenetSpreadTotal(newDenetSpread);
 
       // Group transactions by ATM
       const txByATM = new Map<string, any[]>();
@@ -517,7 +517,12 @@ export default function PlatformComparison() {
   };
 
   // ── Projected values ──
-  const projectedCommission = actuals.total_sales * (effectiveRate / 100);
+  // Per-transaction projection: SUM((sale - sent) * rate). denetSpreadTotal
+  // is the sum of (sale - sent) over all Denet txs in the range; multiplying
+  // by the effective rate gives the deterministic commission Bitstop would
+  // have paid on those same transactions. Recomputes on rate-override change
+  // (sensitivity testing) without re-fetching.
+  const projectedCommission = denetSpreadTotal * (effectiveRate / 100);
   const projectedProfit =
     projectedCommission -
     actuals.rent -
@@ -531,13 +536,13 @@ export default function PlatformComparison() {
   const revenueDeltaPct =
     actuals.total_fees !== 0 ? (revenueDelta / Math.abs(actuals.total_fees)) * 100 : 0;
 
-  // Fee % of Sales — revenue as a share of gross sales. Projected side
-  // mathematically equals effectiveRate (sanity check). When total_sales is 0
-  // all three values are null and the row renders as "—".
+  // Fee % of Sales — revenue as a share of gross sales. Denominator is the
+  // platform-wide Denet sales so it reconciles against the displayed Total
+  // Sales row (which also uses denetSalesTotal).
   const feePctActual =
-    actuals.total_sales > 0 ? (actuals.total_fees / actuals.total_sales) * 100 : null;
+    denetSalesTotal > 0 ? (actuals.total_fees / denetSalesTotal) * 100 : null;
   const feePctProjected =
-    actuals.total_sales > 0 ? (projectedCommission / actuals.total_sales) * 100 : null;
+    denetSalesTotal > 0 ? (projectedCommission / denetSalesTotal) * 100 : null;
   const feePctDelta =
     feePctActual !== null && feePctProjected !== null
       ? feePctProjected - feePctActual
@@ -582,11 +587,11 @@ export default function PlatformComparison() {
         feePctDelta !== null ? feePctDelta / 100 : '—',
         '',
       ],
-      ['Bitstop Fees', actuals.bitstop_fees, 'N/A', '', ''],
-      ['Rent', actuals.rent, actuals.rent, 0, ''],
+      ['Bitstop Fees', actuals.bitstop_fees, 0, '', ''],
+      ['Rent', actuals.rent, 0, 0, ''],
       ['Mgmt RPS', actuals.mgmt_rps, actuals.mgmt_rps, 0, ''],
       ['Mgmt Rep', actuals.mgmt_rep, actuals.mgmt_rep, 0, ''],
-      ['Commissions', actuals.commissions, 'N/A', '', ''],
+      ['Commissions', actuals.commissions, 0, '', ''],
       ['Profit / Loss', actuals.net_profit, projectedProfit, profitDelta, profitDeltaPct / 100],
     ];
 
@@ -660,11 +665,11 @@ export default function PlatformComparison() {
   const rows = [
     {
       // Gross customer transaction volume — identical on both sides because
-      // platform choice doesn't change the sale amount. Same figure that
-      // drives Est. Commission (sales × rate) on the Projected column below.
+      // platform choice doesn't change the sale amount. Sourced directly
+      // from the raw Denet tx list (matches SQL SUM(sale)).
       label: 'Total Sales',
-      actual: actuals.total_sales,
-      projected: actuals.total_sales,
+      actual: denetSalesTotal,
+      projected: denetSalesTotal,
       deltaAmt: null,
       deltaPct: null,
     },
@@ -674,7 +679,7 @@ export default function PlatformComparison() {
       projected: projectedCommission,
       deltaAmt: revenueDelta,
       deltaPct: revenueDeltaPct,
-      sublabel: { actual: 'Total Fees', projected: 'Est. Commission' },
+      sublabel: { actual: 'Total Fees', projected: 'Commission' },
     },
     {
       label: 'Fee % of Sales',
@@ -685,16 +690,20 @@ export default function PlatformComparison() {
       format: 'percent' as const,
     },
     {
+      // Genuine zero on the Bitstop side — Bitstop affiliate model
+      // doesn't charge the per-tx Bitstop fee back to the operator.
       label: 'Bitstop Fees',
       actual: actuals.bitstop_fees,
-      projected: null,
+      projected: 0,
       deltaAmt: null,
       deltaPct: null,
     },
     {
+      // Genuine zero on the Bitstop affiliate model — operator (not Denet)
+      // bears rent. $0 is more accurate than '—' here.
       label: 'Rent',
       actual: actuals.rent,
-      projected: actuals.rent,
+      projected: 0,
       deltaAmt: 0,
       deltaPct: null,
     },
@@ -713,9 +722,12 @@ export default function PlatformComparison() {
       deltaPct: null,
     },
     {
+      // Genuine zero on the Bitstop affiliate model — no sales-rep
+      // commission structure on the affiliate side. $0 is more accurate
+      // than '—' here.
       label: 'Commissions',
       actual: actuals.commissions,
-      projected: null,
+      projected: 0,
       deltaAmt: null,
       deltaPct: null,
     },
