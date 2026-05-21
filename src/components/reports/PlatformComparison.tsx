@@ -168,6 +168,10 @@ const formatCurrency = (value: number) =>
 const formatPct = (value: number) =>
   isFinite(value) ? `${value >= 0 ? '+' : ''}${value.toFixed(1)}%` : '—';
 
+// Guard for date-picker state. `<input type="date">` can emit '' or partial
+// values during edit; we must not let those reach Supabase or Date().
+const isValidYMD = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+
 // ──────────────────────────────────────────────────────────────
 // Component
 // ──────────────────────────────────────────────────────────────
@@ -219,6 +223,7 @@ export default function PlatformComparison() {
 
   // ── Fetch default commission rate ────────────────────────
   const fetchDefaultRate = async () => {
+    if (!isValidYMD(fromDate) || !isValidYMD(toDate)) return;
     const { data: allRecords } = await supabase
       .from('bitstop_commissions')
       .select('month, year, commission_percent, total_sales')
@@ -278,6 +283,11 @@ export default function PlatformComparison() {
 
   // ── Fetch report data (mirrors ATM P&L logic for Denet only) ──
   const fetchReport = async () => {
+    if (!isValidYMD(fromDate) || !isValidYMD(toDate)) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -378,7 +388,10 @@ export default function PlatformComparison() {
       // Preserve commissions per-month so we can split at the conversion boundary
       const commissionDetailsByATM = new Map<string, Array<{ month_ym: string; amount: number }>>();
       commissionDetails?.forEach((d) => {
-        const monthYear = (d.commissions as any)?.month_year;
+        // Supabase v2 may return the !inner-joined parent as an object or an
+        // array depending on relationship resolution; handle both shapes.
+        const c = (d.commissions as any);
+        const monthYear = Array.isArray(c) ? c[0]?.month_year : c?.month_year;
         if (!monthYear) return;
         const arr = commissionDetailsByATM.get(d.atm_id) || [];
         arr.push({ month_ym: monthYear.slice(0, 7), amount: d.commission_amount || 0 });

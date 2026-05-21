@@ -2,7 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Download, FileSpreadsheet, ArrowUpDown, ArrowUp, ArrowDown, Pencil, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+const COMMISSIONS_TOOLTIP =
+  "Commission values can be negative for ATMs whose monthly net profit is below zero while the assigned sales rep's overall monthly profit is positive. This is intentional attribution accounting — it shows which ATMs are dragging the rep's earnings down. The negative values balance against positive values from other ATMs and do NOT represent money owed by anyone. The total commission paid to the rep is always ≥ $0.";
 import {
   Table,
   TableBody,
@@ -21,6 +27,23 @@ import {
 import * as XLSX from 'xlsx-js-style';
 import ATMSalesDrillDown from './ATMSalesDrillDown';
 import { TransactionRow } from './TransactionsTable';
+
+const MONTH_LABELS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function formatDateRangeText(fromDate: string, toDate: string): string {
+  const [fy, fm] = fromDate.split('-').map(Number);
+  const [ty, tm] = toDate.split('-').map(Number);
+  if (fy === ty && fm === tm) return `${MONTH_LABELS[fm - 1]} ${fy}`;
+  if (fy === ty) return `${MONTH_LABELS[fm - 1]} thru ${MONTH_LABELS[tm - 1]} ${fy}`;
+  return `${MONTH_LABELS[fm - 1]} ${fy} thru ${MONTH_LABELS[tm - 1]} ${ty}`;
+}
+
+// Guard for date-picker state. `<input type="date">` can emit '' or partial
+// values during edit; we must not let those reach Supabase or Date().
+const isValidYMD = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
 interface ATMPLData {
   active: boolean | null;
@@ -44,21 +67,22 @@ interface ATMPLData {
 }
 
 export default function ATMProfitLoss() {
-  // Get previous complete month as default
+  // Default: previous complete month
   const today = new Date();
   const currentMonth = today.getMonth() + 1; // 1-12
   const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
   const defaultYear = currentMonth === 1 ? today.getFullYear() - 1 : today.getFullYear();
   const defaultMonthStr = String(previousMonth).padStart(2, '0');
+  const defaultLastDay = new Date(defaultYear, previousMonth, 0).getDate();
+  const defaultFromDate = `${defaultYear}-${defaultMonthStr}-01`;
+  const defaultToDate = `${defaultYear}-${defaultMonthStr}-${String(defaultLastDay).padStart(2, '0')}`;
 
   const [data, setData] = useState<ATMPLData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number>(defaultYear);
-  const [selectedStartMonth, setSelectedStartMonth] = useState<string>(defaultMonthStr);
-  const [selectedEndMonth, setSelectedEndMonth] = useState<string>(defaultMonthStr);
+  const [fromDate, setFromDate] = useState<string>(defaultFromDate);
+  const [toDate, setToDate] = useState<string>(defaultToDate);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('both');
-  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [sortField, setSortField] = useState<keyof ATMPLData>('platform');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -67,130 +91,47 @@ export default function ATMProfitLoss() {
   const savingRef = useRef(false);
   const [drillDownRow, setDrillDownRow] = useState<ATMPLData | null>(null);
 
-  const isSingleMonth = selectedStartMonth === selectedEndMonth;
+  // Single-month when fromDate and toDate are within the same year-month
+  const isSingleMonth = fromDate.slice(0, 7) === toDate.slice(0, 7);
 
-  // Derive the report's date-range strings (YYYY-MM-DD). Same logic as fetchATMProfitLoss.
-  const reportStartDateStr = `${selectedYear}-${selectedStartMonth}-01`;
-  const reportEndLastDay = new Date(selectedYear, parseInt(selectedEndMonth), 0).getDate();
-  const reportEndDateStr = `${selectedYear}-${selectedEndMonth}-${String(reportEndLastDay).padStart(2, '0')}`;
-
-  const months = [
-    { value: '01', label: 'January' },
-    { value: '02', label: 'February' },
-    { value: '03', label: 'March' },
-    { value: '04', label: 'April' },
-    { value: '05', label: 'May' },
-    { value: '06', label: 'June' },
-    { value: '07', label: 'July' },
-    { value: '08', label: 'August' },
-    { value: '09', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
-  ];
-
-  // Helper function to check if a month is complete (can be used for P&L)
-  const isMonthComplete = (year: number, month: string): boolean => {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1; // 1-12
-
-    // If year is in the future, month is not complete
-    if (year > currentYear) return false;
-
-    // If year is in the past, all months are complete
-    if (year < currentYear) return true;
-
-    // For current year, only months before current month are complete
-    const monthNum = parseInt(month);
-    return monthNum < currentMonth;
-  };
+  // Derive the report's date-range strings (YYYY-MM-DD) for the drill-down.
+  const reportStartDateStr = fromDate;
+  const reportEndDateStr = toDate;
 
   useEffect(() => {
-    fetchAvailableYears();
-  }, []);
-
-  useEffect(() => {
-    if (availableYears.length > 0) {
-      fetchATMProfitLoss();
-    }
-  }, [selectedYear, selectedStartMonth, selectedEndMonth, selectedPlatform, availableYears]);
-
-  const fetchAvailableYears = async () => {
-    try {
-      // Get total count
-      const { count } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch in batches to get ALL transaction dates
-      const batchSize = 1000;
-      const batches = Math.ceil((count || 0) / batchSize);
-      let allTransactions: any[] = [];
-
-      for (let i = 0; i < batches; i++) {
-        const from = i * batchSize;
-        const to = from + batchSize - 1;
-
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('date')
-          .range(from, to);
-
-        if (error) throw error;
-        if (data) {
-          allTransactions = allTransactions.concat(data);
-        }
-      }
-
-      const years = new Set<number>();
-      allTransactions.forEach(tx => {
-        if (tx.date) {
-          const year = new Date(tx.date).getFullYear();
-          if (!isNaN(year)) {
-            years.add(year);
-          }
-        }
-      });
-
-      const sortedYears = Array.from(years).sort((a, b) => b - a);
-      setAvailableYears(sortedYears);
-
-      if (sortedYears.length > 0 && !sortedYears.includes(selectedYear)) {
-        setSelectedYear(sortedYears[0]);
-      }
-    } catch (error) {
-      console.error('Error fetching years:', error);
-    }
-  };
+    fetchATMProfitLoss();
+  }, [fromDate, toDate, selectedPlatform]);
 
   const fetchATMProfitLoss = async () => {
+    // Bail before any fetch / Date() construction when picker state is invalid
+    // (empty string, partial keystroke, malformed). Re-fires when state settles.
+    if (!isValidYMD(fromDate) || !isValidYMD(toDate)) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Build date range
-      const startDate = `${selectedYear}-${selectedStartMonth}-01`;
-      const endMonth = parseInt(selectedEndMonth);
-      const lastDay = new Date(selectedYear, endMonth, 0).getDate();
-      const endDateBase = `${selectedYear}-${selectedEndMonth}-${lastDay}`;
-      const endDate = `${endDateBase}T23:59:59`;
+      // Build date range from picker
+      const startDate = fromDate;
+      const endDate = `${toDate}T23:59:59`;
 
-      // Calculate number of months in the date range
-      const startMonthNum = parseInt(selectedStartMonth);
-      const endMonthNum = parseInt(selectedEndMonth);
-      const numMonths = endMonthNum - startMonthNum + 1;
+      // Parse year/month for cross-year month iteration
+      const [startYear, startMonthNum] = fromDate.split('-').map(Number);
+      const [endYear, endMonthNum] = toDate.split('-').map(Number);
 
-      console.log(`P&L Report: Date range ${selectedYear}-${selectedStartMonth} to ${selectedYear}-${selectedEndMonth} = ${numMonths} months`);
+      console.log(`P&L Report: Date range ${fromDate} to ${toDate}`);
 
       // Fetch ALL ATM profiles (including historical ones with date ranges)
       const { data: atmProfiles, error: atmError } = await supabase
         .from('atm_profiles')
-        .select('atm_id, location_name, state, platform, platform_switch_date, monthly_rent, cash_management_rps, cash_management_rep, sales_rep_id, installed_date, removed_date, active');
+        .select('id, atm_id, location_name, state, platform, platform_switch_date, monthly_rent, cash_management_rps, cash_management_rep, sales_rep_id, installed_date, removed_date, active');
 
       if (atmError) throw atmError;
 
       // Filter to ATM profiles relevant to the selected date range
-      const rangeStart = new Date(parseInt(selectedYear.toString()), parseInt(selectedStartMonth) - 1, 1);
-      const rangeEnd = new Date(parseInt(selectedYear.toString()), parseInt(selectedEndMonth), 0); // last day of end month
+      const rangeStart = new Date(startYear, startMonthNum - 1, 1);
+      const rangeEnd = new Date(endYear, endMonthNum, 0); // last day of end month
       const relevantProfiles = atmProfiles?.filter(p => {
         if (!p.atm_id) return false;
         // Active ATMs installed before/during the range
@@ -260,10 +201,9 @@ export default function ATMProfitLoss() {
         }
       }
 
-      // Report date range for calculations
-      // Parse dates in local timezone to avoid timezone offset issues
-      const [reportStartYear, reportStartMonthNum, reportStartDay] = startDate.split('-').map(Number);
-      const [reportEndYear, reportEndMonthNum, reportEndDay] = endDateBase.split('-').map(Number);
+      // Report date range for calculations (parsed in local TZ to avoid offset issues)
+      const [reportStartYear, reportStartMonthNum, reportStartDay] = fromDate.split('-').map(Number);
+      const [reportEndYear, reportEndMonthNum, reportEndDay] = toDate.split('-').map(Number);
       const reportStartDate = new Date(reportStartYear, reportStartMonthNum - 1, reportStartDay);
       const reportEndDate = new Date(reportEndYear, reportEndMonthNum - 1, reportEndDay);
 
@@ -362,16 +302,20 @@ export default function ATMProfitLoss() {
 
         const monthCount = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
 
-        console.log(`[${profile.atm_id}] Install: ${profile.installed_date}, Report: ${reportStartDate.toISOString().split('T')[0]} to ${reportEndDate.toISOString().split('T')[0]}, MonthAfterInstall: ${monthAfterInstall.toISOString().split('T')[0]}, EffectiveStart: ${effectiveStart.toISOString().split('T')[0]}, EffectiveEnd: ${effectiveEnd.toISOString().split('T')[0]}, MonthCount: ${monthCount}`);
-
         return Math.max(0, monthCount);
       };
 
-      // Fetch commission details for the date range
+      // Fetch commission details for the date range (cross-year safe)
       const monthYears: string[] = [];
-      for (let m = startMonthNum; m <= endMonthNum; m++) {
-        const monthYear = `${selectedYear}-${String(m).padStart(2, '0')}-01`;
-        monthYears.push(monthYear);
+      const overrideMonths: string[] = [];
+      for (let y = startYear; y <= endYear; y++) {
+        const mStart = y === startYear ? startMonthNum : 1;
+        const mEnd = y === endYear ? endMonthNum : 12;
+        for (let m = mStart; m <= mEnd; m++) {
+          const ymPadded = String(m).padStart(2, '0');
+          monthYears.push(`${y}-${ymPadded}-01`);
+          overrideMonths.push(`${y}-${ymPadded}`);
+        }
       }
 
       const { data: commissionDetails, error: commError } = await supabase
@@ -382,10 +326,6 @@ export default function ATMProfitLoss() {
       if (commError) console.error('Error fetching commissions:', commError);
 
       // Fetch bitstop fee overrides for the selected period
-      const overrideMonths: string[] = [];
-      for (let m = startMonthNum; m <= endMonthNum; m++) {
-        overrideMonths.push(`${selectedYear}-${String(m).padStart(2, '0')}`);
-      }
 
       const { data: feeOverrides, error: overrideError } = await supabase
         .from('bitstop_fee_overrides')
@@ -404,55 +344,85 @@ export default function ATMProfitLoss() {
       // split commissions across the conversion boundary for converted ATMs).
       const commissionDetailsByATM = new Map<string, Array<{ month_ym: string; amount: number }>>();
       commissionDetails?.forEach(detail => {
-        const monthYear = (detail.commissions as any)?.month_year;
+        // Supabase v2 may return the !inner-joined parent as an object or an
+        // array depending on relationship resolution; handle both shapes.
+        const c = (detail.commissions as any);
+        const monthYear = Array.isArray(c) ? c[0]?.month_year : c?.month_year;
         if (!monthYear) return;
         const arr = commissionDetailsByATM.get(detail.atm_id) || [];
         arr.push({ month_ym: monthYear.slice(0, 7), amount: detail.commission_amount || 0 });
         commissionDetailsByATM.set(detail.atm_id, arr);
       });
 
-      // Group transactions by ATM ID for easy lookup
-      const transactionsByATM = new Map<string, any[]>();
+      // Per-transaction profile attribution. An ATM may have multiple atm_profiles
+      // rows (e.g., from being moved between locations); each transaction must be
+      // attributed to exactly ONE profile so that aggregation doesn't double-count
+      // when several profiles for the same atm_id pass the relevantProfiles filter.
+      const findProfileForTx = (atmId: string, txDate: Date) => {
+        const candidates = relevantProfiles.filter(p => p.atm_id === atmId);
+        if (candidates.length === 0) return null;
+        if (candidates.length === 1) return candidates[0];
+
+        const matching = candidates.filter(p => {
+          let afterInstall = true;
+          if (p.installed_date) {
+            const [iY, iM, iD] = p.installed_date.split('-').map(Number);
+            afterInstall = txDate >= new Date(iY, iM - 1, iD);
+          }
+          let beforeRemoval = true;
+          if (p.removed_date) {
+            const [rY, rM, rD] = p.removed_date.split('-').map(Number);
+            beforeRemoval = txDate <= new Date(rY, rM - 1, rD);
+          }
+          return afterInstall && beforeRemoval;
+        });
+
+        if (matching.length === 1) return matching[0];
+        if (matching.length > 1) {
+          // Overlapping windows — prefer latest installed_date
+          return matching.reduce((best, p) =>
+            (p.installed_date || '') > (best.installed_date || '') ? p : best
+          );
+        }
+
+        // No window match — defensive fallback: prefer the profile whose window
+        // is closest to txDate (latest removed before tx, else earliest installed after tx)
+        const txYMD = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}-${String(txDate.getDate()).padStart(2, '0')}`;
+        const removedBefore = candidates.filter(p => p.removed_date && p.removed_date < txYMD);
+        if (removedBefore.length) {
+          return removedBefore.reduce((best, p) =>
+            (p.removed_date || '') > (best.removed_date || '') ? p : best
+          );
+        }
+        const installedAfter = candidates.filter(p => p.installed_date && p.installed_date > txYMD);
+        if (installedAfter.length) {
+          return installedAfter.reduce((best, p) =>
+            (p.installed_date || '') < (best.installed_date || '') ? p : best
+          );
+        }
+        return candidates[0];
+      };
+
+      const txsByProfile = new Map<string, any[]>();
       allTransactions.forEach(tx => {
-        if (!tx.atm_id) return;
-        const existing = transactionsByATM.get(tx.atm_id) || [];
-        existing.push(tx);
-        transactionsByATM.set(tx.atm_id, existing);
+        if (!tx.atm_id || !tx.date) return;
+        const [tY, tM, tD] = tx.date.split('-').map(Number);
+        const txDate = new Date(tY, tM - 1, tD);
+        const profile = findProfileForTx(tx.atm_id, txDate);
+        if (!profile) return;
+        const arr = txsByProfile.get(profile.id) || [];
+        arr.push(tx);
+        txsByProfile.set(profile.id, arr);
       });
 
       // **PROFILE-DRIVEN APPROACH**: Start with all ATM profiles
       const resultData: ATMPLData[] = [];
 
       relevantProfiles?.forEach(profile => {
-        // Get transactions for this ATM, filtered to this profile's active period
-        const allAtmTransactions = transactionsByATM.get(profile.atm_id) || [];
-
-        // Check if multiple profiles share this atm_id
-        const siblingProfiles = relevantProfiles.filter(p => p.atm_id === profile.atm_id);
-        const hasSiblings = siblingProfiles.length > 1;
-
-        const atmTransactions = allAtmTransactions.filter(tx => {
-          if (!tx.date) return false;
-          const [tYear, tMonth, tDay] = tx.date.split('-').map(Number);
-          const txDate = new Date(tYear, tMonth - 1, tDay);
-
-          if (profile.installed_date) {
-            const [iY, iM, iD] = profile.installed_date.split('-').map(Number);
-            if (txDate < new Date(iY, iM - 1, iD)) return false;
-          }
-          if (profile.removed_date) {
-            const [rY, rM, rD] = profile.removed_date.split('-').map(Number);
-            if (txDate > new Date(rY, rM - 1, rD)) return false;
-          }
-
-          // If this inactive profile shares an atm_id with another profile and has no removed_date,
-          // don't assign transactions that fall within a sibling's active period
-          if (hasSiblings && profile.active === false && !profile.removed_date) {
-            return false;
-          }
-
-          return true;
-        });
+        // Transactions for this specific profile (per-tx attribution above).
+        // No more install/removed/sibling filter — that's already enforced by
+        // findProfileForTx so the same tx can't appear in two profiles' buckets.
+        const atmTransactions = txsByProfile.get(profile.id) || [];
 
         const totalExpenseMonths = calculateExpenseMonths(profile, reportStartDate, reportEndDate);
 
@@ -468,9 +438,12 @@ export default function ATMProfitLoss() {
         const totalCommissions = atmCommDetails.reduce((s, d) => s + d.amount, 0);
 
         // Zero-tx fallback: keep the row (so rent losses stay visible) and use
-        // atm_profiles.platform as a label-of-last-resort. This is the only
-        // path that reads profile.platform; otherwise we attribute by tx.platform.
+        // atm_profiles.platform as a label-of-last-resort. Skip when all three
+        // expense rates are zero — an unpopulated profile shouldn't add a noise
+        // row of all-zeros next to the real-tx row for the same ATM.
         if (atmTransactions.length === 0) {
+          if (monthlyRent === 0 && monthlyMgmtRps === 0 && monthlyMgmtRep === 0) return;
+
           const fallbackPlatform = (profile.platform || '').toLowerCase() || 'denet';
           if (selectedPlatform !== 'both' && fallbackPlatform !== selectedPlatform) return;
 
@@ -572,14 +545,18 @@ export default function ATMProfitLoss() {
             });
 
             let overriddenTotal = 0;
-            for (let m = startMonthNum; m <= endMonthNum; m++) {
-              const ym = `${selectedYear}-${String(m).padStart(2, '0')}`;
-              const key = `${profile.atm_id}:${ym}`;
-              if (overrideMap.has(key)) {
-                overriddenTotal += overrideMap.get(key)!;
-                has_override = true;
-              } else {
-                overriddenTotal += feesByMonth.get(ym) || 0;
+            for (let y = startYear; y <= endYear; y++) {
+              const mStart = y === startYear ? startMonthNum : 1;
+              const mEnd = y === endYear ? endMonthNum : 12;
+              for (let m = mStart; m <= mEnd; m++) {
+                const ym = `${y}-${String(m).padStart(2, '0')}`;
+                const key = `${profile.atm_id}:${ym}`;
+                if (overrideMap.has(key)) {
+                  overriddenTotal += overrideMap.get(key)!;
+                  has_override = true;
+                } else {
+                  overriddenTotal += feesByMonth.get(ym) || 0;
+                }
               }
             }
             if (has_override) {
@@ -653,7 +630,8 @@ export default function ATMProfitLoss() {
     savingRef.current = true;
     setEditingCell(null);
 
-    const yearMonth = `${selectedYear}-${selectedStartMonth}`;
+    // Editing requires single-month mode — pull YYYY-MM from fromDate
+    const yearMonth = fromDate.slice(0, 7);
     const numValue = parseFloat(value);
 
     if (isNaN(numValue) || value.trim() === '') {
@@ -798,9 +776,7 @@ export default function ATMProfitLoss() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    const dateRange = selectedStartMonth === selectedEndMonth
-      ? `${months.find(m => m.value === selectedStartMonth)?.label}-${selectedYear}`
-      : `${months.find(m => m.value === selectedStartMonth)?.label}-${months.find(m => m.value === selectedEndMonth)?.label}-${selectedYear}`;
+    const dateRange = formatDateRangeText(fromDate, toDate).replace(/ /g, '-');
     link.download = `atm-profit-loss-${dateRange}.csv`;
     link.click();
   };
@@ -810,9 +786,7 @@ export default function ATMProfitLoss() {
     const excelData = [];
 
     // Add title row with platform filter
-    const dateRange = selectedStartMonth === selectedEndMonth
-      ? `${months.find(m => m.value === selectedStartMonth)?.label} ${selectedYear}`
-      : `${months.find(m => m.value === selectedStartMonth)?.label} thru ${months.find(m => m.value === selectedEndMonth)?.label} ${selectedYear}`;
+    const dateRange = formatDateRangeText(fromDate, toDate);
 
     const platformText = selectedPlatform === 'both'
       ? 'Both platforms'
@@ -1038,6 +1012,13 @@ export default function ATMProfitLoss() {
       }
     });
 
+    // Attach an Excel comment to the Commissions header (column N) so the
+    // explanation rides along with the export.
+    const commissionsHeaderCell = `N${headerRow}`;
+    if (ws[commissionsHeaderCell]) {
+      (ws[commissionsHeaderCell] as any).c = [{ a: 'Denet', t: COMMISSIONS_TOOLTIP }];
+    }
+
     // Style data rows and totals row
     const dataStartRow = 14; // First data row after headers (header is row 13)
     const totalRow = dataStartRow + sortedExcelData.length; // Total row is right after last data row
@@ -1194,52 +1175,25 @@ export default function ATMProfitLoss() {
         )}
 
         {/* Filters */}
-        <div className="flex gap-4">
-          <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableYears.map(year => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedStartMonth} onValueChange={setSelectedStartMonth}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Start Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map(month => (
-                <SelectItem key={month.value} value={month.value}>
-                  {month.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedEndMonth} onValueChange={setSelectedEndMonth}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="End Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map(month => {
-                const isComplete = isMonthComplete(selectedYear, month.value);
-                return (
-                  <SelectItem
-                    key={month.value}
-                    value={month.value}
-                    disabled={!isComplete}
-                  >
-                    {month.label} {!isComplete && '(Incomplete)'}
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">From</Label>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-[160px] h-9"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">To</Label>
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-[160px] h-9"
+            />
+          </div>
 
           <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
             <SelectTrigger className="w-[180px]">
@@ -1498,17 +1452,35 @@ export default function ATMProfitLoss() {
                   </button>
                 </TableHead>
                 <TableHead className="text-right font-bold">
-                  <button
-                    onClick={() => handleSort('commissions')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
-                  >
-                    Commissions
-                    {sortField === 'commissions' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-                    ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
-                    )}
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => handleSort('commissions')}
+                      className="flex items-center gap-1 hover:text-foreground/80"
+                    >
+                      Commissions
+                      {sortField === 'commissions' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      )}
+                    </button>
+                    <TooltipProvider delayDuration={150}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="About negative commission values"
+                            className="flex items-center text-muted-foreground hover:text-foreground/80"
+                          >
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-sm text-left whitespace-normal leading-snug">
+                          {COMMISSIONS_TOOLTIP}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </TableHead>
                 <TableHead className="text-right font-bold">
                   <button

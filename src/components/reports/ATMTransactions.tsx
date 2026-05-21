@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import {
   Select,
@@ -18,95 +20,52 @@ import TransactionsTable, {
   formatTransactionDate,
 } from './TransactionsTable';
 
+const MONTH_LABELS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function formatDateRangeText(fromDate: string, toDate: string): string {
+  const [fy, fm] = fromDate.split('-').map(Number);
+  const [ty, tm] = toDate.split('-').map(Number);
+  if (fy === ty && fm === tm) return `${MONTH_LABELS[fm - 1]} ${fy}`;
+  if (fy === ty) return `${MONTH_LABELS[fm - 1]} thru ${MONTH_LABELS[tm - 1]} ${fy}`;
+  return `${MONTH_LABELS[fm - 1]} ${fy} thru ${MONTH_LABELS[tm - 1]} ${ty}`;
+}
+
+// Guard for date-picker state. `<input type="date">` can emit '' or partial
+// values during edit; we must not let those reach Supabase or Date().
+const isValidYMD = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+
 export default function ATMTransactions() {
+  // Default: previous complete month (Apr 2026 if today is May 2026)
   const today = new Date();
   const currentMonth = today.getMonth() + 1;
   const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
   const defaultYear = currentMonth === 1 ? today.getFullYear() - 1 : today.getFullYear();
   const defaultMonthStr = String(previousMonth).padStart(2, '0');
+  const defaultLastDay = new Date(defaultYear, previousMonth, 0).getDate();
+  const defaultFromDate = `${defaultYear}-${defaultMonthStr}-01`;
+  const defaultToDate = `${defaultYear}-${defaultMonthStr}-${String(defaultLastDay).padStart(2, '0')}`;
 
   const [data, setData] = useState<TransactionRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState<number>(defaultYear);
-  const [selectedStartMonth, setSelectedStartMonth] = useState<string>(defaultMonthStr);
-  const [selectedEndMonth, setSelectedEndMonth] = useState<string>(defaultMonthStr);
+  const [fromDate, setFromDate] = useState<string>(defaultFromDate);
+  const [toDate, setToDate] = useState<string>(defaultToDate);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('both');
   const [selectedATM, setSelectedATM] = useState<string>('all');
-  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [atmList, setAtmList] = useState<{ atm_id: string; location_name: string }[]>([]);
   const [sortField, setSortField] = useState<TransactionsSortField>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [feeOverrides, setFeeOverrides] = useState<Map<string, number>>(new Map());
 
-  const months = [
-    { value: '01', label: 'January' },
-    { value: '02', label: 'February' },
-    { value: '03', label: 'March' },
-    { value: '04', label: 'April' },
-    { value: '05', label: 'May' },
-    { value: '06', label: 'June' },
-    { value: '07', label: 'July' },
-    { value: '08', label: 'August' },
-    { value: '09', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
-  ];
-
   useEffect(() => {
-    fetchAvailableYears();
     fetchATMList();
   }, []);
 
   useEffect(() => {
-    if (availableYears.length > 0) {
-      fetchTransactions();
-    }
-  }, [selectedYear, selectedStartMonth, selectedEndMonth, selectedPlatform, selectedATM, availableYears]);
-
-  const fetchAvailableYears = async () => {
-    try {
-      const { count } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact', head: true });
-
-      const batchSize = 1000;
-      const batches = Math.ceil((count || 0) / batchSize);
-      let allTransactions: any[] = [];
-
-      for (let i = 0; i < batches; i++) {
-        const from = i * batchSize;
-        const to = from + batchSize - 1;
-
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('date')
-          .range(from, to);
-
-        if (error) throw error;
-        if (data) {
-          allTransactions = allTransactions.concat(data);
-        }
-      }
-
-      const years = new Set<number>();
-      allTransactions.forEach(tx => {
-        if (tx.date) {
-          const year = new Date(tx.date).getFullYear();
-          if (!isNaN(year)) years.add(year);
-        }
-      });
-
-      const sortedYears = Array.from(years).sort((a, b) => b - a);
-      setAvailableYears(sortedYears);
-
-      if (sortedYears.length > 0 && !sortedYears.includes(selectedYear)) {
-        setSelectedYear(sortedYears[0]);
-      }
-    } catch (error) {
-      console.error('Error fetching years:', error);
-    }
-  };
+    fetchTransactions();
+  }, [fromDate, toDate, selectedPlatform, selectedATM]);
 
   const fetchATMList = async () => {
     try {
@@ -125,12 +84,15 @@ export default function ATMTransactions() {
   };
 
   const fetchTransactions = async () => {
+    if (!isValidYMD(fromDate) || !isValidYMD(toDate)) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const startDate = `${selectedYear}-${selectedStartMonth}-01`;
-      const endMonth = parseInt(selectedEndMonth);
-      const lastDay = new Date(selectedYear, endMonth, 0).getDate();
-      const endDate = `${selectedYear}-${selectedEndMonth}-${lastDay}T23:59:59`;
+      const startDate = fromDate;
+      const endDate = `${toDate}T23:59:59`;
 
       // Get count with filters
       let countQuery = supabase
@@ -178,12 +140,16 @@ export default function ATMTransactions() {
         }
       }
 
-      // Fetch bitstop fee overrides for the selected period
-      const startMonthNum = parseInt(selectedStartMonth);
-      const endMonthNum = parseInt(selectedEndMonth);
+      // Fetch bitstop fee overrides for the selected period (cross-year safe)
+      const [startYear, startMonthNum] = fromDate.split('-').map(Number);
+      const [endYear, endMonthNum] = toDate.split('-').map(Number);
       const overrideMonths: string[] = [];
-      for (let m = startMonthNum; m <= endMonthNum; m++) {
-        overrideMonths.push(`${selectedYear}-${String(m).padStart(2, '0')}`);
+      for (let y = startYear; y <= endYear; y++) {
+        const mStart = y === startYear ? startMonthNum : 1;
+        const mEnd = y === endYear ? endMonthNum : 12;
+        for (let m = mStart; m <= mEnd; m++) {
+          overrideMonths.push(`${y}-${String(m).padStart(2, '0')}`);
+        }
       }
 
       const { data: overrideData } = await supabase
@@ -237,9 +203,7 @@ export default function ATMTransactions() {
     bitstop_fee: acc.bitstop_fee + row.bitstop_fee,
   }), { sale: 0, fee: 0, bitstop_fee: 0 });
 
-  const dateRangeText = selectedStartMonth === selectedEndMonth
-    ? `${months.find(m => m.value === selectedStartMonth)?.label} ${selectedYear}`
-    : `${months.find(m => m.value === selectedStartMonth)?.label} thru ${months.find(m => m.value === selectedEndMonth)?.label} ${selectedYear}`;
+  const dateRangeText = formatDateRangeText(fromDate, toDate);
 
   const handleExportCSV = () => {
     const headers = ['Date', 'ATM ID', 'ATM Name', 'Platform', 'Customer', 'Ticker', 'Sale', 'Fee', 'Bitstop Fee'];
@@ -438,45 +402,25 @@ export default function ATMTransactions() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filters */}
-        <div className="flex gap-4 flex-wrap">
-          <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableYears.map(year => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedStartMonth} onValueChange={setSelectedStartMonth}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Start Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map(month => (
-                <SelectItem key={month.value} value={month.value}>
-                  {month.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedEndMonth} onValueChange={setSelectedEndMonth}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="End Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map(month => (
-                <SelectItem key={month.value} value={month.value}>
-                  {month.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">From</Label>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-[160px] h-9"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">To</Label>
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-[160px] h-9"
+            />
+          </div>
 
           <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
             <SelectTrigger className="w-[180px]">
@@ -513,9 +457,10 @@ export default function ATMTransactions() {
           emptyMessage="No transactions found for selected filters"
           feeOverrides={feeOverrides}
           overrideMonthRange={{
-            year: selectedYear,
-            startMonth: selectedStartMonth,
-            endMonth: selectedEndMonth,
+            startYear: parseInt(fromDate.slice(0, 4)),
+            startMonth: fromDate.slice(5, 7),
+            endYear: parseInt(toDate.slice(0, 4)),
+            endMonth: toDate.slice(5, 7),
           }}
         />
       </CardContent>

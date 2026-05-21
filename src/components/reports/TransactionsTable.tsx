@@ -25,8 +25,9 @@ export interface TransactionRow {
 export type TransactionsSortField = keyof TransactionRow;
 
 interface OverrideMonthRange {
-  year: number;
+  startYear: number;
   startMonth: string;
+  endYear: number;
   endMonth: string;
 }
 
@@ -102,18 +103,23 @@ function computeAdjustedFeeTotal(
 
   const startMonthNum = parseInt(overrideMonthRange.startMonth);
   const endMonthNum = parseInt(overrideMonthRange.endMonth);
+  const { startYear, endYear } = overrideMonthRange;
   let bitstopFees = 0;
   let hasOverrides = false;
 
   feesByAtmMonth.forEach((monthFees, atmId) => {
-    for (let m = startMonthNum; m <= endMonthNum; m++) {
-      const ym = `${overrideMonthRange.year}-${String(m).padStart(2, '0')}`;
-      const key = `${atmId}:${ym}`;
-      if (feeOverrides.has(key)) {
-        bitstopFees += feeOverrides.get(key)!;
-        hasOverrides = true;
-      } else {
-        bitstopFees += monthFees.get(ym) || 0;
+    for (let y = startYear; y <= endYear; y++) {
+      const mStart = y === startYear ? startMonthNum : 1;
+      const mEnd = y === endYear ? endMonthNum : 12;
+      for (let m = mStart; m <= mEnd; m++) {
+        const ym = `${y}-${String(m).padStart(2, '0')}`;
+        const key = `${atmId}:${ym}`;
+        if (feeOverrides.has(key)) {
+          bitstopFees += feeOverrides.get(key)!;
+          hasOverrides = true;
+        } else {
+          bitstopFees += monthFees.get(ym) || 0;
+        }
       }
     }
   });
