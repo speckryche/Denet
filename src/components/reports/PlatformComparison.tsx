@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FileSpreadsheet, RotateCcw, Loader2, Info } from 'lucide-react';
+import { FileSpreadsheet, FileText, RotateCcw, Loader2, Info } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
 
@@ -216,6 +216,7 @@ export default function PlatformComparison() {
   // raw SQL query byte-for-byte.
   const [denetSalesTotal, setDenetSalesTotal] = useState(0);
   const [denetSpreadTotal, setDenetSpreadTotal] = useState(0);
+  const [denetTxCount, setDenetTxCount] = useState(0);
 
   useEffect(() => {
     fetchDefaultRate();
@@ -360,6 +361,7 @@ export default function PlatformComparison() {
       );
       setDenetSalesTotal(newDenetSales);
       setDenetSpreadTotal(newDenetSpread);
+      setDenetTxCount(allDenetTxs.length);
 
       // Group transactions by ATM
       const txByATM = new Map<string, any[]>();
@@ -558,6 +560,45 @@ export default function PlatformComparison() {
     });
   };
 
+  // ── PDF export (lazy-loads the heavy @react-pdf/renderer bundle only on click) ──
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const handleExportPDF = async () => {
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const { exportPlatformComparisonPDF } = await import('./PlatformComparisonPDF');
+      await exportPlatformComparisonPDF({
+        fromDate,
+        toDate,
+        effectiveRate,
+        machineCount,
+        denetTxCount,
+        denetSalesTotal,
+        actuals: {
+          total_fees: actuals.total_fees,
+          bitstop_fees: actuals.bitstop_fees,
+          rent: actuals.rent,
+          mgmt_rps: actuals.mgmt_rps,
+          mgmt_rep: actuals.mgmt_rep,
+          commissions: actuals.commissions,
+          net_profit: actuals.net_profit,
+        },
+        projectedCommission,
+        projectedProfit,
+        revenueDelta,
+        profitDelta,
+        feePctActual,
+        feePctProjected,
+        feePctDelta,
+      });
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate PDF.');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   // ── Export ──
   const handleExport = () => {
     const border = {
@@ -578,7 +619,7 @@ export default function PlatformComparison() {
       ['Denet Machines', machineCount],
       [],
       ['', 'Actuals (Denet)', 'Projected (Bitstop)', 'Delta $', 'Delta %'],
-      ['Total Sales', actuals.total_sales, actuals.total_sales, 0, ''],
+      ['Total Sales', denetSalesTotal, denetSalesTotal, 0, ''],
       ['Revenue', actuals.total_fees, projectedCommission, revenueDelta, revenueDeltaPct / 100],
       [
         'Fee % of Sales',
@@ -587,11 +628,11 @@ export default function PlatformComparison() {
         feePctDelta !== null ? feePctDelta / 100 : '—',
         '',
       ],
-      ['Bitstop Fees', actuals.bitstop_fees, 0, '', ''],
+      ['Bitstop Fees', actuals.bitstop_fees, 0, 0, ''],
       ['Rent', actuals.rent, 0, 0, ''],
       ['Mgmt RPS', actuals.mgmt_rps, actuals.mgmt_rps, 0, ''],
       ['Mgmt Rep', actuals.mgmt_rep, actuals.mgmt_rep, 0, ''],
-      ['Commissions', actuals.commissions, 0, '', ''],
+      ['Commissions', actuals.commissions, 0, 0, ''],
       ['Profit / Loss', actuals.net_profit, projectedProfit, profitDelta, profitDeltaPct / 100],
     ];
 
@@ -666,11 +707,12 @@ export default function PlatformComparison() {
     {
       // Gross customer transaction volume — identical on both sides because
       // platform choice doesn't change the sale amount. Sourced directly
-      // from the raw Denet tx list (matches SQL SUM(sale)).
+      // from the raw Denet tx list (matches SQL SUM(sale)). Delta is
+      // trivially zero (both columns share the same value).
       label: 'Total Sales',
       actual: denetSalesTotal,
       projected: denetSalesTotal,
-      deltaAmt: null,
+      deltaAmt: 0,
       deltaPct: null,
     },
     {
@@ -695,7 +737,7 @@ export default function PlatformComparison() {
       label: 'Bitstop Fees',
       actual: actuals.bitstop_fees,
       projected: 0,
-      deltaAmt: null,
+      deltaAmt: 0,
       deltaPct: null,
     },
     {
@@ -728,7 +770,7 @@ export default function PlatformComparison() {
       label: 'Commissions',
       actual: actuals.commissions,
       projected: 0,
-      deltaAmt: null,
+      deltaAmt: 0,
       deltaPct: null,
     },
   ];
@@ -802,16 +844,26 @@ export default function PlatformComparison() {
               )}
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={isLoading || !canRun || machineCount === 0}
-            className="ml-auto"
-          >
-            <FileSpreadsheet className="w-4 h-4 mr-1.5" />
-            Export to Excel
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={isLoading || !canRun || machineCount === 0 || isExportingPdf}
+            >
+              <FileText className="w-4 h-4 mr-1.5" />
+              {isExportingPdf ? 'Generating…' : 'Download PDF'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={isLoading || !canRun || machineCount === 0}
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+              Export to Excel
+            </Button>
+          </div>
         </div>
 
         {/* Rate basis label */}
