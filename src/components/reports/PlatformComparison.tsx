@@ -348,11 +348,23 @@ export default function PlatformComparison() {
         if (data) allTransactions = allTransactions.concat(data);
       }
 
-      // Platform-wide Denet totals — independent of profile attribution so
-      // these match the underlying SQL query exactly. Projection is now a
-      // deterministic per-tx calculation: SUM((sale - sent) * rate).
+      // Scope: only machines currently on the Denet platform. Converted
+      // machines (now on Bitstop) are excluded — their pre-conversion
+      // history isn't decision-relevant for this report.
+      const denetAtmIds = new Set<string>(
+        relevantProfiles
+          .filter((p) => (p.platform || '').toLowerCase() === 'denet')
+          .map((p) => p.atm_id)
+      );
+
+      // Platform-wide Denet totals — restricted to the currently-Denet
+      // machines above. Projection is a deterministic per-tx calculation:
+      // SUM((sale - sent) * rate) over those txs.
       const allDenetTxs = allTransactions.filter(
-        (tx) => (tx.platform || '').toLowerCase() === 'denet'
+        (tx) =>
+          (tx.platform || '').toLowerCase() === 'denet' &&
+          tx.atm_id &&
+          denetAtmIds.has(tx.atm_id)
       );
       const newDenetSales = allDenetTxs.reduce((s, tx) => s + (tx.sale || 0), 0);
       const newDenetSpread = allDenetTxs.reduce(
@@ -426,8 +438,14 @@ export default function PlatformComparison() {
         const denetTx = atmTx.filter((tx) => (tx.platform || '').toLowerCase() === 'denet');
         const bitstopTx = atmTx.filter((tx) => (tx.platform || '').toLowerCase() === 'bitstop');
 
-        // Skip ATMs with zero Denet transactions in range — this aggregator
-        // only attributes Denet-source revenue and the matching slice of expenses.
+        // Scope: only profiles currently on the Denet platform. Converted
+        // machines (now on Bitstop) are excluded — their pre-conversion
+        // history isn't decision-relevant for this report.
+        if ((profile.platform || '').toLowerCase() !== 'denet') return;
+
+        // After the platform gate, also skip if this profile happens to
+        // have zero Denet transactions in the date range (e.g., a brand-new
+        // Denet machine installed mid-range with no activity yet).
         if (denetTx.length === 0) return;
 
         const boundaryYM = deriveConversionBoundary(denetTx, bitstopTx);
