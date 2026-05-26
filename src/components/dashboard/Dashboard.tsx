@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from '@/lib/supabase';
+import { findCtrQualifyingGroups } from '@/lib/ctr';
 import { DateRange } from 'react-day-picker';
 
 export default function Dashboard() {
@@ -233,7 +234,10 @@ export default function Dashboard() {
     fetchMetrics();
   }, [selectedPlatform, dateRange, atmIdFilter]);
 
-  // Check for pending CTR filings
+  // Check for pending CTR filings. A qualifying day counts as pending if it
+  // has no ctr_filings row yet (not-yet-synced — surface promptly to protect
+  // the 15-day filing window) OR its row is category='current' AND filed=false.
+  // Historical entries are audit records and never contribute to the alert.
   useEffect(() => {
     const checkCTR = async () => {
       try {
@@ -241,33 +245,29 @@ export default function Dashboard() {
         const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
         const fromDate = threeMonthsAgo.toISOString().split('T')[0];
 
-        const { data: txData } = await supabase
-          .from('transactions')
-          .select('customer_id, customer_first_name, customer_last_name, sale, date')
-          .eq('platform', 'denet')
-          .not('customer_id', 'is', null)
-          .gte('date', fromDate);
+        const groups = await findCtrQualifyingGroups({ fromDate });
+        if (groups.length === 0) {
+          setPendingCTRCount(0);
+          return;
+        }
 
         const { data: filings } = await supabase
           .from('ctr_filings')
-          .select('customer_id, trigger_date')
-          .eq('filed', true);
+          .select('customer_id, trigger_date, category, filed')
+          .gte('trigger_date', fromDate);
 
-        const filedSet = new Set(filings?.map((f: any) => `${f.customer_id}|${f.trigger_date}`) || []);
-
-        // Group by customer+date, find those >= $10,001
-        const grouped = new Map<string, number>();
-        txData?.forEach((tx: any) => {
-          if (!tx.customer_id) return;
-          const dateOnly = tx.date?.split('T')[0] || tx.date;
-          const key = `${tx.customer_id}|${dateOnly}`;
-          grouped.set(key, (grouped.get(key) || 0) + (parseFloat(tx.sale?.toString() || '0')));
+        const filingMap = new Map<string, { category: string; filed: boolean }>();
+        filings?.forEach((f: any) => {
+          filingMap.set(`${f.customer_id}|${f.trigger_date}`, {
+            category: f.category,
+            filed: f.filed,
+          });
         });
 
-        let pending = 0;
-        grouped.forEach((total, key) => {
-          if (total >= 10001 && !filedSet.has(key)) pending++;
-        });
+        const pending = groups.filter((g) => {
+          const f = filingMap.get(`${g.customer_id}|${g.trigger_date}`);
+          return !f || (f.category === 'current' && !f.filed);
+        }).length;
 
         setPendingCTRCount(pending);
       } catch (err) {
