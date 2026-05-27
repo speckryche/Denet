@@ -58,59 +58,10 @@ const parseLocalDate = (dateStr: string): Date => {
   return new Date(y, m - 1, d);
 };
 
-// Boundary derivation for converted ATMs: returns "YYYY-MM" or null if the
-// ATM only has one platform of transactions in the supplied buckets.
-// Boundary = min(month after last Denet tx, first Bitstop tx month).
-const deriveConversionBoundary = (
-  denetTxs: any[],
-  bitstopTxs: any[]
-): string | null => {
-  if (denetTxs.length === 0 || bitstopTxs.length === 0) return null;
-  const denetYMs = denetTxs.map((t) => (t.date || '').slice(0, 7)).filter(Boolean);
-  const bitstopYMs = bitstopTxs.map((t) => (t.date || '').slice(0, 7)).filter(Boolean);
-  if (denetYMs.length === 0 || bitstopYMs.length === 0) return null;
-  const lastDenetYM = denetYMs.reduce((a, b) => (a > b ? a : b));
-  const firstBitstopYM = bitstopYMs.reduce((a, b) => (a < b ? a : b));
-  const [ldY, ldM] = lastDenetYM.split('-').map(Number);
-  const monthAfterLastDenet =
-    ldM === 12
-      ? `${ldY + 1}-01`
-      : `${ldY}-${String(ldM + 1).padStart(2, '0')}`;
-  return monthAfterLastDenet < firstBitstopYM ? monthAfterLastDenet : firstBitstopYM;
-};
-
-const countMonthsInWindow = (
-  profile: ATMProfile,
-  windowStart: Date,
-  windowEnd: Date
-): number => {
-  if (!profile.installed_date) return 0;
-  const installDate = parseLocalDate(profile.installed_date);
-  let removalDate: Date | null = null;
-  if (profile.removed_date) removalDate = parseLocalDate(profile.removed_date);
-  const monthAfterInstall = new Date(
-    installDate.getFullYear(),
-    installDate.getMonth() + 1,
-    1
-  );
-  const winStartMonth = new Date(windowStart.getFullYear(), windowStart.getMonth(), 1);
-  const winEndMonth = new Date(windowEnd.getFullYear(), windowEnd.getMonth(), 1);
-  const effectiveStart =
-    monthAfterInstall > winStartMonth ? monthAfterInstall : winStartMonth;
-  let effectiveEnd = winEndMonth;
-  if (removalDate) {
-    const removalMonth = new Date(removalDate.getFullYear(), removalDate.getMonth(), 1);
-    if (removalMonth < effectiveEnd) effectiveEnd = removalMonth;
-  }
-  if (effectiveStart > effectiveEnd) return 0;
-  const monthCount =
-    (effectiveEnd.getFullYear() - effectiveStart.getFullYear()) * 12 +
-    (effectiveEnd.getMonth() - effectiveStart.getMonth()) +
-    1;
-  return Math.max(0, monthCount);
-};
-
-// calculateExpenseMonths now imported from src/lib/atm-profile.
+// calculateExpenseMonths imported from src/lib/atm-profile.
+// The Phase-1 boundary-derivation / month-window helpers used to sit
+// here; Phase 2b removed them once each profile became its own
+// one-platform period.
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', {
@@ -352,60 +303,51 @@ export default function PlatformComparison() {
 
       relevantProfiles.forEach((profile) => {
         // Per-profile txs from the strict date-window attribution above.
+        // Each profile is one platform period under the multi-row model;
+        // no per-platform re-split within a profile is needed.
         const atmTx = txsByProfile.get(profile.id) || [];
 
-        // Bucket by tx.platform (CSV source of truth)
-        const denetTx = atmTx.filter((tx) => (tx.platform || '').toLowerCase() === 'denet');
-        const bitstopTx = atmTx.filter((tx) => (tx.platform || '').toLowerCase() === 'bitstop');
-
-        // Scope: only profiles currently on the Denet platform. Converted
-        // machines (now on Bitstop) are excluded — their pre-conversion
-        // history isn't decision-relevant for this report.
+        // Scope: this report is Denet-only by design. Profiles on other
+        // platforms (and their pre-conversion history on the same atm_id)
+        // are not decision-relevant here.
         if ((profile.platform || '').toLowerCase() !== 'denet') return;
 
-        // After the platform gate, also skip if this profile happens to
-        // have zero Denet transactions in the date range (e.g., a brand-new
-        // Denet machine installed mid-range with no activity yet).
-        if (denetTx.length === 0) return;
+        // Skip Denet profiles with no activity in the date range — a
+        // brand-new machine installed mid-range with no txs adds nothing.
+        if (atmTx.length === 0) return;
 
-        const boundaryYM = deriveConversionBoundary(denetTx, bitstopTx);
+        const expenseMonths = calculateExpenseMonths(
+          profile,
+          reportStartDate,
+          reportEndDate,
+        );
 
-        // Denet portion of expense months. If no Bitstop txs in range, use the
-        // full window; otherwise cap at the boundary.
-        let denetExpenseMonths: number;
-        if (bitstopTx.length === 0) {
-          denetExpenseMonths = calculateExpenseMonths(profile, reportStartDate, reportEndDate);
-        } else if (boundaryYM) {
-          const [bY, bM] = boundaryYM.split('-').map(Number);
-          const denetEnd = new Date(bY, bM - 1, 0); // last day of month BEFORE boundary
-          denetExpenseMonths = countMonthsInWindow(profile, reportStartDate, denetEnd);
-        } else {
-          denetExpenseMonths = 0;
-        }
-
-        // Denet portion of commissions: pre-boundary months only when converted
+        // Commission attribution: months whose YYYY-MM falls inside this
+        // profile's calendar window. Under the EXCLUDE constraint no
+        // month is shared between two profiles of the same atm_id.
         const atmCommDetails = commissionDetailsByATM.get(profile.atm_id) || [];
-        let commissions = 0;
-        if (bitstopTx.length === 0) {
-          commissions = atmCommDetails.reduce((s, d) => s + d.amount, 0);
-        } else if (boundaryYM) {
-          atmCommDetails.forEach((d) => {
-            if (d.month_ym < boundaryYM) commissions += d.amount;
-          });
-        }
+        const profileFirstYM = profile.installed_date
+          ? profile.installed_date.slice(0, 7)
+          : '0000-00';
+        const profileLastYM = profile.removed_date
+          ? profile.removed_date.slice(0, 7)
+          : '9999-12';
+        const commissions = atmCommDetails
+          .filter((d) => d.month_ym >= profileFirstYM && d.month_ym <= profileLastYM)
+          .reduce((s, d) => s + d.amount, 0);
 
         let total_sales = 0;
         let total_fees = 0;
         let bitstop_fees = 0;
-        denetTx.forEach((tx) => {
+        atmTx.forEach((tx) => {
           total_sales += tx.sale || 0;
           total_fees += tx.fee || 0;
           bitstop_fees += tx.bitstop_fee || 0;
         });
 
-        const rent = (profile.monthly_rent || 0) * denetExpenseMonths;
-        const mgmt_rps = (profile.cash_management_rps || 0) * denetExpenseMonths;
-        const mgmt_rep = (profile.cash_management_rep || 0) * denetExpenseMonths;
+        const rent = (profile.monthly_rent || 0) * expenseMonths;
+        const mgmt_rps = (profile.cash_management_rps || 0) * expenseMonths;
+        const mgmt_rep = (profile.cash_management_rep || 0) * expenseMonths;
         const net_profit =
           total_fees - bitstop_fees - rent - mgmt_rps - mgmt_rep - commissions;
 

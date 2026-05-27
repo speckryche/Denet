@@ -127,17 +127,17 @@ export default function ATMSalesSummary() {
         }
       }
 
-      // Fetch ATM profiles for names. Multiple rows per atm_id are now
-      // possible — per-tx attribution uses findProfileForTx (date-window
-      // match) rather than a last-write-wins Map<atm_id, profile>.
+      // Fetch ATM profiles. SELECT platform so the row's platform label
+      // comes from the matched profile (per Phase 2b — each profile row is
+      // one platform period, so this is the authoritative source).
       const { data: atmProfiles, error: atmError } = await supabase
         .from('atm_profiles')
-        .select('id, atm_id, location_name, installed_date, removed_date');
+        .select('id, atm_id, location_name, platform, installed_date, removed_date');
 
       if (atmError) throw atmError;
 
-      // Aggregate by (atm_id, tx.platform) so converted ATMs produce two rows
-      // (one per platform) labeled by the CSV source of truth.
+      // Bucket by profile.id. A converted ATM has two profile rows
+      // (one per platform period), so it naturally produces two buckets.
       const atmAggregation = new Map<string, ATMSalesData>();
 
       allTransactions.forEach(tx => {
@@ -149,15 +149,18 @@ export default function ATMSalesSummary() {
         const atmProfile = txDate
           ? findProfileForTx(atmProfiles || [], tx.atm_id, txDate)
           : null;
-        const atmName = atmProfile?.location_name || tx.atm_id;
-        const txPlatform = (tx.platform || '').toLowerCase();
-        const bucketKey = `${tx.atm_id}:${txPlatform}`;
+        if (!atmProfile) {
+          console.warn(
+            `ATMSalesSummary: no profile window contains tx for atm_id=${tx.atm_id}, date=${tx.date} — skipping`,
+          );
+          return;
+        }
 
-        if (!atmAggregation.has(bucketKey)) {
-          atmAggregation.set(bucketKey, {
+        if (!atmAggregation.has(atmProfile.id)) {
+          atmAggregation.set(atmProfile.id, {
             atm_id: tx.atm_id,
-            atm_name: atmName,
-            platform: txPlatform,
+            atm_name: atmProfile.location_name || tx.atm_id,
+            platform: (atmProfile.platform || '').toLowerCase(),
             transaction_count: 0,
             total_sales: 0,
             total_fees: 0,
@@ -165,7 +168,7 @@ export default function ATMSalesSummary() {
           });
         }
 
-        const entry = atmAggregation.get(bucketKey)!;
+        const entry = atmAggregation.get(atmProfile.id)!;
         entry.transaction_count += 1;
         entry.total_sales += tx.sale || 0;
         entry.total_fees += tx.fee || 0;

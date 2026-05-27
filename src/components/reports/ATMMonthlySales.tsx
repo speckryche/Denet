@@ -199,12 +199,13 @@ export default function ATMMonthlySales() {
         return false;
       };
 
-      // Bucket by (atm_id, tx.platform) so converted ATMs produce two rows
-      // (one per platform) labeled by the CSV source of truth.
+      // Bucket by profile.id — each profile row is one platform period in
+      // the multi-row model, so a converted ATM naturally produces two
+      // buckets (Denet profile + Bitstop profile) via its two profile rows.
       const atmData = new Map<string, ATMMonthlyData>();
-      const seenAtmIds = new Set<string>();
+      const seenProfileIds = new Set<string>();
 
-      // Process transactions (Case a: ATMs with transactions in selected year)
+      // Process transactions (Case a: profiles with transactions in selected year)
       allTransactions?.forEach(tx => {
         if (!tx.atm_id) return;
 
@@ -216,26 +217,31 @@ export default function ATMMonthlySales() {
 
         const monthKey = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         const atmProfile = findProfileForTx(atmProfiles || [], tx.atm_id, date);
-        const atmName = atmProfile?.location_name || tx.atm_id;
-        const txPlatform = (tx.platform || '').toLowerCase();
-        const bucketKey = `${tx.atm_id}:${txPlatform}`;
+        if (!atmProfile) {
+          console.warn(
+            `ATMMonthlySales: no profile window contains tx for atm_id=${tx.atm_id}, date=${tx.date} — skipping`,
+          );
+          return;
+        }
+        const atmName = atmProfile.location_name || tx.atm_id;
+        const profilePlatform = (atmProfile.platform || '').toLowerCase();
 
-        seenAtmIds.add(tx.atm_id);
+        seenProfileIds.add(atmProfile.id);
 
-        if (!atmData.has(bucketKey)) {
-          atmData.set(bucketKey, {
-            active: atmProfile?.active ?? null,
-            installed_date: atmProfile?.installed_date ?? null,
-            removed_date: atmProfile?.removed_date ?? null,
+        if (!atmData.has(atmProfile.id)) {
+          atmData.set(atmProfile.id, {
+            active: atmProfile.active ?? null,
+            installed_date: atmProfile.installed_date ?? null,
+            removed_date: atmProfile.removed_date ?? null,
             atm_id: tx.atm_id,
             atm_name: atmName,
-            platform: txPlatform,
+            platform: profilePlatform,
             monthlyTotals: {},
             yearTotal: 0
           });
         }
 
-        const entry = atmData.get(bucketKey)!;
+        const entry = atmData.get(atmProfile.id)!;
         if (!entry.monthlyTotals[monthKey]) {
           entry.monthlyTotals[monthKey] = 0;
         }
@@ -244,17 +250,18 @@ export default function ATMMonthlySales() {
         entry.yearTotal += tx.sale || 0;
       });
 
-      // Add ATMs without transactions but that should be included (Cases b & c).
-      // Label by atm_profiles.platform as label-of-last-resort.
+      // Add profiles without transactions but that should be included
+      // (Cases b & c). Keyed by profile.id so a multi-profile ATM doesn't
+      // get an extra row when one of its profiles already produced one above.
       atmProfiles?.forEach(profile => {
-        // Skip if any bucketed row was created from this ATM's transactions
-        if (seenAtmIds.has(profile.atm_id)) return;
+        // Skip if this profile already produced a row from its transactions
+        if (seenProfileIds.has(profile.id)) return;
 
         // Skip if doesn't match selected platform filter
         if (selectedPlatform !== 'both' && profile.platform !== selectedPlatform) return;
 
         if (shouldIncludeATM(profile)) {
-          atmData.set(profile.atm_id, {
+          atmData.set(profile.id, {
             active: profile.active ?? null,
             installed_date: profile.installed_date ?? null,
             removed_date: profile.removed_date ?? null,
