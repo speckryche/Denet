@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import {
+  calculateExpenseMonths,
+  profilesForWindow,
+  txsByProfile as groupTxsByProfile,
+} from '@/lib/atm-profile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -125,31 +130,18 @@ export default function ATMProfitLoss() {
       // Fetch ALL ATM profiles (including historical ones with date ranges)
       const { data: atmProfiles, error: atmError } = await supabase
         .from('atm_profiles')
-        .select('id, atm_id, location_name, state, platform, platform_switch_date, monthly_rent, cash_management_rps, cash_management_rep, sales_rep_id, installed_date, removed_date, active');
+        .select('id, atm_id, location_name, state, platform, monthly_rent, cash_management_rps, cash_management_rep, sales_rep_id, installed_date, removed_date, active');
 
       if (atmError) throw atmError;
 
-      // Filter to ATM profiles relevant to the selected date range
+      // Profiles whose [installed_date, removed_date] window overlaps the
+      // report range. DB invariants in migration 20240522000034 guarantee
+      // non-overlapping windows + one active=true per atm_id, so no
+      // sibling-aware or active-flag logic is needed here.
       const rangeStart = new Date(startYear, startMonthNum - 1, 1);
       const rangeEnd = new Date(endYear, endMonthNum, 0); // last day of end month
-      const relevantProfiles = atmProfiles?.filter(p => {
-        if (!p.atm_id) return false;
-        // Active ATMs installed before/during the range
-        if (p.active && p.installed_date && new Date(p.installed_date) <= rangeEnd) return true;
-        // Inactive ATMs that overlapped the range
-        if (p.active === false) {
-          if (!p.installed_date) return false;
-          if (new Date(p.installed_date) > rangeEnd) return false;
-          if (p.removed_date && new Date(p.removed_date) < rangeStart) return false;
-          // If inactive with no removed_date and another profile shares this atm_id, skip it
-          if (!p.removed_date) {
-            const hasActivesibling = atmProfiles?.some(other => other.atm_id === p.atm_id && other.active === true);
-            if (hasActivesibling) return false;
-          }
-          return true;
-        }
-        return false;
-      }) || [];
+      const relevantProfiles = profilesForWindow(atmProfiles || [], rangeStart, rangeEnd)
+        .filter((p) => !!p.atm_id);
 
       // **VALIDATION: Check for missing platforms (only relevant ATMs)**
       const missingPlatform = relevantProfiles.filter(p => !p.platform);
@@ -251,59 +243,7 @@ export default function ATMProfitLoss() {
         return Math.max(0, monthCount);
       };
 
-      // Helper function: Calculate expense months considering install/removed dates
-      const calculateExpenseMonths = (profile: any, reportStartDate: Date, reportEndDate: Date): number => {
-        // Skip if no install date
-        if (!profile.installed_date) {
-          return 0;
-        }
-        
-        // Parse dates in local timezone to avoid timezone offset issues
-        const [iYear, iMonth, iDay] = profile.installed_date.split('-').map(Number);
-        const installDate = new Date(iYear, iMonth - 1, iDay);
-
-        let removalDate = null;
-        if (profile.removed_date) {
-          const [rYear, rMonth, rDay] = profile.removed_date.split('-').map(Number);
-          removalDate = new Date(rYear, rMonth - 1, rDay);
-        }
-
-        // Install date: first full month starts the FOLLOWING calendar month
-        const monthAfterInstall = new Date(installDate.getFullYear(), installDate.getMonth() + 1, 1);
-
-        // Determine effective start date (later of: month after install OR report start)
-        // We need to compare at the MONTH level, not day level
-        const reportStartMonth = new Date(reportStartDate.getFullYear(), reportStartDate.getMonth(), 1);
-        let effectiveStart = monthAfterInstall > reportStartMonth ? monthAfterInstall : reportStartMonth;
-
-        // Determine effective end date
-        // Convert report end to first of month for consistent month counting
-        const reportEndMonth = new Date(reportEndDate.getFullYear(), reportEndDate.getMonth(), 1);
-        let effectiveEnd = reportEndMonth;
-
-        if (removalDate) {
-          // Get first day of the removal month
-          const removalMonth = new Date(removalDate.getFullYear(), removalDate.getMonth(), 1);
-          if (removalMonth < effectiveEnd) {
-            effectiveEnd = removalMonth;
-          }
-        }
-
-        // If effective start is after effective end, no expense months
-        if (effectiveStart > effectiveEnd) {
-          return 0;
-        }
-
-        // Count full months between effective start and end
-        const startYear = effectiveStart.getFullYear();
-        const startMonth = effectiveStart.getMonth();
-        const endYear = effectiveEnd.getFullYear();
-        const endMonth = effectiveEnd.getMonth();
-
-        const monthCount = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-
-        return Math.max(0, monthCount);
-      };
+      // calculateExpenseMonths now imported from src/lib/atm-profile.
 
       // Fetch commission details for the date range (cross-year safe)
       const monthYears: string[] = [];
@@ -354,66 +294,14 @@ export default function ATMProfitLoss() {
         commissionDetailsByATM.set(detail.atm_id, arr);
       });
 
-      // Per-transaction profile attribution. An ATM may have multiple atm_profiles
-      // rows (e.g., from being moved between locations); each transaction must be
-      // attributed to exactly ONE profile so that aggregation doesn't double-count
-      // when several profiles for the same atm_id pass the relevantProfiles filter.
-      const findProfileForTx = (atmId: string, txDate: Date) => {
-        const candidates = relevantProfiles.filter(p => p.atm_id === atmId);
-        if (candidates.length === 0) return null;
-        if (candidates.length === 1) return candidates[0];
-
-        const matching = candidates.filter(p => {
-          let afterInstall = true;
-          if (p.installed_date) {
-            const [iY, iM, iD] = p.installed_date.split('-').map(Number);
-            afterInstall = txDate >= new Date(iY, iM - 1, iD);
-          }
-          let beforeRemoval = true;
-          if (p.removed_date) {
-            const [rY, rM, rD] = p.removed_date.split('-').map(Number);
-            beforeRemoval = txDate <= new Date(rY, rM - 1, rD);
-          }
-          return afterInstall && beforeRemoval;
-        });
-
-        if (matching.length === 1) return matching[0];
-        if (matching.length > 1) {
-          // Overlapping windows — prefer latest installed_date
-          return matching.reduce((best, p) =>
-            (p.installed_date || '') > (best.installed_date || '') ? p : best
-          );
-        }
-
-        // No window match — defensive fallback: prefer the profile whose window
-        // is closest to txDate (latest removed before tx, else earliest installed after tx)
-        const txYMD = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}-${String(txDate.getDate()).padStart(2, '0')}`;
-        const removedBefore = candidates.filter(p => p.removed_date && p.removed_date < txYMD);
-        if (removedBefore.length) {
-          return removedBefore.reduce((best, p) =>
-            (p.removed_date || '') > (best.removed_date || '') ? p : best
-          );
-        }
-        const installedAfter = candidates.filter(p => p.installed_date && p.installed_date > txYMD);
-        if (installedAfter.length) {
-          return installedAfter.reduce((best, p) =>
-            (p.installed_date || '') < (best.installed_date || '') ? p : best
-          );
-        }
-        return candidates[0];
-      };
-
-      const txsByProfile = new Map<string, any[]>();
-      allTransactions.forEach(tx => {
-        if (!tx.atm_id || !tx.date) return;
-        const [tY, tM, tD] = tx.date.split('-').map(Number);
-        const txDate = new Date(tY, tM - 1, tD);
-        const profile = findProfileForTx(tx.atm_id, txDate);
-        if (!profile) return;
-        const arr = txsByProfile.get(profile.id) || [];
-        arr.push(tx);
-        txsByProfile.set(profile.id, arr);
-      });
+      // Per-transaction profile attribution. An atm_id may have multiple
+      // atm_profiles rows (e.g., a move between locations); each tx must be
+      // attributed to exactly ONE profile so that aggregation doesn't
+      // double-count. The shared helper does strict date-window matching
+      // and silently drops txs that fall outside every profile's window —
+      // such gaps now indicate a data problem (DB invariants ensure each
+      // active period has a single covering profile).
+      const txsByProfile = groupTxsByProfile(allTransactions, relevantProfiles);
 
       // **PROFILE-DRIVEN APPROACH**: Start with all ATM profiles
       const resultData: ATMPLData[] = [];

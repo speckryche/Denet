@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { findProfileForTx } from '@/lib/atm-profile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -126,18 +127,14 @@ export default function ATMSalesSummary() {
         }
       }
 
-      // Fetch ATM profiles for names
+      // Fetch ATM profiles for names. Multiple rows per atm_id are now
+      // possible — per-tx attribution uses findProfileForTx (date-window
+      // match) rather than a last-write-wins Map<atm_id, profile>.
       const { data: atmProfiles, error: atmError } = await supabase
         .from('atm_profiles')
-        .select('atm_id, location_name');
+        .select('id, atm_id, location_name, installed_date, removed_date');
 
       if (atmError) throw atmError;
-
-      // Create a map of ATM profiles
-      const atmMap = new Map<string, any>();
-      atmProfiles?.forEach(atm => {
-        atmMap.set(atm.atm_id, atm);
-      });
 
       // Aggregate by (atm_id, tx.platform) so converted ATMs produce two rows
       // (one per platform) labeled by the CSV source of truth.
@@ -146,7 +143,12 @@ export default function ATMSalesSummary() {
       allTransactions.forEach(tx => {
         if (!tx.atm_id) return;
 
-        const atmProfile = atmMap.get(tx.atm_id);
+        const txDateOnly = String(tx.date || '').split('T')[0];
+        const [ty, tm, td] = txDateOnly.split('-').map(Number);
+        const txDate = ty && tm && td ? new Date(ty, tm - 1, td) : null;
+        const atmProfile = txDate
+          ? findProfileForTx(atmProfiles || [], tx.atm_id, txDate)
+          : null;
         const atmName = atmProfile?.location_name || tx.atm_id;
         const txPlatform = (tx.platform || '').toLowerCase();
         const bucketKey = `${tx.atm_id}:${txPlatform}`;

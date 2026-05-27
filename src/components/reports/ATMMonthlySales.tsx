@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { findProfileForTx } from '@/lib/atm-profile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, FileSpreadsheet } from 'lucide-react';
@@ -145,18 +146,16 @@ export default function ATMMonthlySales() {
         }
       }
 
-      // Fetch ATM profiles for names, active status, and date fields
+      // Fetch ATM profiles for names, active status, and date fields.
+      // SELECT id so the shared findProfileForTx helper can key by profile.id.
       const { data: atmProfiles, error: atmError } = await supabase
         .from('atm_profiles')
-        .select('atm_id, location_name, active, platform, installed_date, removed_date');
+        .select('id, atm_id, location_name, active, platform, installed_date, removed_date');
 
       if (atmError) throw atmError;
-
-      // Create a map of ATM profiles
-      const atmMap = new Map<string, any>();
-      atmProfiles?.forEach(atm => {
-        atmMap.set(atm.atm_id, atm);
-      });
+      // No atm-id-keyed Map here: multiple profile rows per atm_id are now
+      // possible, so per-tx attribution uses findProfileForTx (date-window
+      // match) instead of a last-write-wins lookup.
 
       // Helper function: Determine if ATM should be included in report
       const shouldIncludeATM = (profile: any): boolean => {
@@ -216,7 +215,7 @@ export default function ATMMonthlySales() {
         if (year !== selectedYear) return;
 
         const monthKey = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        const atmProfile = atmMap.get(tx.atm_id);
+        const atmProfile = findProfileForTx(atmProfiles || [], tx.atm_id, date);
         const atmName = atmProfile?.location_name || tx.atm_id;
         const txPlatform = (tx.platform || '').toLowerCase();
         const bucketKey = `${tx.atm_id}:${txPlatform}`;

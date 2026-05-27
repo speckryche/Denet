@@ -23,7 +23,6 @@ interface ATMProfile {
   serial_number: string | null;
   location_name: string;
   platform: 'denet' | 'bitstop';
-  platform_switch_date?: string | null;
   active: boolean;
   status: 'Active' | 'Inactive' | 'Pending';
   monthly_rent: number;
@@ -114,16 +113,16 @@ export default function BTMDetails() {
     setLoading(false);
   };
 
+  // Under migration 20240522000034 only one row per atm_id has active=true,
+  // which is the canonical "current state" of that ATM. Use that instead of
+  // "latest installed_date" — they usually agree but the active flag is the
+  // explicit signal and survives data edits that don't bump installed_date.
+  // Profiles without an atm_id (placeholders for future installs) remain
+  // visible by virtue of being included individually.
   const getLatestProfiles = () => {
-    const latest = new Map<string, ATMProfile>();
-    profiles.forEach(profile => {
-      const key = profile.atm_id || profile.id;
-      const existing = latest.get(key);
-      if (!existing || new Date(profile.installed_date || 0) > new Date(existing.installed_date || 0)) {
-        latest.set(key, profile);
-      }
-    });
-    return Array.from(latest.values());
+    const activeByAtmId = profiles.filter(p => p.active && p.atm_id);
+    const placeholders = profiles.filter(p => !p.atm_id);
+    return [...activeByAtmId, ...placeholders];
   };
 
   const hasHistory = (atmId: string) => {
@@ -193,7 +192,6 @@ export default function BTMDetails() {
       ...newMachineForm,
       installed_date: newMachineForm.installed_date || null,
       removed_date: newMachineForm.removed_date || null,
-      platform_switch_date: newMachineForm.platform_switch_date || null,
     };
 
     try {

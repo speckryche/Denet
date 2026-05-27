@@ -13,17 +13,22 @@ import { Label } from '@/components/ui/label';
 import { FileSpreadsheet, FileText, RotateCcw, Loader2, Info } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
+import {
+  calculateExpenseMonths,
+  profilesForWindow,
+  txsByProfile as groupTxsByProfile,
+} from '@/lib/atm-profile';
 import PlatformComparisonScenario from './PlatformComparisonScenario';
 
 // ──────────────────────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────────────────────
 interface ATMProfile {
+  id: string;
   atm_id: string;
   location_name: string | null;
   state: string | null;
   platform: string;
-  platform_switch_date: string | null;
   monthly_rent: number | null;
   cash_management_rps: number | null;
   cash_management_rep: number | null;
@@ -105,51 +110,7 @@ const countMonthsInWindow = (
   return Math.max(0, monthCount);
 };
 
-const calculateExpenseMonths = (
-  profile: ATMProfile,
-  reportStartDate: Date,
-  reportEndDate: Date
-): number => {
-  if (!profile.installed_date) return 0;
-  const installDate = parseLocalDate(profile.installed_date);
-  let removalDate: Date | null = null;
-  if (profile.removed_date) removalDate = parseLocalDate(profile.removed_date);
-
-  const monthAfterInstall = new Date(
-    installDate.getFullYear(),
-    installDate.getMonth() + 1,
-    1
-  );
-  const reportStartMonth = new Date(
-    reportStartDate.getFullYear(),
-    reportStartDate.getMonth(),
-    1
-  );
-  const effectiveStart =
-    monthAfterInstall > reportStartMonth ? monthAfterInstall : reportStartMonth;
-
-  const reportEndMonth = new Date(
-    reportEndDate.getFullYear(),
-    reportEndDate.getMonth(),
-    1
-  );
-  let effectiveEnd = reportEndMonth;
-  if (removalDate) {
-    const removalMonth = new Date(
-      removalDate.getFullYear(),
-      removalDate.getMonth(),
-      1
-    );
-    if (removalMonth < effectiveEnd) effectiveEnd = removalMonth;
-  }
-
-  if (effectiveStart > effectiveEnd) return 0;
-  const monthCount =
-    (effectiveEnd.getFullYear() - effectiveStart.getFullYear()) * 12 +
-    (effectiveEnd.getMonth() - effectiveStart.getMonth()) +
-    1;
-  return Math.max(0, monthCount);
-};
+// calculateExpenseMonths now imported from src/lib/atm-profile.
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', {
@@ -289,31 +250,21 @@ export default function PlatformComparison() {
       const { data: atmProfiles, error: atmError } = await supabase
         .from('atm_profiles')
         .select(
-          'atm_id, location_name, state, platform, platform_switch_date, monthly_rent, cash_management_rps, cash_management_rep, sales_rep_id, installed_date, removed_date, active'
+          'id, atm_id, location_name, state, platform, monthly_rent, cash_management_rps, cash_management_rep, sales_rep_id, installed_date, removed_date, active'
         );
       if (atmError) throw atmError;
 
-      // Filter to profiles relevant to the report period
+      // Profiles whose [installed_date, removed_date] window overlaps the
+      // report range. DB invariants (migration 20240522000034) ensure
+      // non-overlapping windows + one active=true per atm_id, so the older
+      // sibling-aware / active-flag dance is no longer needed here.
       const rangeStart = new Date(startYM[0], startYM[1] - 1, 1);
       const rangeEnd = new Date(endYM[0], endYM[1], 0);
-
-      const relevantProfiles = (atmProfiles || []).filter((p) => {
-        if (!p.atm_id) return false;
-        if (p.active && p.installed_date && new Date(p.installed_date) <= rangeEnd) return true;
-        if (p.active === false) {
-          if (!p.installed_date) return false;
-          if (new Date(p.installed_date) > rangeEnd) return false;
-          if (p.removed_date && new Date(p.removed_date) < rangeStart) return false;
-          if (!p.removed_date) {
-            const hasActiveSibling = atmProfiles?.some(
-              (other) => other.atm_id === p.atm_id && other.active === true
-            );
-            if (hasActiveSibling) return false;
-          }
-          return true;
-        }
-        return false;
-      });
+      const relevantProfiles = profilesForWindow(
+        (atmProfiles || []) as ATMProfile[],
+        rangeStart,
+        rangeEnd,
+      ).filter((p) => !!p.atm_id);
 
       // ── 2. Fetch transactions ──
       let allTransactions: any[] = [];
@@ -362,14 +313,11 @@ export default function PlatformComparison() {
       setDenetSalesTotal(newDenetSales);
       setDenetTxCount(allDenetTxs.length);
 
-      // Group transactions by ATM
-      const txByATM = new Map<string, any[]>();
-      allTransactions.forEach((tx) => {
-        if (!tx.atm_id) return;
-        const arr = txByATM.get(tx.atm_id) || [];
-        arr.push(tx);
-        txByATM.set(tx.atm_id, arr);
-      });
+      // Per-transaction profile attribution via strict date-window match.
+      // An atm_id can have multiple profile rows; each tx is attributed to
+      // exactly one. Txs whose date falls outside every profile's window
+      // are dropped (would indicate a data gap; rare under DB invariants).
+      const txsByProfile = groupTxsByProfile(allTransactions, relevantProfiles);
 
       // ── 3. Fetch commissions ──
       const monthYears: string[] = [];
@@ -403,23 +351,8 @@ export default function PlatformComparison() {
       const machines: PerMachinePL[] = [];
 
       relevantProfiles.forEach((profile) => {
-        const allAtmTx = txByATM.get(profile.atm_id) || [];
-
-        // Sibling check
-        const siblings = relevantProfiles.filter(
-          (p) => p.atm_id === profile.atm_id
-        );
-        const hasSiblings = siblings.length > 1;
-
-        // Filter transactions to this profile's active period
-        const atmTx = allAtmTx.filter((tx) => {
-          if (!tx.date) return false;
-          const txDate = parseLocalDate(tx.date.split('T')[0]);
-          if (profile.installed_date && txDate < parseLocalDate(profile.installed_date)) return false;
-          if (profile.removed_date && txDate > parseLocalDate(profile.removed_date)) return false;
-          if (hasSiblings && profile.active === false && !profile.removed_date) return false;
-          return true;
-        });
+        // Per-profile txs from the strict date-window attribution above.
+        const atmTx = txsByProfile.get(profile.id) || [];
 
         // Bucket by tx.platform (CSV source of truth)
         const denetTx = atmTx.filter((tx) => (tx.platform || '').toLowerCase() === 'denet');

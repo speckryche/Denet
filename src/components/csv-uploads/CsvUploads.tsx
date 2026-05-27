@@ -4,10 +4,45 @@ import { UploadZone } from '../dashboard/UploadZone';
 import { LastUploadDates } from '../dashboard/LastUploadDates';
 import { UploadHistory } from '../dashboard/UploadHistory';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, X, Bell } from 'lucide-react';
+import { AlertCircle, X, Bell, ArrowRightLeft } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import Papa from 'papaparse';
 import { supabase } from '@/lib/supabase';
+
+// A pending platform switch on a single ATM: the currently-active profile is
+// on `currentPlatform`, but the inbound CSV brings tx data for `newPlatform`.
+// User must confirm before the importer closes the old profile and opens a new
+// one matching the CSV's platform.
+type PendingConversion = {
+  atm_id: string;
+  current_profile_id: string;
+  current_platform: string;
+  new_platform: string;
+  first_tx_date: string;
+  location_name: string | null;
+};
+
+// Snapshot of the parsed CSV state captured at the moment we detect a pending
+// conversion. Held in component state across the user confirmation step, then
+// passed back into runImport() once they approve.
+type PendingImportState = {
+  mappedData: any[];
+  newTickers: string[];
+  newATMsToInsert: Array<{ atm_id: string; atm_name: string | null }>;
+  newATMsInUpload: string[];
+  currentPlatform: 'denet' | 'bitstop';
+  fileName: string;
+  negativeSpreadCount: number;
+  commissionRateWarning: string | null;
+};
 
 export default function CsvUploads() {
   const navigate = useNavigate();
@@ -19,6 +54,14 @@ export default function CsvUploads() {
   const [showNewATMAlert, setShowNewATMAlert] = useState(false);
   const [newTickerNames, setNewTickerNames] = useState<string[]>([]);
   const [showNewTickerAlert, setShowNewTickerAlert] = useState(false);
+
+  // Pending platform-conversion state. When the CSV brings tx data for an
+  // atm_id whose active profile is on a different platform, we pause the
+  // import and surface a confirmation dialog rather than silently mixing
+  // platforms (which broke aggregations in the old single-row model).
+  const [pendingConversions, setPendingConversions] = useState<PendingConversion[]>([]);
+  const [pendingImport, setPendingImport] = useState<PendingImportState | null>(null);
+  const [isConfirmingConversions, setIsConfirmingConversions] = useState(false);
 
   const [transactionDates, setTransactionDates] = useState({
     denetFirst: null as string | null,
@@ -89,6 +132,185 @@ export default function CsvUploads() {
     fetchAllTransactionDates();
   }, []);
 
+  // Insert tickers, insert auto-create ATMs, dedupe transaction IDs, write
+  // the upload row, write transactions. Extracted from the inline Papa.parse
+  // body so it can be invoked either directly (no conversions) or after the
+  // user confirms a platform-conversion dialog.
+  const runImport = async (state: PendingImportState) => {
+    const {
+      mappedData,
+      newTickers,
+      newATMsToInsert,
+      newATMsInUpload,
+      currentPlatform,
+      fileName,
+      negativeSpreadCount,
+      commissionRateWarning,
+    } = state;
+
+    try {
+      if (newTickers.length > 0) {
+        const tickersToInsert = newTickers.map((ticker) => ({
+          original_value: ticker,
+          display_value: null,
+        }));
+        const { error: tickerError } = await supabase
+          .from('ticker_mappings')
+          .insert(tickersToInsert);
+        if (tickerError) console.error('Error inserting tickers:', tickerError);
+      }
+
+      if (newATMsToInsert.length > 0) {
+        const atmsToInsert = newATMsToInsert.map((atm) => ({
+          atm_id: atm.atm_id,
+          location_name: atm.atm_name,
+          platform: currentPlatform,
+          monthly_rent: 0,
+          cash_management_rps: 0,
+          cash_management_rep: 0,
+        }));
+        const { error: atmError } = await supabase
+          .from('atm_profiles')
+          .insert(atmsToInsert);
+        if (atmError) console.error('Error inserting ATM profiles:', atmError);
+      }
+    } catch (e) {
+      console.error('Error batch inserting tickers/ATMs:', e);
+    }
+
+    try {
+      const transactionIds = mappedData.map((row) => row.id);
+      const batchSize = 500;
+      const existingIds = new Set();
+
+      for (let i = 0; i < transactionIds.length; i += batchSize) {
+        const batch = transactionIds.slice(i, i + batchSize);
+        const { data: existingBatch, error: checkError } = await supabase
+          .from('transactions')
+          .select('id')
+          .in('id', batch);
+        if (checkError) throw checkError;
+        existingBatch?.forEach((t) => existingIds.add(t.id));
+      }
+
+      const newTransactions = mappedData.filter((row) => !existingIds.has(row.id));
+      const duplicateCount = mappedData.length - newTransactions.length;
+
+      const { data: uploadData, error: uploadError } = await supabase
+        .from('uploads')
+        .insert({
+          filename: fileName,
+          platform: currentPlatform,
+          record_count: newTransactions.length,
+        })
+        .select()
+        .single();
+      if (uploadError) throw uploadError;
+      const uploadId = uploadData.id;
+
+      if (newTransactions.length > 0) {
+        const dataWithUploadId = newTransactions.map((row) => ({
+          ...row,
+          upload_id: uploadId,
+        }));
+        const { error: insertError } = await supabase
+          .from('transactions')
+          .insert(dataWithUploadId);
+        if (insertError) throw insertError;
+      }
+
+      setUploadStats({
+        processed: mappedData.length,
+        duplicates: duplicateCount,
+        negativeSpreadCount,
+        commissionRateWarning,
+      });
+      setShowDedupeBanner(true);
+      setError(null);
+      setUploadHistoryKey((prev) => prev + 1);
+
+      if (newATMsInUpload.length > 0) {
+        setNewATMIds(newATMsInUpload);
+        setShowNewATMAlert(true);
+      }
+      if (newTickers.length > 0) {
+        setNewTickerNames(newTickers);
+        setShowNewTickerAlert(true);
+      }
+
+      await fetchAllTransactionDates();
+    } catch (e) {
+      console.error('Error uploading data:', e);
+      setError(e instanceof Error ? e.message : 'Failed to upload data to database');
+    }
+  };
+
+  // For each pending conversion, close the existing active profile (set its
+  // removed_date to the day before the CSV's first new tx, mark inactive)
+  // and insert a new active profile matching the CSV's platform with
+  // installed_date set to the first new tx. Returns true on success, false
+  // on the first DB error (caller should abort and surface the error).
+  const processConversions = async (conversions: PendingConversion[]): Promise<boolean> => {
+    for (const c of conversions) {
+      const [y, m, d] = c.first_tx_date.split('-').map(Number);
+      const dayBefore = new Date(y, m - 1, d - 1);
+      const dayBeforeStr = `${dayBefore.getFullYear()}-${String(
+        dayBefore.getMonth() + 1,
+      ).padStart(2, '0')}-${String(dayBefore.getDate()).padStart(2, '0')}`;
+
+      const { error: closeErr } = await supabase
+        .from('atm_profiles')
+        .update({ removed_date: dayBeforeStr, active: false })
+        .eq('id', c.current_profile_id);
+      if (closeErr) {
+        console.error(`Failed to close profile ${c.current_profile_id}:`, closeErr);
+        setError(
+          `Failed to close existing profile for ATM ${c.atm_id}: ${closeErr.message}`,
+        );
+        return false;
+      }
+
+      const { error: insertErr } = await supabase.from('atm_profiles').insert({
+        atm_id: c.atm_id,
+        location_name: c.location_name,
+        platform: c.new_platform,
+        installed_date: c.first_tx_date,
+        active: true,
+        monthly_rent: 0,
+        cash_management_rps: 0,
+        cash_management_rep: 0,
+      });
+      if (insertErr) {
+        console.error(`Failed to insert new profile for ATM ${c.atm_id}:`, insertErr);
+        setError(
+          `Failed to create new profile for ATM ${c.atm_id}: ${insertErr.message}`,
+        );
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleConfirmConversions = async () => {
+    if (!pendingImport) return;
+    setIsConfirmingConversions(true);
+    try {
+      const ok = await processConversions(pendingConversions);
+      if (!ok) return;
+      const state = pendingImport;
+      setPendingConversions([]);
+      setPendingImport(null);
+      await runImport(state);
+    } finally {
+      setIsConfirmingConversions(false);
+    }
+  };
+
+  const handleCancelConversions = () => {
+    setPendingConversions([]);
+    setPendingImport(null);
+  };
+
   const handleFileSelect = (file: File) => {
     Papa.parse(file, {
       header: true,
@@ -114,9 +336,14 @@ export default function CsvUploads() {
           .from('ticker_mappings')
           .select('*');
 
+        // atm_profiles now has multiple rows per atm_id. The map below keys by
+        // atm_id for the "is this ATM currently in the system?" check, so we
+        // filter to active=true — guaranteed unique per atm_id by migration
+        // 20240522000034's partial unique index.
         const { data: existingATMs } = await supabase
           .from('atm_profiles')
-          .select('*');
+          .select('*')
+          .eq('active', true);
 
         const tickerMap = new Map(existingTickers?.map(t => [t.original_value, t.display_value || t.original_value]) || []);
         const atmMap = new Map(existingATMs?.map(a => [a.atm_id, a]) || []);
@@ -308,125 +535,59 @@ export default function CsvUploads() {
           return;
         }
 
-        try {
-          // Auto-create new ticker_mappings rows (without fee_percentage — deprecated)
-          if (newTickers.size > 0) {
-            console.log(`Inserting ${newTickers.size} new tickers...`);
-            const tickersToInsert = Array.from(newTickers).map(ticker => ({
-              original_value: ticker,
-              display_value: null,
-            }));
-            const { error: tickerError } = await supabase
-              .from('ticker_mappings')
-              .insert(tickersToInsert);
-            if (tickerError) console.error('Error inserting tickers:', tickerError);
+        // Per-atm first new tx date. Used both for conversion windows below
+        // and (when the user approves) as the new profile's installed_date.
+        const firstTxDateByAtmId = new Map<string, string>();
+        mappedData.forEach((tx: any) => {
+          if (!tx.atm_id || !tx.date) return;
+          const dateOnly = String(tx.date).split('T')[0];
+          const existing = firstTxDateByAtmId.get(tx.atm_id);
+          if (!existing || dateOnly < existing) {
+            firstTxDateByAtmId.set(tx.atm_id, dateOnly);
           }
+        });
 
-          // Auto-create new ATM profiles with correct platform
-          if (newATMsToInsert.size > 0) {
-            console.log(`Inserting ${newATMsToInsert.size} new ATM profiles...`);
-            const atmsToInsert = Array.from(newATMsToInsert.values()).map(atm => ({
-              atm_id: atm.atm_id,
-              location_name: atm.atm_name,
-              platform: currentPlatform,
-              monthly_rent: 0,
-              cash_management_rps: 0,
-              cash_management_rep: 0
-            }));
-            const { error: atmError } = await supabase
-              .from('atm_profiles')
-              .insert(atmsToInsert);
-            if (atmError) console.error('Error inserting ATM profiles:', atmError);
-          }
-        } catch (error) {
-          console.error('Error batch inserting tickers/ATMs:', error);
-        }
-
-        try {
-          const transactionIds = mappedData.map(row => row.id);
-          const batchSize = 500;
-          const existingIds = new Set();
-
-          for (let i = 0; i < transactionIds.length; i += batchSize) {
-            const batch = transactionIds.slice(i, i + batchSize);
-            const { data: existingBatch, error: checkError } = await supabase
-              .from('transactions')
-              .select('id')
-              .in('id', batch);
-
-            if (checkError) throw checkError;
-
-            existingBatch?.forEach(t => existingIds.add(t.id));
-          }
-
-          const newTransactions = mappedData.filter(row => !existingIds.has(row.id));
-          const duplicateCount = mappedData.length - newTransactions.length;
-
-          const { data: uploadData, error: uploadError } = await supabase
-            .from('uploads')
-            .insert({
-              filename: file.name,
-              platform: currentPlatform,
-              record_count: newTransactions.length
-            })
-            .select()
-            .single();
-
-          if (uploadError) throw uploadError;
-          const uploadId = uploadData.id;
-
-          if (newTransactions.length > 0) {
-            const dataWithUploadId = newTransactions.map(row => ({
-              ...row,
-              upload_id: uploadId
-            }));
-
-            console.log(`Inserting ${dataWithUploadId.length} new transactions...`);
-
-            const { error: insertError } = await supabase
-              .from('transactions')
-              .insert(dataWithUploadId);
-
-            if (insertError) throw insertError;
-            console.log('Insert successful!');
-          } else {
-            console.log('No new transactions to insert - all were duplicates');
-          }
-
-          setUploadStats({
-            processed: mappedData.length,
-            duplicates: duplicateCount,
-            negativeSpreadCount: negativeSpreadCount,
-            commissionRateWarning: commissionRateWarning,
+        // Detect platform conversions: CSV brings tx data for an atm_id
+        // whose currently-active profile is on a different platform.
+        const conversions: PendingConversion[] = [];
+        const seenAtmIds = new Set(
+          mappedData.map((tx: any) => tx.atm_id).filter(Boolean) as string[],
+        );
+        seenAtmIds.forEach((atmId) => {
+          const existing = atmMap.get(atmId);
+          if (!existing) return; // No active profile -> handled by auto-create
+          const existingPlatform = (existing.platform || '').toLowerCase();
+          if (existingPlatform === currentPlatform) return; // Match — no action
+          const firstTxDate = firstTxDateByAtmId.get(atmId);
+          if (!firstTxDate) return;
+          conversions.push({
+            atm_id: atmId,
+            current_profile_id: existing.id,
+            current_platform: existingPlatform,
+            new_platform: currentPlatform,
+            first_tx_date: firstTxDate,
+            location_name: existing.location_name,
           });
-          console.log(`Upload stats: ${mappedData.length} processed, ${duplicateCount} duplicates`);
-          setShowDedupeBanner(true);
-          setError(null);
-          setUploadHistoryKey(prev => prev + 1);
+        });
 
-          // New ATM alert
-          if (newATMsInUpload.length > 0) {
-            console.log(`New ATM IDs detected: ${newATMsInUpload.join(', ')}`);
-            setNewATMIds(newATMsInUpload);
-            setShowNewATMAlert(true);
-          } else {
-            console.log('No new ATM IDs detected');
-          }
+        const importState: PendingImportState = {
+          mappedData,
+          newTickers: Array.from(newTickers),
+          newATMsToInsert: Array.from(newATMsToInsert.values()),
+          newATMsInUpload,
+          currentPlatform: currentPlatform as 'denet' | 'bitstop',
+          fileName: file.name,
+          negativeSpreadCount,
+          commissionRateWarning,
+        };
 
-          // New ticker alert
-          if (newTickers.size > 0) {
-            console.log(`New tickers detected: ${Array.from(newTickers).join(', ')}`);
-            setNewTickerNames(Array.from(newTickers));
-            setShowNewTickerAlert(true);
-          }
-
-          console.log('Refreshing data after upload...');
-          await fetchAllTransactionDates();
-          console.log('Data refresh complete!');
-        } catch (error) {
-          console.error('Error uploading data:', error);
-          setError(error instanceof Error ? error.message : 'Failed to upload data to database');
+        if (conversions.length > 0) {
+          setPendingConversions(conversions);
+          setPendingImport(importState);
+          return;
         }
+
+        await runImport(importState);
       },
       error: (error) => {
         console.error('Error parsing CSV:', error);
@@ -575,6 +736,70 @@ export default function CsvUploads() {
           </div>
         </div>
       </main>
+
+      {/* Platform-conversion confirmation. Blocks the import until the user
+          approves closing the old active profile(s) and opening new one(s). */}
+      <Dialog
+        open={pendingConversions.length > 0}
+        onOpenChange={(open) => {
+          if (!open && !isConfirmingConversions) handleCancelConversions();
+        }}
+      >
+        <DialogContent className="sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Platform conversion detected</DialogTitle>
+            <DialogDescription>
+              The CSV brings transaction data for {pendingConversions.length} ATM
+              {pendingConversions.length !== 1 ? 's' : ''} whose currently-active
+              profile is on a different platform. Confirming will close each
+              active profile (set its removed_date to the day before the first
+              new transaction) and open a new profile matching the CSV's
+              platform. Cancel to abort the entire import.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {pendingConversions.map((c) => (
+              <div
+                key={c.atm_id}
+                className="flex items-center gap-3 p-3 rounded border border-amber-400/20 bg-amber-400/5"
+              >
+                <ArrowRightLeft className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="flex-1 text-sm">
+                  <div className="font-medium">
+                    {c.location_name || c.atm_id}{' '}
+                    <span className="text-muted-foreground font-mono text-xs">
+                      ({c.atm_id})
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="capitalize">{c.current_platform}</span>
+                    {' → '}
+                    <span className="capitalize">{c.new_platform}</span>, first
+                    new tx on {c.first_tx_date}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancelConversions}
+              disabled={isConfirmingConversions}
+            >
+              Cancel import
+            </Button>
+            <Button
+              onClick={handleConfirmConversions}
+              disabled={isConfirmingConversions}
+            >
+              {isConfirmingConversions
+                ? 'Processing…'
+                : `Confirm ${pendingConversions.length} conversion${pendingConversions.length !== 1 ? 's' : ''} and import`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

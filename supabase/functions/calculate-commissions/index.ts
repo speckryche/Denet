@@ -94,7 +94,11 @@ Deno.serve(async (req) => {
 
     if (repError) throw repError;
 
-    // Helper function to find the correct ATM profile for a given transaction date
+    // Helper function to find the correct ATM profile for a given transaction date.
+    // Returns null when no profile window contains the date — by design. With the
+    // DB invariants from migration 20240522000034 (non-overlapping windows + at
+    // most one active=true per atm_id), a missing match indicates a data gap and
+    // should be surfaced rather than silently mis-attributed to "some" profile.
     const findATMProfile = (atmId: string, transactionDate: Date) => {
       const profiles = atmProfiles?.filter(p => p.atm_id === atmId) || [];
 
@@ -102,7 +106,6 @@ Deno.serve(async (req) => {
         const installDate = profile.installed_date ? new Date(profile.installed_date) : null;
         const removalDate = profile.removed_date ? new Date(profile.removed_date) : null;
 
-        // Check if transaction date falls within this profile's date range
         const afterInstall = !installDate || transactionDate >= installDate;
         const beforeRemoval = !removalDate || transactionDate <= removalDate;
 
@@ -111,8 +114,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // If no profile found with date range, return first profile (fallback for legacy data)
-      return profiles[0] || null;
+      console.warn(
+        `findATMProfile: no profile window contains tx date for atm_id=${atmId}, date=${transactionDate.toISOString()}`,
+      );
+      return null;
     };
 
     // Helper function to calculate expense months for the commission month
@@ -252,14 +257,17 @@ Deno.serve(async (req) => {
         overrideMap.set(o.atm_id, Number(o.actual_fees));
       });
 
-      // Find Bitstop ATMs and apply overrides
-      atmAggregates.forEach((atmData, compositeKey) => {
-        const profile = atmProfiles?.find(p => p.atm_id === atmData.atm_id);
+      // Representative date for picking the profile row whose window covers
+      // this commission month. Mid-month avoids edge-of-month ambiguity.
+      const midMonthDate = new Date(Number(year), Number(month) - 1, 15);
+
+      // Find ATMs whose active-during-the-month profile exists, and apply
+      // overrides. findATMProfile returns null when no profile window covers
+      // the month — that's logged inside the helper and we skip the override.
+      atmAggregates.forEach((atmData) => {
+        const profile = findATMProfile(atmData.atm_id, midMonthDate);
         if (!profile) return;
 
-        // Check if this ATM is on the Bitstop platform
-        // We need to check the atm_profiles table for platform info
-        // Since we don't have platform in the current query, check by override existence
         if (overrideMap.has(atmData.atm_id)) {
           const overrideFee = overrideMap.get(atmData.atm_id)!;
           console.log(`Applying fee override for ATM ${atmData.atm_id}: $${atmData.total_fees} -> $${overrideFee}`);

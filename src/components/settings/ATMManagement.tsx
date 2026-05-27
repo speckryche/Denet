@@ -53,7 +53,6 @@ interface ATMProfile {
   city: string | null;
   state: string | null;
   platform: string | null;
-  platform_switch_date: string | null;
   sales_rep_id: string | null;
   monthly_rent: number;
   cash_management_rps: number;

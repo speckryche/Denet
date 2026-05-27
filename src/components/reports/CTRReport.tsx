@@ -41,7 +41,19 @@ import {
   X,
 } from 'lucide-react';
 import { CTR_THRESHOLD, findCtrQualifyingGroups } from '@/lib/ctr';
+import { findProfileForTx } from '@/lib/atm-profile';
 import { useToast } from '@/components/ui/use-toast';
+
+type AtmProfileRow = {
+  id: string;
+  atm_id: string;
+  installed_date: string | null;
+  removed_date: string | null;
+  street_address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+};
 
 type CategoryFilter = 'current' | 'historical' | 'all';
 
@@ -98,7 +110,11 @@ export default function CTRReport() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expansionCache, setExpansionCache] = useState<Map<string, ExpansionData>>(new Map());
   const [loadingExpansion, setLoadingExpansion] = useState<Set<string>>(new Set());
-  const [atmAddressMap, setAtmAddressMap] = useState<Map<string, string>>(new Map());
+  // All atm_profiles rows (multiple per atm_id possible). Per-tx address
+  // lookup uses findProfileForTx so a tx's address comes from the profile
+  // that was active on that tx's date — not whichever row happened to win
+  // a Map.set() race.
+  const [atmProfiles, setAtmProfiles] = useState<AtmProfileRow[]>([]);
 
   // Unified Edit dialog state
   const [editingItem, setEditingItem] = useState<CTRItem | null>(null);
@@ -115,15 +131,10 @@ export default function CTRReport() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const { data: atmProfiles } = await supabase
+      const { data: profilesData } = await supabase
         .from('atm_profiles')
-        .select('atm_id, street_address, city, state, zip_code');
-      const addrMap = new Map<string, string>();
-      atmProfiles?.forEach((atm: any) => {
-        const parts = [atm.street_address, atm.city, atm.state, atm.zip_code].filter(Boolean);
-        addrMap.set(atm.atm_id, parts.join(', '));
-      });
-      setAtmAddressMap(addrMap);
+        .select('id, atm_id, installed_date, removed_date, street_address, city, state, zip_code');
+      setAtmProfiles((profilesData || []) as AtmProfileRow[]);
 
       // Sync-on-view: insert any newly qualifying days from the rolling 3-month window
       // that aren't yet in ctr_filings.
@@ -230,13 +241,37 @@ export default function CTRReport() {
 
       const expansion: ExpansionData = {
         customer_address: custAddrParts.join(', '),
-        transactions: (txs || []).map((tx: any) => ({
-          id: tx.id,
-          sale: parseFloat(tx.sale?.toString() || '0'),
-          atm_name: tx.atm_name || 'Unknown',
-          atm_address: atmAddressMap.get(tx.atm_id) || '',
-          date: tx.date,
-        })),
+        transactions: (txs || []).map((tx: any) => {
+          // Per-tx ATM address: pick the atm_profiles row whose window
+          // contains tx.date, then join its address fields. Multiple
+          // profile rows per atm_id are now possible (e.g., machine moved
+          // between locations); a raw Map<atm_id, address> would silently
+          // drop all but one.
+          let atmAddress = '';
+          if (tx.atm_id && tx.date) {
+            const dateOnly = String(tx.date).split('T')[0];
+            const [y, m, d] = dateOnly.split('-').map(Number);
+            if (y && m && d) {
+              const profile = findProfileForTx(atmProfiles, tx.atm_id, new Date(y, m - 1, d));
+              if (profile) {
+                const parts = [
+                  profile.street_address,
+                  profile.city,
+                  profile.state,
+                  profile.zip_code,
+                ].filter(Boolean);
+                atmAddress = parts.join(', ');
+              }
+            }
+          }
+          return {
+            id: tx.id,
+            sale: parseFloat(tx.sale?.toString() || '0'),
+            atm_name: tx.atm_name || 'Unknown',
+            atm_address: atmAddress,
+            date: tx.date,
+          };
+        }),
       };
       setExpansionCache((prev) => new Map(prev).set(key, expansion));
     } catch (error) {

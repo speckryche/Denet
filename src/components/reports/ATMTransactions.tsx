@@ -69,9 +69,12 @@ export default function ATMTransactions() {
 
   const fetchATMList = async () => {
     try {
+      // active=true is unique per atm_id under the migration-20240522000034
+      // invariant, so this returns one row per ATM (the current one).
       const { data, error } = await supabase
         .from('atm_profiles')
         .select('atm_id, location_name')
+        .eq('active', true)
         .order('location_name');
 
       if (error) throw error;
