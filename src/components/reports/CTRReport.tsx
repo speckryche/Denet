@@ -346,21 +346,15 @@ export default function CTRReport() {
     }
   };
 
-  const handleCategoryChange = (v: CategoryFilter) => {
-    if (v !== 'historical') setNameSearch('');
-    setCategoryFilter(v);
-  };
-
-  // Filtering: category → name-search (historical only) → filed-status
+  // Filtering: category → name-search → filed-status
   const categoryFiltered = items.filter(
     (i) => categoryFilter === 'all' || i.category === categoryFilter,
   );
-  const searchedItems =
-    categoryFilter === 'historical' && nameSearch.trim()
-      ? categoryFiltered.filter((i) =>
-          i.customer_name.toLowerCase().includes(nameSearch.trim().toLowerCase()),
-        )
-      : categoryFiltered;
+  const searchedItems = nameSearch.trim()
+    ? categoryFiltered.filter((i) =>
+        i.customer_name.toLowerCase().includes(nameSearch.trim().toLowerCase()),
+      )
+    : categoryFiltered;
   const unfiled = searchedItems.filter((i) => !i.filed);
   const displayItems = showFiled ? searchedItems : unfiled;
 
@@ -421,7 +415,7 @@ export default function CTRReport() {
           </Label>
           <Select
             value={categoryFilter}
-            onValueChange={(v) => handleCategoryChange(v as CategoryFilter)}
+            onValueChange={(v) => setCategoryFilter(v as CategoryFilter)}
           >
             <SelectTrigger id="category-filter" className="w-[180px]">
               <SelectValue />
@@ -434,26 +428,24 @@ export default function CTRReport() {
           </Select>
         </div>
 
-        {categoryFilter === 'historical' && (
-          <div className="relative w-[260px]">
-            <Input
-              placeholder="Search by customer name"
-              value={nameSearch}
-              onChange={(e) => setNameSearch(e.target.value)}
-              className="pr-8"
-            />
-            {nameSearch && (
-              <button
-                type="button"
-                onClick={() => setNameSearch('')}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        )}
+        <div className="relative w-[260px]">
+          <Input
+            placeholder="Search by customer name"
+            value={nameSearch}
+            onChange={(e) => setNameSearch(e.target.value)}
+            className="pr-8"
+          />
+          {nameSearch && (
+            <button
+              type="button"
+              onClick={() => setNameSearch('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
         <div className="flex items-center gap-3">
           <Button
