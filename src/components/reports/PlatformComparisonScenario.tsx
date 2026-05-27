@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RotateCcw } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Link as LinkIcon, Unlink, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -28,9 +29,24 @@ const formatCurrency = (value: number) =>
 const deltaColor = (n: number) =>
   n > 0 ? 'text-green-400' : n < 0 ? 'text-red-400' : 'text-muted-foreground';
 
-// Currency-formatted input: shows the raw editable string while focused
-// (easy to type/paste digits), reformats to "$1,234,567" on blur.
-// Internal state stays a raw number string; only the display value flips.
+// Underline-only input treatment shared across the Scenario Builder.
+// Inputs read as inline text with a subtle bottom border as the only
+// "this is editable" signal. On hover the underline darkens; on focus
+// it picks up the primary accent and the text brightens.
+const underlineInputBase =
+  'bg-transparent border-0 border-b border-white/20 rounded-none shadow-none px-1 ' +
+  'text-foreground/80 font-mono tabular-nums text-right ' +
+  'hover:border-white/40 ' +
+  'focus:border-primary focus:text-foreground ' +
+  'focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0';
+
+// All in-table inputs share this compact size + the underline treatment.
+const compactInputClass = `${underlineInputBase} h-7 text-xs w-full`;
+
+// Number of Machines control above the table — slightly larger, narrower.
+const numMachinesInputClass = `${underlineInputBase} h-8 text-sm w-24`;
+
+// Currency-formatted input: raw digits while focused, "$1,234,567" on blur.
 function CurrencyInput({
   value,
   onChange,
@@ -47,14 +63,41 @@ function CurrencyInput({
       inputMode="numeric"
       value={display}
       onChange={(e) => {
-        // Strip everything except digits, minus, and decimal point.
         const raw = e.target.value.replace(/[^0-9.\-]/g, '');
         onChange(raw);
       }}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
-      className="h-8 font-mono tabular-nums text-right text-sm w-full"
+      className={compactInputClass}
     />
+  );
+}
+
+// Link/unlink toggle for splittable rows. Tooltips describe the action,
+// not just the current state.
+function SplitToggle({
+  split,
+  onToggle,
+}: {
+  split: boolean;
+  onToggle: () => void;
+}) {
+  const title = split
+    ? 'Independent rates per column. Click to use a single shared rate.'
+    : 'Same per-machine rate for both columns. Click to enter different rates per column.';
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={title}
+      aria-label={title}
+      className={cn(
+        'inline-flex items-center justify-center h-5 w-5 rounded-sm ml-1.5 align-middle hover:bg-white/5',
+        split ? 'text-amber-400' : 'text-muted-foreground',
+      )}
+    >
+      {split ? <Unlink className="h-3 w-3" /> : <LinkIcon className="h-3 w-3" />}
+    </button>
   );
 }
 
@@ -63,10 +106,13 @@ export default function PlatformComparisonScenario({
   feePctProjectedDefault,
   bitstopFeesPctDefault,
 }: Props) {
-  // Controlled string inputs (parsed on use). Defaults for the three %
-  // fields come from the parent's current report values; everything else
-  // starts at 0 for the user to fill in.
-  const [totalSalesInput, setTotalSalesInput] = useState('0');
+  // ── Fleet size ──
+  const [numMachinesInput, setNumMachinesInput] = useState('1');
+
+  // ── Per-machine sales (always shared) ──
+  const [avgSalesPerMachineInput, setAvgSalesPerMachineInput] = useState('0');
+
+  // ── % inputs (default-synced from parent) ──
   const [feePctActualInput, setFeePctActualInput] = useState(
     feePctActualDefault.toFixed(2),
   );
@@ -76,23 +122,30 @@ export default function PlatformComparisonScenario({
   const [bitstopFeesPctInput, setBitstopFeesPctInput] = useState(
     bitstopFeesPctDefault.toFixed(2),
   );
-  const [rentActualInput, setRentActualInput] = useState('0');
-  const [rentProjectedInput, setRentProjectedInput] = useState('0');
-  const [mgmtRpsActualInput, setMgmtRpsActualInput] = useState('0');
-  const [mgmtRpsProjectedInput, setMgmtRpsProjectedInput] = useState('0');
-  const [mgmtRepActualInput, setMgmtRepActualInput] = useState('0');
-  const [mgmtRepProjectedInput, setMgmtRepProjectedInput] = useState('0');
-  const [commissionsActualInput, setCommissionsActualInput] = useState('0');
-  const [commissionsProjectedInput, setCommissionsProjectedInput] = useState('0');
 
-  // Per-field dirty flags for the three %s that auto-sync from props.
-  // Any keystroke flips the flag; the resync effect skips dirty fields.
+  // ── Per-machine cost inputs + split flags ──
+  const [rentActualPMInput, setRentActualPMInput] = useState('0');
+  const [rentProjectedPMInput, setRentProjectedPMInput] = useState('0');
+  const [rentSplit, setRentSplit] = useState(false);
+
+  const [mgmtRpsActualPMInput, setMgmtRpsActualPMInput] = useState('0');
+  const [mgmtRpsProjectedPMInput, setMgmtRpsProjectedPMInput] = useState('0');
+  const [mgmtRpsSplit, setMgmtRpsSplit] = useState(false);
+
+  const [mgmtRepActualPMInput, setMgmtRepActualPMInput] = useState('0');
+  const [mgmtRepProjectedPMInput, setMgmtRepProjectedPMInput] = useState('0');
+  const [mgmtRepSplit, setMgmtRepSplit] = useState(false);
+
+  // ── Commission %, optional split ──
+  const [commissionActualPctInput, setCommissionActualPctInput] = useState('0');
+  const [commissionProjectedPctInput, setCommissionProjectedPctInput] = useState('0');
+  const [commissionSplit, setCommissionSplit] = useState(false);
+
+  // ── Dirty flags for default-synced % inputs ──
   const [isFeePctActualDirty, setIsFeePctActualDirty] = useState(false);
   const [isFeePctProjectedDirty, setIsFeePctProjectedDirty] = useState(false);
   const [isBitstopFeesPctDirty, setIsBitstopFeesPctDirty] = useState(false);
 
-  // Resync from parent unless user has touched the field. Effects depend
-  // only on the prop value — dirty flag is read from closure.
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!isFeePctActualDirty) setFeePctActualInput(feePctActualDefault.toFixed(2));
@@ -105,58 +158,108 @@ export default function PlatformComparisonScenario({
   }, [bitstopFeesPctDefault]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
+  // Going shared→split copies Actual to Projected so the user starts from
+  // a sensible value. Split→shared leaves both states alone; in shared mode
+  // the calc uses Actual for both columns, so the Per Machine column shows
+  // whatever the user last typed in the Actuals split-mode cell.
+  const toggleRentSplit = () => {
+    if (!rentSplit) setRentProjectedPMInput(rentActualPMInput);
+    setRentSplit((s) => !s);
+  };
+  const toggleMgmtRpsSplit = () => {
+    if (!mgmtRpsSplit) setMgmtRpsProjectedPMInput(mgmtRpsActualPMInput);
+    setMgmtRpsSplit((s) => !s);
+  };
+  const toggleMgmtRepSplit = () => {
+    if (!mgmtRepSplit) setMgmtRepProjectedPMInput(mgmtRepActualPMInput);
+    setMgmtRepSplit((s) => !s);
+  };
+  const toggleCommissionSplit = () => {
+    if (!commissionSplit) setCommissionProjectedPctInput(commissionActualPctInput);
+    setCommissionSplit((s) => !s);
+  };
+
   const handleReset = () => {
-    setTotalSalesInput('0');
+    setNumMachinesInput('1');
+    setAvgSalesPerMachineInput('0');
     setFeePctActualInput(feePctActualDefault.toFixed(2));
     setFeePctProjectedInput(feePctProjectedDefault.toFixed(2));
     setBitstopFeesPctInput(bitstopFeesPctDefault.toFixed(2));
-    setRentActualInput('0');
-    setRentProjectedInput('0');
-    setMgmtRpsActualInput('0');
-    setMgmtRpsProjectedInput('0');
-    setMgmtRepActualInput('0');
-    setMgmtRepProjectedInput('0');
-    setCommissionsActualInput('0');
-    setCommissionsProjectedInput('0');
+    setRentActualPMInput('0');
+    setRentProjectedPMInput('0');
+    setRentSplit(false);
+    setMgmtRpsActualPMInput('0');
+    setMgmtRpsProjectedPMInput('0');
+    setMgmtRpsSplit(false);
+    setMgmtRepActualPMInput('0');
+    setMgmtRepProjectedPMInput('0');
+    setMgmtRepSplit(false);
+    setCommissionActualPctInput('0');
+    setCommissionProjectedPctInput('0');
+    setCommissionSplit(false);
     setIsFeePctActualDirty(false);
     setIsFeePctProjectedDirty(false);
     setIsBitstopFeesPctDirty(false);
   };
 
-  // ── Parse inputs once per render ──
-  const totalSales = parseFloat(totalSalesInput) || 0;
+  // ── Parse + derive ──
+  const numMachines = Math.max(0, parseInt(numMachinesInput) || 0);
+  const avgSalesPerMachine = parseFloat(avgSalesPerMachineInput) || 0;
+  const totalSales = avgSalesPerMachine * numMachines;
+
   const feePctActual = parseFloat(feePctActualInput) || 0;
   const feePctProjected = parseFloat(feePctProjectedInput) || 0;
   const bitstopFeesPct = parseFloat(bitstopFeesPctInput) || 0;
-  const rentActual = parseFloat(rentActualInput) || 0;
-  const rentProjected = parseFloat(rentProjectedInput) || 0;
-  const mgmtRpsActual = parseFloat(mgmtRpsActualInput) || 0;
-  const mgmtRpsProjected = parseFloat(mgmtRpsProjectedInput) || 0;
-  const mgmtRepActual = parseFloat(mgmtRepActualInput) || 0;
-  const mgmtRepProjected = parseFloat(mgmtRepProjectedInput) || 0;
-  const commissionsActual = parseFloat(commissionsActualInput) || 0;
-  const commissionsProjected = parseFloat(commissionsProjectedInput) || 0;
 
-  // ── Derived values ──
   const revenueActual = totalSales * (feePctActual / 100);
   const revenueProjected = totalSales * (feePctProjected / 100);
   const bitstopFeesActual = totalSales * (bitstopFeesPct / 100);
-  const bitstopFeesProjected = 0; // affiliate model: no per-tx Bitstop fee
-  const profitActual =
-    revenueActual -
-    bitstopFeesActual -
-    rentActual -
-    mgmtRpsActual -
-    mgmtRepActual -
-    commissionsActual;
-  const profitProjected =
+  const bitstopFeesProjected = 0;
+
+  const rentActualPM = parseFloat(rentActualPMInput) || 0;
+  const rentProjectedPM = rentSplit
+    ? parseFloat(rentProjectedPMInput) || 0
+    : rentActualPM;
+  const rentActual = rentActualPM * numMachines;
+  const rentProjected = rentProjectedPM * numMachines;
+
+  const mgmtRpsActualPM = parseFloat(mgmtRpsActualPMInput) || 0;
+  const mgmtRpsProjectedPM = mgmtRpsSplit
+    ? parseFloat(mgmtRpsProjectedPMInput) || 0
+    : mgmtRpsActualPM;
+  const mgmtRpsActual = mgmtRpsActualPM * numMachines;
+  const mgmtRpsProjected = mgmtRpsProjectedPM * numMachines;
+
+  const mgmtRepActualPM = parseFloat(mgmtRepActualPMInput) || 0;
+  const mgmtRepProjectedPM = mgmtRepSplit
+    ? parseFloat(mgmtRepProjectedPMInput) || 0
+    : mgmtRepActualPM;
+  const mgmtRepActual = mgmtRepActualPM * numMachines;
+  const mgmtRepProjected = mgmtRepProjectedPM * numMachines;
+
+  const profitPreCommActual =
+    revenueActual - bitstopFeesActual - rentActual - mgmtRpsActual - mgmtRepActual;
+  const profitPreCommProjected =
     revenueProjected -
     bitstopFeesProjected -
     rentProjected -
     mgmtRpsProjected -
-    mgmtRepProjected -
-    commissionsProjected;
+    mgmtRepProjected;
 
+  const commissionActualPct = parseFloat(commissionActualPctInput) || 0;
+  const commissionProjectedPct = commissionSplit
+    ? parseFloat(commissionProjectedPctInput) || 0
+    : commissionActualPct;
+
+  const commissionsActual =
+    Math.max(0, profitPreCommActual) * (commissionActualPct / 100);
+  const commissionsProjected =
+    Math.max(0, profitPreCommProjected) * (commissionProjectedPct / 100);
+
+  const profitActual = profitPreCommActual - commissionsActual;
+  const profitProjected = profitPreCommProjected - commissionsProjected;
+
+  // Deltas
   const revenueDelta = revenueProjected - revenueActual;
   const feePctDelta = feePctProjected - feePctActual;
   const bitstopFeesDelta = bitstopFeesProjected - bitstopFeesActual;
@@ -167,18 +270,71 @@ export default function PlatformComparisonScenario({
   const profitDelta = profitProjected - profitActual;
 
   // ── Render helpers ──
-  const numInput = (
-    value: string,
-    onChange: (v: string) => void,
-    step: string = '1',
-  ) => (
+  const pctInput = (value: string, onChange: (v: string) => void) => (
     <Input
       type="number"
-      step={step}
+      step="0.01"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-8 font-mono tabular-nums text-right text-sm w-full"
+      className={compactInputClass}
     />
+  );
+
+  // Right-aligned muted dash for non-applicable cells (Per Machine column
+  // on rows that have no per-machine rate; Projected of Bitstop Fees %).
+  const dashCell = (extraClass = '') => (
+    <td
+      className={cn(
+        'px-3 py-3 text-right font-mono text-xs tabular-nums text-muted-foreground/40 align-top',
+        extraClass,
+      )}
+    >
+      —
+    </td>
+  );
+
+  // Prominent display cell — primary visual focus in Actuals/Projected.
+  const totalCell = (value: number, extraClass = '') => (
+    <td
+      className={cn(
+        'px-4 py-3 text-right font-mono text-base tabular-nums align-top',
+        extraClass,
+      )}
+    >
+      {formatCurrency(value)}
+    </td>
+  );
+
+  // In-cell input + total stacked vertically (split-mode currency cells).
+  const splitCurrencyCell = (
+    value: string,
+    onChange: (v: string) => void,
+    total: number,
+  ) => (
+    <td className="px-4 py-3 align-top">
+      <div className="space-y-1">
+        <CurrencyInput value={value} onChange={onChange} />
+        <div className="text-right font-mono text-base tabular-nums">
+          {formatCurrency(total)}
+        </div>
+      </div>
+    </td>
+  );
+
+  // In-cell % input + commission-$ stacked vertically (split-mode commission).
+  const splitCommissionCell = (
+    value: string,
+    onChange: (v: string) => void,
+    commissionAmount: number,
+  ) => (
+    <td className="px-4 py-3 align-top">
+      <div className="space-y-1">
+        {pctInput(value, onChange)}
+        <div className="text-right font-mono text-base tabular-nums">
+          {formatCurrency(commissionAmount)}
+        </div>
+      </div>
+    </td>
   );
 
   return (
@@ -199,10 +355,27 @@ export default function PlatformComparisonScenario({
         </div>
       </CardHeader>
       <CardContent>
+        {/* Fleet size */}
+        <div className="flex items-center gap-3 mb-4 text-sm">
+          <Label htmlFor="num-machines" className="text-xs text-muted-foreground">
+            Number of Machines
+          </Label>
+          <Input
+            id="num-machines"
+            type="number"
+            min={0}
+            step={1}
+            value={numMachinesInput}
+            onChange={(e) => setNumMachinesInput(e.target.value)}
+            className={numMachinesInputClass}
+          />
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <colgroup>
               <col style={{ width: '200px' }} />
+              <col style={{ width: '130px' }} />
               <col style={{ width: '180px' }} />
               <col style={{ width: '180px' }} />
               <col style={{ width: '160px' }} />
@@ -211,6 +384,9 @@ export default function PlatformComparisonScenario({
               <tr className="border-b-2 border-white/10">
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   &nbsp;
+                </th>
+                <th className="px-3 py-3 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Per Machine
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-primary">
                   Actuals (Denet)
@@ -224,46 +400,45 @@ export default function PlatformComparisonScenario({
               </tr>
             </thead>
             <tbody>
-              {/* Total Sales — input in Actuals, mirrored read-only in Projected */}
+              {/* Total Sales — avg-per-machine input, always shared */}
               <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-sm font-medium">Total Sales</td>
-                <td className="px-4 py-3">
-                  <CurrencyInput value={totalSalesInput} onChange={setTotalSalesInput} />
+                <td className="px-4 py-3 text-sm font-medium align-top">
+                  Total Sales
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-base tabular-nums">
-                  {formatCurrency(totalSales)}
+                <td className="px-3 py-3 align-top">
+                  <CurrencyInput
+                    value={avgSalesPerMachineInput}
+                    onChange={setAvgSalesPerMachineInput}
+                  />
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-sm tabular-nums text-muted-foreground">
+                {totalCell(totalSales)}
+                {totalCell(totalSales)}
+                <td className="px-4 py-3 text-right font-mono text-sm tabular-nums text-muted-foreground align-top">
                   {formatCurrency(0)}
                 </td>
               </tr>
 
-              {/* Fee % of Sales — both columns editable, default-synced */}
+              {/* Fee % of Sales — two independent % inputs (no per-machine) */}
               <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-sm font-medium">Fee % of Sales</td>
-                <td className="px-4 py-3">
-                  {numInput(
-                    feePctActualInput,
-                    (v) => {
-                      setFeePctActualInput(v);
-                      setIsFeePctActualDirty(true);
-                    },
-                    '0.01',
-                  )}
+                <td className="px-4 py-3 text-sm font-medium align-top">
+                  Fee % of Sales
                 </td>
-                <td className="px-4 py-3">
-                  {numInput(
-                    feePctProjectedInput,
-                    (v) => {
-                      setFeePctProjectedInput(v);
-                      setIsFeePctProjectedDirty(true);
-                    },
-                    '0.01',
-                  )}
+                {dashCell()}
+                <td className="px-4 py-3 align-top">
+                  {pctInput(feePctActualInput, (v) => {
+                    setFeePctActualInput(v);
+                    setIsFeePctActualDirty(true);
+                  })}
+                </td>
+                <td className="px-4 py-3 align-top">
+                  {pctInput(feePctProjectedInput, (v) => {
+                    setFeePctProjectedInput(v);
+                    setIsFeePctProjectedDirty(true);
+                  })}
                 </td>
                 <td
                   className={cn(
-                    'px-4 py-3 text-right font-mono text-sm tabular-nums',
+                    'px-4 py-3 text-right font-mono text-sm tabular-nums align-top',
                     deltaColor(feePctDelta),
                   )}
                 >
@@ -274,16 +449,13 @@ export default function PlatformComparisonScenario({
 
               {/* Revenue — calculated */}
               <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-sm font-medium">Revenue</td>
-                <td className="px-4 py-3 text-right font-mono text-base tabular-nums">
-                  {formatCurrency(revenueActual)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-base tabular-nums">
-                  {formatCurrency(revenueProjected)}
-                </td>
+                <td className="px-4 py-3 text-sm font-medium align-top">Revenue</td>
+                {dashCell()}
+                {totalCell(revenueActual)}
+                {totalCell(revenueProjected)}
                 <td
                   className={cn(
-                    'px-4 py-3 text-right font-mono text-sm tabular-nums',
+                    'px-4 py-3 text-right font-mono text-sm tabular-nums align-top',
                     deltaColor(revenueDelta),
                   )}
                 >
@@ -293,37 +465,31 @@ export default function PlatformComparisonScenario({
 
               {/* Bitstop Fees % — Actuals input only */}
               <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-sm font-medium">Bitstop Fees %</td>
-                <td className="px-4 py-3">
-                  {numInput(
-                    bitstopFeesPctInput,
-                    (v) => {
-                      setBitstopFeesPctInput(v);
-                      setIsBitstopFeesPctDirty(true);
-                    },
-                    '0.01',
-                  )}
+                <td className="px-4 py-3 text-sm font-medium align-top">
+                  Bitstop Fees %
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-sm tabular-nums text-muted-foreground/40">
-                  —
+                {dashCell()}
+                <td className="px-4 py-3 align-top">
+                  {pctInput(bitstopFeesPctInput, (v) => {
+                    setBitstopFeesPctInput(v);
+                    setIsBitstopFeesPctDirty(true);
+                  })}
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-sm tabular-nums text-muted-foreground/40">
-                  —
-                </td>
+                {dashCell('px-4')}
+                {dashCell('px-4')}
               </tr>
 
               {/* Bitstop Fees — calculated; projected always $0 */}
               <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-sm font-medium">Bitstop Fees</td>
-                <td className="px-4 py-3 text-right font-mono text-base tabular-nums">
-                  {formatCurrency(bitstopFeesActual)}
+                <td className="px-4 py-3 text-sm font-medium align-top">
+                  Bitstop Fees
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-base tabular-nums">
-                  {formatCurrency(0)}
-                </td>
+                {dashCell()}
+                {totalCell(bitstopFeesActual)}
+                {totalCell(0)}
                 <td
                   className={cn(
-                    'px-4 py-3 text-right font-mono text-sm tabular-nums',
+                    'px-4 py-3 text-right font-mono text-sm tabular-nums align-top',
                     deltaColor(bitstopFeesDelta),
                   )}
                 >
@@ -331,18 +497,35 @@ export default function PlatformComparisonScenario({
                 </td>
               </tr>
 
-              {/* Rent */}
+              {/* Rent — per-machine, splittable */}
               <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-sm font-medium">Rent</td>
-                <td className="px-4 py-3">
-                  <CurrencyInput value={rentActualInput} onChange={setRentActualInput} />
+                <td className="px-4 py-3 text-sm font-medium align-top">
+                  Rent
+                  <SplitToggle split={rentSplit} onToggle={toggleRentSplit} />
                 </td>
-                <td className="px-4 py-3">
-                  <CurrencyInput value={rentProjectedInput} onChange={setRentProjectedInput} />
-                </td>
+                {rentSplit ? (
+                  dashCell()
+                ) : (
+                  <td className="px-3 py-3 align-top">
+                    <CurrencyInput
+                      value={rentActualPMInput}
+                      onChange={setRentActualPMInput}
+                    />
+                  </td>
+                )}
+                {rentSplit
+                  ? splitCurrencyCell(rentActualPMInput, setRentActualPMInput, rentActual)
+                  : totalCell(rentActual)}
+                {rentSplit
+                  ? splitCurrencyCell(
+                      rentProjectedPMInput,
+                      setRentProjectedPMInput,
+                      rentProjected,
+                    )
+                  : totalCell(rentProjected)}
                 <td
                   className={cn(
-                    'px-4 py-3 text-right font-mono text-sm tabular-nums',
+                    'px-4 py-3 text-right font-mono text-sm tabular-nums align-top',
                     deltaColor(rentDelta),
                   )}
                 >
@@ -350,18 +533,39 @@ export default function PlatformComparisonScenario({
                 </td>
               </tr>
 
-              {/* Mgmt RPS */}
+              {/* Mgmt RPS — per-machine, splittable */}
               <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-sm font-medium">Mgmt RPS</td>
-                <td className="px-4 py-3">
-                  <CurrencyInput value={mgmtRpsActualInput} onChange={setMgmtRpsActualInput} />
+                <td className="px-4 py-3 text-sm font-medium align-top">
+                  Mgmt RPS
+                  <SplitToggle split={mgmtRpsSplit} onToggle={toggleMgmtRpsSplit} />
                 </td>
-                <td className="px-4 py-3">
-                  <CurrencyInput value={mgmtRpsProjectedInput} onChange={setMgmtRpsProjectedInput} />
-                </td>
+                {mgmtRpsSplit ? (
+                  dashCell()
+                ) : (
+                  <td className="px-3 py-3 align-top">
+                    <CurrencyInput
+                      value={mgmtRpsActualPMInput}
+                      onChange={setMgmtRpsActualPMInput}
+                    />
+                  </td>
+                )}
+                {mgmtRpsSplit
+                  ? splitCurrencyCell(
+                      mgmtRpsActualPMInput,
+                      setMgmtRpsActualPMInput,
+                      mgmtRpsActual,
+                    )
+                  : totalCell(mgmtRpsActual)}
+                {mgmtRpsSplit
+                  ? splitCurrencyCell(
+                      mgmtRpsProjectedPMInput,
+                      setMgmtRpsProjectedPMInput,
+                      mgmtRpsProjected,
+                    )
+                  : totalCell(mgmtRpsProjected)}
                 <td
                   className={cn(
-                    'px-4 py-3 text-right font-mono text-sm tabular-nums',
+                    'px-4 py-3 text-right font-mono text-sm tabular-nums align-top',
                     deltaColor(mgmtRpsDelta),
                   )}
                 >
@@ -369,18 +573,39 @@ export default function PlatformComparisonScenario({
                 </td>
               </tr>
 
-              {/* Mgmt Rep */}
+              {/* Mgmt Rep — per-machine, splittable */}
               <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-sm font-medium">Mgmt Rep</td>
-                <td className="px-4 py-3">
-                  <CurrencyInput value={mgmtRepActualInput} onChange={setMgmtRepActualInput} />
+                <td className="px-4 py-3 text-sm font-medium align-top">
+                  Mgmt Rep
+                  <SplitToggle split={mgmtRepSplit} onToggle={toggleMgmtRepSplit} />
                 </td>
-                <td className="px-4 py-3">
-                  <CurrencyInput value={mgmtRepProjectedInput} onChange={setMgmtRepProjectedInput} />
-                </td>
+                {mgmtRepSplit ? (
+                  dashCell()
+                ) : (
+                  <td className="px-3 py-3 align-top">
+                    <CurrencyInput
+                      value={mgmtRepActualPMInput}
+                      onChange={setMgmtRepActualPMInput}
+                    />
+                  </td>
+                )}
+                {mgmtRepSplit
+                  ? splitCurrencyCell(
+                      mgmtRepActualPMInput,
+                      setMgmtRepActualPMInput,
+                      mgmtRepActual,
+                    )
+                  : totalCell(mgmtRepActual)}
+                {mgmtRepSplit
+                  ? splitCurrencyCell(
+                      mgmtRepProjectedPMInput,
+                      setMgmtRepProjectedPMInput,
+                      mgmtRepProjected,
+                    )
+                  : totalCell(mgmtRepProjected)}
                 <td
                   className={cn(
-                    'px-4 py-3 text-right font-mono text-sm tabular-nums',
+                    'px-4 py-3 text-right font-mono text-sm tabular-nums align-top',
                     deltaColor(mgmtRepDelta),
                   )}
                 >
@@ -388,24 +613,42 @@ export default function PlatformComparisonScenario({
                 </td>
               </tr>
 
-              {/* Commissions */}
+              {/* Commission — % input, splittable; $ derived per column */}
               <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-sm font-medium">Commissions</td>
-                <td className="px-4 py-3">
-                  <CurrencyInput
-                    value={commissionsActualInput}
-                    onChange={setCommissionsActualInput}
+                <td className="px-4 py-3 text-sm font-medium align-top">
+                  Commission
+                  <SplitToggle
+                    split={commissionSplit}
+                    onToggle={toggleCommissionSplit}
                   />
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    % of pre-commission profit
+                  </div>
                 </td>
-                <td className="px-4 py-3">
-                  <CurrencyInput
-                    value={commissionsProjectedInput}
-                    onChange={setCommissionsProjectedInput}
-                  />
-                </td>
+                {commissionSplit ? (
+                  dashCell()
+                ) : (
+                  <td className="px-3 py-3 align-top">
+                    {pctInput(commissionActualPctInput, setCommissionActualPctInput)}
+                  </td>
+                )}
+                {commissionSplit
+                  ? splitCommissionCell(
+                      commissionActualPctInput,
+                      setCommissionActualPctInput,
+                      commissionsActual,
+                    )
+                  : totalCell(commissionsActual)}
+                {commissionSplit
+                  ? splitCommissionCell(
+                      commissionProjectedPctInput,
+                      setCommissionProjectedPctInput,
+                      commissionsProjected,
+                    )
+                  : totalCell(commissionsProjected)}
                 <td
                   className={cn(
-                    'px-4 py-3 text-right font-mono text-sm tabular-nums',
+                    'px-4 py-3 text-right font-mono text-sm tabular-nums align-top',
                     deltaColor(commissionsDelta),
                   )}
                 >
@@ -416,6 +659,7 @@ export default function PlatformComparisonScenario({
             <tfoot>
               <tr className="border-t-2 border-primary/30 bg-white/[0.03]">
                 <td className="px-4 py-3 text-sm font-bold">Profit / Loss</td>
+                {dashCell()}
                 <td
                   className={cn(
                     'px-4 py-3 text-right font-mono text-lg font-bold tabular-nums',
