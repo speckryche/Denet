@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { FileSpreadsheet, FileText, RotateCcw, Loader2, Info } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
+import PlatformComparisonScenario from './PlatformComparisonScenario';
 
 // ──────────────────────────────────────────────────────────────
 // Types
@@ -552,6 +553,10 @@ export default function PlatformComparison() {
   const feePctDelta =
     feePctActual !== null ? feePctProjected - feePctActual : null;
 
+  // Used as a default for the Scenario Builder's Bitstop Fees % input.
+  const bitstopFeesPctDefault =
+    denetSalesTotal > 0 ? (actuals.bitstop_fees / denetSalesTotal) * 100 : 0;
+
   // ── Date display ──
   const formatDisplayDate = (d: string) => {
     const date = parseLocalDate(d);
@@ -784,6 +789,7 @@ export default function PlatformComparison() {
   ];
 
   return (
+    <div className="space-y-6">
     <Card className="bg-white/5 border-white/10">
       <CardHeader>
         <CardTitle>Platform Profitability Comparison</CardTitle>
@@ -1104,5 +1110,14 @@ export default function PlatformComparison() {
         )}
       </CardContent>
     </Card>
+
+      {!isLoading && canRun && machineCount > 0 && (
+        <PlatformComparisonScenario
+          feePctActualDefault={feePctActual ?? 0}
+          feePctProjectedDefault={feePctProjected}
+          bitstopFeesPctDefault={bitstopFeesPctDefault}
+        />
+      )}
+    </div>
   );
 }
