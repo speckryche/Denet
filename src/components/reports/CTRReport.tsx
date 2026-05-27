@@ -38,8 +38,10 @@ import {
   FileWarning,
   Loader2,
   Shield,
+  X,
 } from 'lucide-react';
 import { CTR_THRESHOLD, findCtrQualifyingGroups } from '@/lib/ctr';
+import { useToast } from '@/components/ui/use-toast';
 
 type CategoryFilter = 'current' | 'historical' | 'all';
 
@@ -90,6 +92,9 @@ export default function CTRReport() {
   const [isLoading, setIsLoading] = useState(true);
   const [showFiled, setShowFiled] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('current');
+  const [nameSearch, setNameSearch] = useState('');
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expansionCache, setExpansionCache] = useState<Map<string, ExpansionData>>(new Map());
   const [loadingExpansion, setLoadingExpansion] = useState<Set<string>>(new Set());
@@ -292,12 +297,72 @@ export default function CTRReport() {
     }
   };
 
-  // Filtering: category first, then filed-status
+  // Quick toggle of filed status without opening the dialog. Optimistic UI:
+  // mutate local state first, revert on failure. Notes and wont_file_reason
+  // are intentionally not touched.
+  const handleQuickToggle = async (item: CTRItem) => {
+    if (togglingIds.has(item.id)) return;
+
+    const nextFiled = !item.filed;
+    const nextFiledDate = nextFiled ? getPacificDateString() : null;
+    const prevFiled = item.filed;
+    const prevFiledDate = item.filed_date;
+
+    setTogglingIds((prev) => new Set(prev).add(item.id));
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id ? { ...i, filed: nextFiled, filed_date: nextFiledDate } : i,
+      ),
+    );
+
+    try {
+      const { error } = await supabase
+        .from('ctr_filings')
+        .update({
+          filed: nextFiled,
+          filed_date: nextFiledDate,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', item.id);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error toggling CTR filed status:', error);
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === item.id ? { ...i, filed: prevFiled, filed_date: prevFiledDate } : i,
+        ),
+      );
+      toast({
+        title: 'Error',
+        description: `Failed to ${nextFiled ? 'mark filed' : 'unmark'}. Please try again.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
+
+  const handleCategoryChange = (v: CategoryFilter) => {
+    if (v !== 'historical') setNameSearch('');
+    setCategoryFilter(v);
+  };
+
+  // Filtering: category → name-search (historical only) → filed-status
   const categoryFiltered = items.filter(
     (i) => categoryFilter === 'all' || i.category === categoryFilter,
   );
-  const unfiled = categoryFiltered.filter((i) => !i.filed);
-  const displayItems = showFiled ? categoryFiltered : unfiled;
+  const searchedItems =
+    categoryFilter === 'historical' && nameSearch.trim()
+      ? categoryFiltered.filter((i) =>
+          i.customer_name.toLowerCase().includes(nameSearch.trim().toLowerCase()),
+        )
+      : categoryFiltered;
+  const unfiled = searchedItems.filter((i) => !i.filed);
+  const displayItems = showFiled ? searchedItems : unfiled;
 
   // Summary banner: tailored to selected category
   const currentUnfiled = items.filter((i) => i.category === 'current' && !i.filed).length;
@@ -348,7 +413,7 @@ export default function CTRReport() {
         </div>
       </div>
 
-      {/* Filters: category + filed-status */}
+      {/* Filters: category + name search (historical only) + filed-status */}
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <Label htmlFor="category-filter" className="text-sm text-muted-foreground">
@@ -356,7 +421,7 @@ export default function CTRReport() {
           </Label>
           <Select
             value={categoryFilter}
-            onValueChange={(v) => setCategoryFilter(v as CategoryFilter)}
+            onValueChange={(v) => handleCategoryChange(v as CategoryFilter)}
           >
             <SelectTrigger id="category-filter" className="w-[180px]">
               <SelectValue />
@@ -368,6 +433,27 @@ export default function CTRReport() {
             </SelectContent>
           </Select>
         </div>
+
+        {categoryFilter === 'historical' && (
+          <div className="relative w-[260px]">
+            <Input
+              placeholder="Search by customer name"
+              value={nameSearch}
+              onChange={(e) => setNameSearch(e.target.value)}
+              className="pr-8"
+            />
+            {nameSearch && (
+              <button
+                type="button"
+                onClick={() => setNameSearch('')}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <Button
@@ -384,7 +470,7 @@ export default function CTRReport() {
             onClick={() => setShowFiled(true)}
           >
             <Shield className="w-4 h-4 mr-1.5" />
-            All ({categoryFiltered.length})
+            All ({searchedItems.length})
           </Button>
         </div>
       </div>
@@ -483,13 +569,23 @@ export default function CTRReport() {
                           {item.wont_file_reason || '—'}
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEditDialog(item)}
-                          >
-                            Edit
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={togglingIds.has(item.id)}
+                              onClick={() => handleQuickToggle(item)}
+                              className={cn(
+                                !item.filed &&
+                                  'border-green-400/30 text-green-400 hover:bg-green-400/10 hover:text-green-300',
+                              )}
+                            >
+                              {item.filed ? 'Unmark' : 'Mark Filed'}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => openEditDialog(item)}>
+                              Edit
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                       {isExpanded && (
