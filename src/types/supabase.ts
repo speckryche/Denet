@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          data_type: string
+          description: string | null
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          data_type?: string
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          data_type?: string
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       atm_profiles: {
         Row: {
           active: boolean | null
@@ -30,7 +54,6 @@ export type Database = {
           on_bitstop: boolean | null
           on_coinradar: boolean | null
           platform: string | null
-          platform_switch_date: string | null
           removed_date: string | null
           rent_payment_method: string | null
           sales_rep_id: string | null
@@ -56,7 +79,6 @@ export type Database = {
           on_bitstop?: boolean | null
           on_coinradar?: boolean | null
           platform?: string | null
-          platform_switch_date?: string | null
           removed_date?: string | null
           rent_payment_method?: string | null
           sales_rep_id?: string | null
@@ -82,7 +104,6 @@ export type Database = {
           on_bitstop?: boolean | null
           on_coinradar?: boolean | null
           platform?: string | null
-          platform_switch_date?: string | null
           removed_date?: string | null
           rent_payment_method?: string | null
           sales_rep_id?: string | null
@@ -145,6 +166,33 @@ export type Database = {
           total_sales?: number | null
           updated_at?: string | null
           year?: number
+        }
+        Relationships: []
+      }
+      bitstop_fee_overrides: {
+        Row: {
+          actual_fees: number
+          atm_id: string
+          created_at: string | null
+          id: string
+          updated_at: string | null
+          year_month: string
+        }
+        Insert: {
+          actual_fees: number
+          atm_id: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          year_month: string
+        }
+        Update: {
+          actual_fees?: number
+          atm_id?: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          year_month?: string
         }
         Relationships: []
       }
@@ -338,27 +386,111 @@ export type Database = {
           },
         ]
       }
-      deposit_pickup_links: {
+      crypto_investments: {
         Row: {
-          id: string
-          deposit_id: string
-          pickup_id: string
-          amount: number
+          as_of_date: string
           created_at: string | null
+          crypto_name: string
+          current_value: number
+          id: string
+          quantity: number
+          realized_gain: number
+          total_cost: number
+          updated_at: string | null
         }
         Insert: {
-          id?: string
-          deposit_id: string
-          pickup_id: string
-          amount: number
+          as_of_date: string
           created_at?: string | null
+          crypto_name: string
+          current_value?: number
+          id?: string
+          quantity?: number
+          realized_gain?: number
+          total_cost?: number
+          updated_at?: string | null
         }
         Update: {
+          as_of_date?: string
+          created_at?: string | null
+          crypto_name?: string
+          current_value?: number
           id?: string
-          deposit_id?: string
-          pickup_id?: string
+          quantity?: number
+          realized_gain?: number
+          total_cost?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ctr_filings: {
+        Row: {
+          category: string
+          created_at: string | null
+          customer_id: string
+          customer_name: string
+          filed: boolean
+          filed_date: string | null
+          id: string
+          notes: string | null
+          total_amount: number
+          transaction_count: number
+          trigger_date: string
+          updated_at: string | null
+          wont_file_reason: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          customer_id: string
+          customer_name: string
+          filed?: boolean
+          filed_date?: string | null
+          id?: string
+          notes?: string | null
+          total_amount: number
+          transaction_count?: number
+          trigger_date: string
+          updated_at?: string | null
+          wont_file_reason?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          customer_id?: string
+          customer_name?: string
+          filed?: boolean
+          filed_date?: string | null
+          id?: string
+          notes?: string | null
+          total_amount?: number
+          transaction_count?: number
+          trigger_date?: string
+          updated_at?: string | null
+          wont_file_reason?: string | null
+        }
+        Relationships: []
+      }
+      deposit_pickup_links: {
+        Row: {
+          amount: number
+          created_at: string | null
+          deposit_id: string
+          id: string
+          pickup_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          deposit_id: string
+          id?: string
+          pickup_id: string
+        }
+        Update: {
           amount?: number
           created_at?: string | null
+          deposit_id?: string
+          id?: string
+          pickup_id?: string
         }
         Relationships: [
           {
@@ -414,6 +546,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      liquidity_categories: {
+        Row: {
+          active: boolean
+          coin_id: string | null
+          created_at: string | null
+          display_order: number
+          id: string
+          name: string
+          ticker: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          coin_id?: string | null
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          name: string
+          ticker?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          coin_id?: string | null
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          name?: string
+          ticker?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      liquidity_snapshot_values: {
+        Row: {
+          category_id: string
+          id: string
+          quantity: number | null
+          snapshot_id: string
+          value: number
+        }
+        Insert: {
+          category_id: string
+          id?: string
+          quantity?: number | null
+          snapshot_id: string
+          value?: number
+        }
+        Update: {
+          category_id?: string
+          id?: string
+          quantity?: number | null
+          snapshot_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liquidity_snapshot_values_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "liquidity_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "liquidity_snapshot_values_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "liquidity_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      liquidity_snapshots: {
+        Row: {
+          bitcoin_price: number
+          created_at: string | null
+          id: string
+          notes: string | null
+          snapshot_date: string
+          solana_price: number
+          updated_at: string | null
+        }
+        Insert: {
+          bitcoin_price?: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          snapshot_date: string
+          solana_price?: number
+          updated_at?: string | null
+        }
+        Update: {
+          bitcoin_price?: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          snapshot_date?: string
+          solana_price?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       people: {
         Row: {
@@ -501,12 +738,15 @@ export type Database = {
           atm_id: string | null
           atm_name: string | null
           bitstop_fee: number | null
+          bitstop_spread: number | null
           created_at: string
+          customer_address: string | null
           customer_city: string | null
           customer_first_name: string | null
           customer_id: string | null
           customer_last_name: string | null
           customer_state: string | null
+          customer_zipcode: string | null
           date: string | null
           fee: number | null
           id: string
@@ -521,12 +761,15 @@ export type Database = {
           atm_id?: string | null
           atm_name?: string | null
           bitstop_fee?: number | null
+          bitstop_spread?: number | null
           created_at?: string
+          customer_address?: string | null
           customer_city?: string | null
           customer_first_name?: string | null
           customer_id?: string | null
           customer_last_name?: string | null
           customer_state?: string | null
+          customer_zipcode?: string | null
           date?: string | null
           fee?: number | null
           id: string
@@ -541,12 +784,15 @@ export type Database = {
           atm_id?: string | null
           atm_name?: string | null
           bitstop_fee?: number | null
+          bitstop_spread?: number | null
           created_at?: string
+          customer_address?: string | null
           customer_city?: string | null
           customer_first_name?: string | null
           customer_id?: string | null
           customer_last_name?: string | null
           customer_state?: string | null
+          customer_zipcode?: string | null
           date?: string | null
           fee?: number | null
           id?: string
