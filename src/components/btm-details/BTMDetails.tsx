@@ -7,9 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { Pencil, History, Search, Download, X, Check, Plus, Monitor, DollarSign, CreditCard } from 'lucide-react';
+import { Pencil, History, Search, Download, X, Check, Plus, Monitor, DollarSign, CreditCard, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import UpdateMachineStateModal from './UpdateMachineStateModal';
+import ProfileTimeline from './ProfileTimeline';
 
 interface SalesRep {
   id: string;
@@ -49,6 +51,7 @@ export default function BTMDetails() {
   const [editForm, setEditForm] = useState<Partial<ATMProfile>>({});
   const [historyModal, setHistoryModal] = useState<{ atmId: string; open: boolean }>({ atmId: '', open: false });
   const [historyData, setHistoryData] = useState<ATMProfile[]>([]);
+  const [updateStateProfile, setUpdateStateProfile] = useState<ATMProfile | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
   const [addingNew, setAddingNew] = useState(false);
@@ -113,19 +116,34 @@ export default function BTMDetails() {
     setLoading(false);
   };
 
-  // Under migration 20240522000034 only one row per atm_id has active=true,
-  // which is the canonical "current state" of that ATM. Use that instead of
-  // "latest installed_date" — they usually agree but the active flag is the
-  // explicit signal and survives data edits that don't bump installed_date.
-  // Profiles without an atm_id (placeholders for future installs) remain
-  // visible by virtue of being included individually.
+  // "Latest profile per atm_id" — one row per ATM, picking the most
+  // recently installed. The BTM Details page surfaces retired machines too
+  // (their last-known profile shows up in the Inactive section), so an
+  // active-only filter would empty out that section entirely. Placeholders
+  // (rows without an atm_id) are passed through individually.
+  //
+  // The earlier Phase 2a rewrite tightened this to active=true; that was
+  // wrong for this page. The Phase 2a invariants (one active per atm_id,
+  // non-overlapping windows) still hold — "latest installed" and "active"
+  // agree for any ATM that hasn't been retired.
   const getLatestProfiles = () => {
-    const activeByAtmId = profiles.filter(p => p.active && p.atm_id);
-    const placeholders = profiles.filter(p => !p.atm_id);
-    return [...activeByAtmId, ...placeholders];
+    const byAtmId = new Map<string, ATMProfile>();
+    const placeholders: ATMProfile[] = [];
+    for (const p of profiles) {
+      if (!p.atm_id) {
+        placeholders.push(p);
+        continue;
+      }
+      const existing = byAtmId.get(p.atm_id);
+      if (!existing || (p.installed_date || '') > (existing.installed_date || '')) {
+        byAtmId.set(p.atm_id, p);
+      }
+    }
+    return [...byAtmId.values(), ...placeholders];
   };
 
-  const hasHistory = (atmId: string) => {
+  const hasHistory = (atmId: string | null) => {
+    if (!atmId) return false;
     return profiles.filter(p => p.atm_id === atmId).length > 1;
   };
 
@@ -586,12 +604,32 @@ export default function BTMDetails() {
                       <td className="p-2">
                         <div className="flex gap-1">
                           {isAdmin && (
-                            <Button size="sm" variant="ghost" onClick={() => startEdit(profile)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Edit profile"
+                              onClick={() => startEdit(profile)}
+                            >
                               <Pencil className="w-3 h-3" />
                             </Button>
                           )}
+                          {isAdmin && profile.active && profile.atm_id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Update machine state"
+                              onClick={() => setUpdateStateProfile(profile)}
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                            </Button>
+                          )}
                           {hasHistory(profile.atm_id) && (
-                            <Button size="sm" variant="ghost" onClick={() => showHistory(profile.atm_id)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="View profile history"
+                              onClick={() => showHistory(profile.atm_id)}
+                            >
                               <History className="w-3 h-3" />
                             </Button>
                           )}
@@ -1018,38 +1056,22 @@ export default function BTMDetails() {
         {renderTable(inactive, 'Inactive', true)}
 
         <Dialog open={historyModal.open} onOpenChange={(open) => setHistoryModal({ ...historyModal, open })}>
-          <DialogContent className="max-w-4xl bg-[#1a1f2e] text-[#F5F1E8]">
+          <DialogContent className="max-w-3xl bg-[#1a1f2e] text-[#F5F1E8] max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Location History - {historyModal.atmId}</DialogTitle>
+              <DialogTitle>Machine History — {historyModal.atmId}</DialogTitle>
             </DialogHeader>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#2a3142]">
-                    <th className="text-left p-2 font-mono">Location</th>
-                    <th className="text-left p-2 font-mono">Platform</th>
-                    <th className="text-left p-2 font-mono">Installed</th>
-                    <th className="text-left p-2 font-mono">Removed</th>
-                    <th className="text-left p-2 font-mono">City</th>
-                    <th className="text-left p-2 font-mono">State</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historyData.map((item, idx) => (
-                    <tr key={idx} className="border-b border-[#2a3142]">
-                      <td className="p-2">{item.location_name}</td>
-                      <td className="p-2">{item.platform}</td>
-                      <td className="p-2 font-mono">{item.installed_date || '-'}</td>
-                      <td className="p-2 font-mono">{item.removed_date || '-'}</td>
-                      <td className="p-2">{item.city || '-'}</td>
-                      <td className="p-2">{item.state || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ProfileTimeline profiles={historyData} />
           </DialogContent>
         </Dialog>
+
+        <UpdateMachineStateModal
+          profile={updateStateProfile}
+          open={!!updateStateProfile}
+          onOpenChange={(o) => {
+            if (!o) setUpdateStateProfile(null);
+          }}
+          onSuccess={() => fetchProfiles()}
+        />
       </div>
     </div>
   );
