@@ -11,7 +11,8 @@ import {
 export interface PlatformComparisonPDFPayload {
   fromDate: string;
   toDate: string;
-  effectiveRate: number;
+  commissionRate: number;
+  spreadRate: number;
   machineCount: number;
   denetTxCount: number;
   denetSalesTotal: number;
@@ -86,15 +87,15 @@ const styles = StyleSheet.create({
   },
   intro: {
     fontSize: 9.5,
-    lineHeight: 1.45,
+    lineHeight: 1.4,
     color: COLORS.text,
-    marginBottom: 14,
+    marginBottom: 10,
   },
 
   scopeRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   scopeCard: {
     flex: 1,
@@ -114,12 +115,18 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     fontSize: 14,
   },
+  scopeValueSub: {
+    fontFamily: 'Helvetica',
+    fontSize: 10,
+    color: COLORS.muted,
+    marginTop: 1,
+  },
 
   headline: {
     borderRadius: 6,
-    paddingVertical: 14,
+    paddingVertical: 11,
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 10,
     flexDirection: 'column',
   },
   headlineLabel: {
@@ -145,31 +152,32 @@ const styles = StyleSheet.create({
   table: {
     borderTopWidth: 1,
     borderTopColor: COLORS.rule,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   tableHeaderRow: {
     flexDirection: 'row',
     backgroundColor: COLORS.panel,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.rule,
-    paddingVertical: 5,
+    paddingVertical: 4,
     paddingHorizontal: 8,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: COLORS.rule,
-    paddingVertical: 5,
+    paddingVertical: 4,
     paddingHorizontal: 8,
   },
   tableRowFooter: {
     flexDirection: 'row',
     borderTopWidth: 1.5,
     borderTopColor: COLORS.text,
-    paddingVertical: 7,
+    paddingVertical: 5,
     paddingHorizontal: 8,
   },
   colLabel: { flex: 2.2, fontSize: 10 },
+  colSublabel: { fontSize: 8.5, color: COLORS.muted, marginTop: 1 },
   colNum: { flex: 1.3, fontSize: 10, textAlign: 'right' },
   // Dedicated header-column style: same flex width as colNum, but centered
   // and bold. Defined as one style (not merged with colNum) so textAlign
@@ -195,18 +203,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.rule,
     borderRadius: 4,
-    padding: 10,
-    marginBottom: 12,
+    padding: 8,
+    marginBottom: 8,
   },
   methodologyTitle: {
     fontFamily: 'Helvetica-Bold',
     fontSize: 9.5,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   methodologyText: {
     fontSize: 9.5,
     color: COLORS.muted,
-    lineHeight: 1.45,
+    lineHeight: 1.35,
   },
 
   footer: {
@@ -240,10 +248,10 @@ const fmtSignedCurrency = (value: number) => {
 const fmtPct = (value: number | null) =>
   value === null || !isFinite(value) ? '—' : `${value.toFixed(2)}%`;
 
-const fmtSignedPp = (value: number | null) => {
+const fmtSignedPct = (value: number | null) => {
   if (value === null || !isFinite(value)) return '—';
   const sign = value > 0 ? '+' : value < 0 ? '-' : '';
-  return `${sign}${Math.abs(value).toFixed(2)} pp`;
+  return `${sign}${Math.abs(value).toFixed(2)}%`;
 };
 
 const fmtDate = (iso: string) => {
@@ -273,7 +281,8 @@ export function PlatformComparisonPDF(props: PlatformComparisonPDFPayload) {
   const {
     fromDate,
     toDate,
-    effectiveRate,
+    commissionRate,
+    spreadRate,
     machineCount,
     denetTxCount,
     denetSalesTotal,
@@ -287,22 +296,32 @@ export function PlatformComparisonPDF(props: PlatformComparisonPDFPayload) {
     feePctDelta,
   } = props;
 
+  const blendedRate = (spreadRate * commissionRate) / 100;
+
   const headlinePositive = profitDelta >= 0;
   const headlineBg = headlinePositive ? COLORS.positiveSoft : COLORS.negativeSoft;
   const headlineFg = headlinePositive ? COLORS.positive : COLORS.negative;
 
+  const profitDeltaPct =
+    actuals.net_profit !== 0
+      ? (profitDelta / Math.abs(actuals.net_profit)) * 100
+      : 0;
+
   const rows: Array<{
     label: string;
+    sublabel?: string;
     actual: number | null;
     projected: number | null;
     delta: number | null;
     isPercent?: boolean;
   }> = [
     { label: 'Total Sales', actual: denetSalesTotal, projected: denetSalesTotal, delta: 0 },
-    { label: 'Revenue', actual: actuals.total_fees, projected: projectedCommission, delta: revenueDelta },
+    { label: 'Revenue (total fees)', actual: actuals.total_fees, projected: projectedCommission, delta: revenueDelta },
     { label: 'Fee % of Sales', actual: feePctActual, projected: feePctProjected, delta: feePctDelta, isPercent: true },
     { label: 'Bitstop Fees', actual: actuals.bitstop_fees, projected: 0, delta: 0 },
-    { label: 'Rent', actual: actuals.rent, projected: 0, delta: 0 },
+    // Rent follows the machine regardless of platform — Denet still pays
+    // it under the projected Bitstop affiliate model.
+    { label: 'Rent', actual: actuals.rent, projected: actuals.rent, delta: 0 },
     { label: 'Mgmt RPS', actual: actuals.mgmt_rps, projected: actuals.mgmt_rps, delta: 0 },
     { label: 'Mgmt Rep', actual: actuals.mgmt_rep, projected: actuals.mgmt_rep, delta: 0 },
     { label: 'Commissions', actual: actuals.commissions, projected: 0, delta: 0 },
@@ -353,7 +372,10 @@ export function PlatformComparisonPDF(props: PlatformComparisonPDFPayload) {
           </View>
           <View style={styles.scopeCard}>
             <Text style={styles.scopeLabel}>Rate applied</Text>
-            <Text style={styles.scopeValue}>{effectiveRate.toFixed(2)}%</Text>
+            <Text style={styles.scopeValue}>
+              {spreadRate.toFixed(2)}% × {commissionRate.toFixed(2)}%
+            </Text>
+            <Text style={styles.scopeValueSub}>= {blendedRate.toFixed(2)}%</Text>
           </View>
         </View>
 
@@ -383,14 +405,19 @@ export function PlatformComparisonPDF(props: PlatformComparisonPDFPayload) {
             const fmt = row.isPercent ? fmtPct : (v: number | null) =>
               v === null ? '—' : fmtCurrency(v);
             const dFmt = row.isPercent
-              ? fmtSignedPp(row.delta)
+              ? fmtSignedPct(row.delta)
               : row.delta === null
                 ? '—'
                 : fmtSignedCurrency(row.delta);
             const dColor = row.delta === null ? COLORS.faint : deltaColor(row.delta);
             return (
               <View style={styles.tableRow} key={row.label}>
-                <Text style={styles.colLabel}>{row.label}</Text>
+                <View style={{ flex: 2.2 }}>
+                  <Text style={{ fontSize: 10 }}>{row.label}</Text>
+                  {row.sublabel && (
+                    <Text style={styles.colSublabel}>{row.sublabel}</Text>
+                  )}
+                </View>
                 <Text style={styles.colNum}>{fmt(row.actual)}</Text>
                 <Text style={styles.colNum}>{fmt(row.projected)}</Text>
                 <Text style={[styles.colNum, { color: dColor }]}>{dFmt}</Text>
@@ -407,9 +434,21 @@ export function PlatformComparisonPDF(props: PlatformComparisonPDFPayload) {
             <Text style={[styles.colNum, styles.footerNum, { color: deltaColor(projectedProfit) }]}>
               {fmtCurrency(projectedProfit)}
             </Text>
-            <Text style={[styles.colNum, styles.footerNum, { color: deltaColor(profitDelta) }]}>
-              {fmtSignedCurrency(profitDelta)}
-            </Text>
+            <View style={{ flex: 1.3 }}>
+              <Text style={[styles.footerNum, { color: deltaColor(profitDelta) }]}>
+                {fmtSignedCurrency(profitDelta)}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 9,
+                  color: deltaColor(profitDelta),
+                  textAlign: 'right',
+                  marginTop: 1,
+                }}
+              >
+                {fmtSignedPct(profitDeltaPct)}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -417,11 +456,15 @@ export function PlatformComparisonPDF(props: PlatformComparisonPDFPayload) {
         <View style={styles.methodology}>
           <Text style={styles.methodologyTitle}>Methodology</Text>
           <Text style={styles.methodologyText}>
-            Projection applies the 56% contractual affiliate rate to actual
-            transaction spread per Denet transaction. Rents and management
-            costs are assumed identical between the two models because those
-            expenses follow the machine regardless of platform. Bitstop Fees
-            do not apply under the affiliate model.
+            Projection uses a flat benchmark approach: Bitstop&apos;s average
+            spread of {spreadRate.toFixed(2)}% of sales (observed from Bitstop
+            affiliate platform operations) multiplied by Bitstop&apos;s
+            contractual {commissionRate.toFixed(0)}% commission rate to Denet.
+            Real-world realized commissions may vary slightly month-to-month
+            due to capped-rate situations on unusually high-spread months.
+            Rents and management costs are assumed identical between the two
+            models because those expenses follow the machine regardless of
+            platform. Bitstop Fees do not apply under the affiliate model.
           </Text>
         </View>
 

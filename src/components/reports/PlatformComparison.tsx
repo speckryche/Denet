@@ -44,13 +44,6 @@ interface PerMachinePL {
   net_profit: number;
 }
 
-interface CommissionRateInfo {
-  rate: number;
-  basis: string; // description of how rate was derived
-  isFallback: boolean;
-  isEmpty: boolean;
-}
-
 // ──────────────────────────────────────────────────────────────
 // Helpers (mirrored from ATMProfitLoss.tsx)
 // ──────────────────────────────────────────────────────────────
@@ -172,6 +165,11 @@ const formatPct = (value: number) =>
 // values during edit; we must not let those reach Supabase or Date().
 const isValidYMD = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
+// Hardcoded fallbacks used when the corresponding app_settings row is
+// missing or invalid. Both are expressed in percent (not decimal).
+const FALLBACK_COMMISSION_RATE = 56;
+const FALLBACK_SPREAD_RATE = 24.5;
+
 // ──────────────────────────────────────────────────────────────
 // Component
 // ──────────────────────────────────────────────────────────────
@@ -189,14 +187,23 @@ export default function PlatformComparison() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Commission rate
-  const [defaultRateInfo, setDefaultRateInfo] =
-    useState<CommissionRateInfo | null>(null);
-  const [rateOverride, setRateOverride] = useState<string>('');
-  const isOverridden = rateOverride !== '';
-  const effectiveRate = isOverridden
-    ? parseFloat(rateOverride) || 0
-    : defaultRateInfo?.rate || 0;
+  // Rate defaults (loaded from app_settings, with hardcoded fallbacks).
+  // Both stored in percent (e.g. 56 means 56%).
+  const [defaultCommissionRate, setDefaultCommissionRate] = useState<number>(FALLBACK_COMMISSION_RATE);
+  const [defaultSpreadRate, setDefaultSpreadRate] = useState<number>(FALLBACK_SPREAD_RATE);
+  const [defaultsLoaded, setDefaultsLoaded] = useState<boolean>(false);
+
+  // Override inputs (sensitivity testing). Empty string = use default.
+  const [commissionRateOverride, setCommissionRateOverride] = useState<string>('');
+  const [spreadRateOverride, setSpreadRateOverride] = useState<string>('');
+  const isCommissionOverridden = commissionRateOverride !== '';
+  const isSpreadOverridden = spreadRateOverride !== '';
+  const effectiveCommissionRate = isCommissionOverridden
+    ? parseFloat(commissionRateOverride) || 0
+    : defaultCommissionRate;
+  const effectiveSpreadRate = isSpreadOverridden
+    ? parseFloat(spreadRateOverride) || 0
+    : defaultSpreadRate;
 
   // Results
   const [machineCount, setMachineCount] = useState(0);
@@ -210,62 +217,46 @@ export default function PlatformComparison() {
     total_sales: 0,
     net_profit: 0,
   });
-  // Platform-wide Denet totals — summed straight from the raw tx list, NOT
-  // through profile attribution. Used for the displayed Total Sales and for
-  // the per-transaction projection (SUM((sale - sent) * rate)). Matches the
-  // raw SQL query byte-for-byte.
+  // Platform-wide Denet totals — summed straight from the raw tx list (scoped
+  // to currently-Denet machines) and used for the Total Sales row + projection.
   const [denetSalesTotal, setDenetSalesTotal] = useState(0);
-  const [denetSpreadTotal, setDenetSpreadTotal] = useState(0);
   const [denetTxCount, setDenetTxCount] = useState(0);
 
   useEffect(() => {
-    fetchDefaultRate();
+    fetchSettings();
   }, []);
 
   useEffect(() => {
-    if (defaultRateInfo && !defaultRateInfo.isEmpty) {
+    if (defaultsLoaded) {
       fetchReport();
     }
-  }, [fromDate, toDate, defaultRateInfo]);
+  }, [fromDate, toDate, defaultsLoaded]);
 
-  // ── Fetch default commission rate from app_settings ──────
-  // The contractual rate is the source of truth. app_settings stores it as
-  // a decimal (e.g. "0.56"); we multiply by 100 to keep the rest of the
-  // component (which expects a percent value) unchanged.
-  const fetchDefaultRate = async () => {
-    const { data, error } = await supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'bitstop_commission_rate')
-      .single();
+  // ── Fetch rate defaults from app_settings ────────────────
+  // Both rates are stored as decimals (e.g. "0.56", "0.245"); we multiply by
+  // 100 to keep the rest of the component (which expects percent) consistent.
+  // If a row is missing or invalid, fall back to the hardcoded constant.
+  const fetchSettings = async () => {
+    const readDecimalSetting = async (key: string): Promise<number | null> => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', key)
+        .single();
+      if (error || !data?.value) return null;
+      const parsed = parseFloat(data.value);
+      if (!isFinite(parsed) || parsed <= 0) return null;
+      return parsed * 100;
+    };
 
-    if (error || !data?.value) {
-      setDefaultRateInfo({
-        rate: 0,
-        basis: 'Setting bitstop_commission_rate not found',
-        isFallback: false,
-        isEmpty: true,
-      });
-      return;
-    }
+    const [commission, spread] = await Promise.all([
+      readDecimalSetting('bitstop_commission_rate'),
+      readDecimalSetting('bitstop_average_spread_rate'),
+    ]);
 
-    const parsed = parseFloat(data.value);
-    if (!isFinite(parsed) || parsed <= 0) {
-      setDefaultRateInfo({
-        rate: 0,
-        basis: 'Setting bitstop_commission_rate is invalid',
-        isFallback: false,
-        isEmpty: true,
-      });
-      return;
-    }
-
-    setDefaultRateInfo({
-      rate: parsed * 100,
-      basis: 'contractual rate (from settings)',
-      isFallback: false,
-      isEmpty: false,
-    });
+    if (commission !== null) setDefaultCommissionRate(commission);
+    if (spread !== null) setDefaultSpreadRate(spread);
+    setDefaultsLoaded(true);
   };
 
   // ── Fetch report data (mirrors ATM P&L logic for Denet only) ──
@@ -367,12 +358,7 @@ export default function PlatformComparison() {
           denetAtmIds.has(tx.atm_id)
       );
       const newDenetSales = allDenetTxs.reduce((s, tx) => s + (tx.sale || 0), 0);
-      const newDenetSpread = allDenetTxs.reduce(
-        (s, tx) => s + ((tx.sale || 0) - (tx.sent || 0)),
-        0
-      );
       setDenetSalesTotal(newDenetSales);
-      setDenetSpreadTotal(newDenetSpread);
       setDenetTxCount(allDenetTxs.length);
 
       // Group transactions by ATM
@@ -537,12 +523,12 @@ export default function PlatformComparison() {
   };
 
   // ── Projected values ──
-  // Per-transaction projection: SUM((sale - sent) * rate). denetSpreadTotal
-  // is the sum of (sale - sent) over all Denet txs in the range; multiplying
-  // by the effective rate gives the deterministic commission Bitstop would
-  // have paid on those same transactions. Recomputes on rate-override change
-  // (sensitivity testing) without re-fetching.
-  const projectedCommission = denetSpreadTotal * (effectiveRate / 100);
+  // Flat-benchmark projection: assume Bitstop's average spread (as a % of
+  // sales) applies to Denet's actual sales volume, and Bitstop pays Denet
+  // the contractual commission rate on that spread. Recomputes on either
+  // rate-override change (sensitivity testing) without re-fetching.
+  const projectedSpread = denetSalesTotal * (effectiveSpreadRate / 100);
+  const projectedCommission = projectedSpread * (effectiveCommissionRate / 100);
   const projectedProfit =
     projectedCommission -
     actuals.rent -
@@ -556,17 +542,15 @@ export default function PlatformComparison() {
   const revenueDeltaPct =
     actuals.total_fees !== 0 ? (revenueDelta / Math.abs(actuals.total_fees)) * 100 : 0;
 
-  // Fee % of Sales — revenue as a share of gross sales. Denominator is the
-  // platform-wide Denet sales so it reconciles against the displayed Total
-  // Sales row (which also uses denetSalesTotal).
+  // Fee % of Sales — revenue as a share of gross sales.
+  // Actuals: profile-filtered fees over denetSalesTotal (matches the displayed
+  // Total Sales row). Null only when no sales (true no-data case).
+  // Projected: blended derived rate, independent of sales volume.
   const feePctActual =
     denetSalesTotal > 0 ? (actuals.total_fees / denetSalesTotal) * 100 : null;
-  const feePctProjected =
-    denetSalesTotal > 0 ? (projectedCommission / denetSalesTotal) * 100 : null;
+  const feePctProjected = (effectiveSpreadRate * effectiveCommissionRate) / 100;
   const feePctDelta =
-    feePctActual !== null && feePctProjected !== null
-      ? feePctProjected - feePctActual
-      : null;
+    feePctActual !== null ? feePctProjected - feePctActual : null;
 
   // ── Date display ──
   const formatDisplayDate = (d: string) => {
@@ -588,7 +572,8 @@ export default function PlatformComparison() {
       await exportPlatformComparisonPDF({
         fromDate,
         toDate,
-        effectiveRate,
+        commissionRate: effectiveCommissionRate,
+        spreadRate: effectiveSpreadRate,
         machineCount,
         denetTxCount,
         denetSalesTotal,
@@ -631,8 +616,12 @@ export default function PlatformComparison() {
       [],
       ['Date Range', `${formatDisplayDate(fromDate)} — ${formatDisplayDate(toDate)}`],
       [
+        'Spread Rate',
+        `${effectiveSpreadRate.toFixed(2)}%${isSpreadOverridden ? ' (overridden)' : ' (from settings)'}`,
+      ],
+      [
         'Commission Rate',
-        `${effectiveRate.toFixed(2)}%${isOverridden ? ' (overridden)' : ` (${defaultRateInfo?.basis})`}`,
+        `${effectiveCommissionRate.toFixed(2)}%${isCommissionOverridden ? ' (overridden)' : ' (from settings)'}`,
       ],
       ['Denet Machines', machineCount],
       [],
@@ -647,7 +636,7 @@ export default function PlatformComparison() {
         '',
       ],
       ['Bitstop Fees', actuals.bitstop_fees, 0, 0, ''],
-      ['Rent', actuals.rent, 0, 0, ''],
+      ['Rent', actuals.rent, actuals.rent, 0, ''],
       ['Mgmt RPS', actuals.mgmt_rps, actuals.mgmt_rps, 0, ''],
       ['Mgmt Rep', actuals.mgmt_rep, actuals.mgmt_rep, 0, ''],
       ['Commissions', actuals.commissions, 0, 0, ''],
@@ -719,7 +708,7 @@ export default function PlatformComparison() {
   };
 
   // ── Render ──
-  const canRun = defaultRateInfo && !defaultRateInfo.isEmpty;
+  const canRun = defaultsLoaded;
 
   const rows = [
     {
@@ -759,11 +748,12 @@ export default function PlatformComparison() {
       deltaPct: null,
     },
     {
-      // Genuine zero on the Bitstop affiliate model — operator (not Denet)
-      // bears rent. $0 is more accurate than '—' here.
+      // Rent follows the machine regardless of platform — Denet still pays
+      // rent under the projected Bitstop affiliate model. Projected mirrors
+      // Actuals; delta is therefore $0.
       label: 'Rent',
       actual: actuals.rent,
-      projected: 0,
+      projected: actuals.rent,
       deltaAmt: 0,
       deltaPct: null,
     },
@@ -824,6 +814,42 @@ export default function PlatformComparison() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">
+              Avg Bitstop Spread Rate (%)
+            </Label>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={spreadRateOverride}
+                  onChange={(e) => setSpreadRateOverride(e.target.value)}
+                  placeholder={`${defaultSpreadRate.toFixed(2)}%`}
+                  className={cn(
+                    'w-[120px] h-9 font-mono',
+                    isSpreadOverridden && 'border-amber-400/50'
+                  )}
+                />
+                {isSpreadOverridden && (
+                  <span className="absolute -top-2 right-1 text-[10px] bg-amber-400/20 text-amber-400 px-1.5 rounded-full">
+                    overridden
+                  </span>
+                )}
+              </div>
+              {isSpreadOverridden && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => setSpreadRateOverride('')}
+                  title="Reset to default"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">
               Affiliate Commission Rate (%)
             </Label>
             <div className="flex items-center gap-2">
@@ -831,30 +857,26 @@ export default function PlatformComparison() {
                 <Input
                   type="number"
                   step="0.01"
-                  value={rateOverride}
-                  onChange={(e) => setRateOverride(e.target.value)}
-                  placeholder={
-                    defaultRateInfo
-                      ? `${defaultRateInfo.rate.toFixed(2)}%`
-                      : '—'
-                  }
+                  value={commissionRateOverride}
+                  onChange={(e) => setCommissionRateOverride(e.target.value)}
+                  placeholder={`${defaultCommissionRate.toFixed(2)}%`}
                   className={cn(
                     'w-[120px] h-9 font-mono',
-                    isOverridden && 'border-amber-400/50'
+                    isCommissionOverridden && 'border-amber-400/50'
                   )}
                 />
-                {isOverridden && (
+                {isCommissionOverridden && (
                   <span className="absolute -top-2 right-1 text-[10px] bg-amber-400/20 text-amber-400 px-1.5 rounded-full">
                     overridden
                   </span>
                 )}
               </div>
-              {isOverridden && (
+              {isCommissionOverridden && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  onClick={() => setRateOverride('')}
+                  onClick={() => setCommissionRateOverride('')}
                   title="Reset to default"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
@@ -884,27 +906,11 @@ export default function PlatformComparison() {
           </div>
         </div>
 
-        {/* Rate basis label */}
-        {defaultRateInfo && !defaultRateInfo.isEmpty && (
+        {/* Defaults chip */}
+        {defaultsLoaded && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Info className="w-3 h-3" />
-            Default: {defaultRateInfo.rate.toFixed(2)}% (
-            {defaultRateInfo.basis})
-            {defaultRateInfo.isFallback && (
-              <span className="text-amber-400 ml-1">fallback</span>
-            )}
-          </div>
-        )}
-
-        {/* Empty state: no commission data */}
-        {defaultRateInfo?.isEmpty && (
-          <div className="text-center py-12 space-y-2">
-            <p className="text-muted-foreground">
-              No reconciled Bitstop commission data found.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Enter a commission rate override above to run the comparison.
-            </p>
+            Defaults: {defaultSpreadRate.toFixed(2)}% spread × {defaultCommissionRate.toFixed(2)}% commission (from settings)
           </div>
         )}
 
@@ -936,10 +942,10 @@ export default function PlatformComparison() {
               </div>
               <div>
                 <span className="text-muted-foreground">
-                  Commission Rate:{' '}
+                  Effective Rate:{' '}
                 </span>
                 <span className="font-medium font-mono">
-                  {effectiveRate.toFixed(2)}%
+                  {effectiveSpreadRate.toFixed(2)}% × {effectiveCommissionRate.toFixed(2)}% = {feePctProjected.toFixed(2)}%
                 </span>
               </div>
               <div>
@@ -947,6 +953,14 @@ export default function PlatformComparison() {
                   Denet Machines:{' '}
                 </span>
                 <span className="font-medium">{machineCount}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">
+                  Transactions:{' '}
+                </span>
+                <span className="font-medium">
+                  {denetTxCount.toLocaleString('en-US')}
+                </span>
               </div>
             </div>
 
@@ -1019,7 +1033,7 @@ export default function PlatformComparison() {
                             }
                           >
                             {row.format === 'percent'
-                              ? `${row.deltaAmt >= 0 ? '+' : ''}${row.deltaAmt.toFixed(2)} pp`
+                              ? `${row.deltaAmt >= 0 ? '+' : ''}${row.deltaAmt.toFixed(2)}%`
                               : formatCurrency(row.deltaAmt)}
                             {row.deltaPct !== null && row.deltaPct !== 0 && (
                               <span className="ml-1.5 text-xs">
