@@ -9,7 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Link as LinkIcon, Unlink, RotateCcw } from 'lucide-react';
+import { Link as LinkIcon, Unlink, RotateCcw, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -177,6 +178,194 @@ export default function PlatformComparisonScenario({
   const toggleCommissionSplit = () => {
     if (!commissionSplit) setCommissionProjectedPctInput(commissionActualPctInput);
     setCommissionSplit((s) => !s);
+  };
+
+  // Live, formula-driven Excel export. Inputs are real Excel cells the
+  // recipient edits; outputs are =FORMULA cells referencing them, so Excel
+  // recalculates on every edit. The defaults written here are the spec's
+  // canonical starting values, not the current Scenario Builder state —
+  // this is a model template, not a snapshot.
+  const handleExportExcel = () => {
+    // Currency format with parentheses on negatives (accounting convention).
+    const CURR = '$#,##0;($#,##0)';
+    const PCT = '0.00%';
+
+    const headerFont = { font: { bold: true } };
+    const titleFont = { font: { bold: true, sz: 14 } };
+    const subtitleFont = { font: { italic: true, color: { rgb: '6B7280' } } };
+    const mutedItalic = { font: { italic: true, color: { rgb: '6B7280' } } };
+    const inputFill = { fill: { fgColor: { rgb: 'FFF8E1' } } };
+    const thinBlackBorder = { style: 'thin', color: { rgb: '000000' } } as const;
+    const profitTopBorder = { border: { top: thinBlackBorder } };
+
+    // Today, local-tz.
+    const now = new Date();
+    const titleDate = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
+    const filenameDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    // ── Canonical default inputs (decimals for percent cells) ──
+    const D_numMachines = 28;
+    const D_salesPerMachine = 4380;
+    const D_feePctActual = 0.2485;
+    const D_feePctProjected = 0.1372;
+    const D_bitstopFeesPct = 0.042;
+    const D_commPctActual = 0;
+    const D_commPctProjected = 0;
+    const D_rentActual = 187.5;
+    const D_rentProjected = 187.5;
+    const D_rpsActual = 200;
+    const D_rpsProjected = 200;
+    const D_repActual = 0;
+    const D_repProjected = 50;
+
+    // ── Cached formula values (computed identically to the Excel formulas,
+    //    using JS doubles — same precision as Excel). No pre-rounding;
+    //    Excel's number format does the display rounding. ──
+    const c_totalSalesA = D_salesPerMachine * D_numMachines;
+    const c_totalSalesP = D_salesPerMachine * D_numMachines;
+    const c_revenueA = c_totalSalesA * D_feePctActual;
+    const c_revenueP = c_totalSalesP * D_feePctProjected;
+    const c_bitstopFeesA = c_totalSalesA * D_bitstopFeesPct;
+    const c_bitstopFeesP = 0;
+    const c_rentA = D_rentActual * D_numMachines;
+    const c_rentP = D_rentProjected * D_numMachines;
+    const c_rpsA = D_rpsActual * D_numMachines;
+    const c_rpsP = D_rpsProjected * D_numMachines;
+    const c_repA = D_repActual * D_numMachines;
+    const c_repP = D_repProjected * D_numMachines;
+    const c_preCommA = c_revenueA - c_bitstopFeesA - c_rentA - c_rpsA - c_repA;
+    const c_preCommP = c_revenueP - c_bitstopFeesP - c_rentP - c_rpsP - c_repP;
+    const c_commA = Math.max(0, c_preCommA) * D_commPctActual;
+    const c_commP = Math.max(0, c_preCommP) * D_commPctProjected;
+    const c_profitA = c_preCommA - c_commA;
+    const c_profitP = c_preCommP - c_commP;
+
+    const ws: XLSX.WorkSheet = {};
+
+    // Title strip (rows 1-2).
+    ws['A1'] = { v: 'Denet — Scenario Model', t: 's', s: titleFont };
+    ws['A2'] = { v: `Monthly basis · generated ${titleDate}`, t: 's', s: subtitleFont };
+
+    // ── ASSUMPTIONS ──
+    ws['A3'] = { v: 'ASSUMPTIONS — edit these', t: 's', s: headerFont };
+
+    ws['A4'] = { v: 'Number of machines', t: 's' };
+    ws['B4'] = { v: D_numMachines, t: 'n', s: { ...inputFill } };
+
+    ws['A5'] = { v: 'Avg sales / machine (monthly)', t: 's' };
+    ws['B5'] = { v: D_salesPerMachine, t: 'n', s: { ...inputFill, numFmt: CURR } };
+
+    // Rates (row 7 header, rows 8-10 inputs)
+    ws['A7'] = { v: 'Rates', t: 's' };
+    ws['B7'] = { v: 'Denet', t: 's', s: headerFont };
+    ws['C7'] = { v: 'Bitstop', t: 's', s: headerFont };
+
+    ws['A8'] = { v: 'Fee % of sales', t: 's' };
+    ws['B8'] = { v: D_feePctActual, t: 'n', s: { ...inputFill, numFmt: PCT } };
+    ws['C8'] = { v: D_feePctProjected, t: 'n', s: { ...inputFill, numFmt: PCT } };
+
+    ws['A9'] = { v: 'Bitstop fees %', t: 's' };
+    ws['B9'] = { v: D_bitstopFeesPct, t: 'n', s: { ...inputFill, numFmt: PCT } };
+    ws['C9'] = {
+      v: 'n/a',
+      t: 's',
+      s: { font: { color: { rgb: '9CA3AF' } }, alignment: { horizontal: 'right' } },
+    };
+
+    ws['A10'] = { v: 'Commission %', t: 's' };
+    ws['B10'] = { v: D_commPctActual, t: 'n', s: { ...inputFill, numFmt: PCT } };
+    ws['C10'] = { v: D_commPctProjected, t: 'n', s: { ...inputFill, numFmt: PCT } };
+
+    // Per-machine costs (row 12 header, rows 13-15 inputs)
+    ws['A12'] = { v: 'Per-machine costs (monthly)', t: 's' };
+    ws['B12'] = { v: 'Denet', t: 's', s: headerFont };
+    ws['C12'] = { v: 'Bitstop', t: 's', s: headerFont };
+
+    ws['A13'] = { v: 'Rent / machine', t: 's' };
+    ws['B13'] = { v: D_rentActual, t: 'n', s: { ...inputFill, numFmt: CURR } };
+    ws['C13'] = { v: D_rentProjected, t: 'n', s: { ...inputFill, numFmt: CURR } };
+
+    ws['A14'] = { v: 'Mgmt RPS / machine', t: 's' };
+    ws['B14'] = { v: D_rpsActual, t: 'n', s: { ...inputFill, numFmt: CURR } };
+    ws['C14'] = { v: D_rpsProjected, t: 'n', s: { ...inputFill, numFmt: CURR } };
+
+    ws['A15'] = { v: 'Mgmt Rep / machine', t: 's' };
+    ws['B15'] = { v: D_repActual, t: 'n', s: { ...inputFill, numFmt: CURR } };
+    ws['C15'] = { v: D_repProjected, t: 'n', s: { ...inputFill, numFmt: CURR } };
+
+    // ── RESULTS ──
+    ws['A17'] = { v: 'RESULTS', t: 's', s: headerFont };
+    ws['B17'] = { v: 'Denet', t: 's', s: headerFont };
+    ws['C17'] = { v: 'Bitstop', t: 's', s: headerFont };
+    ws['D17'] = { v: 'Delta', t: 's', s: headerFont };
+
+    const formulaCell = (formula: string, cached: number) => ({
+      f: formula,
+      v: cached,
+      t: 'n' as const,
+      s: { numFmt: CURR },
+    });
+
+    // Total Sales (row 18)
+    ws['A18'] = { v: 'Total Sales', t: 's' };
+    ws['B18'] = formulaCell('B5*B4', c_totalSalesA);
+    ws['C18'] = formulaCell('B5*B4', c_totalSalesP);
+    ws['D18'] = formulaCell('C18-B18', 0);
+
+    // Revenue (row 19)
+    ws['A19'] = { v: 'Revenue', t: 's' };
+    ws['B19'] = formulaCell('B18*B8', c_revenueA);
+    ws['C19'] = formulaCell('C18*C8', c_revenueP);
+    ws['D19'] = formulaCell('C19-B19', c_revenueP - c_revenueA);
+
+    // Bitstop Fees (row 20) — C20 is a literal 0, NOT a formula
+    ws['A20'] = { v: 'Bitstop Fees', t: 's' };
+    ws['B20'] = formulaCell('B18*B9', c_bitstopFeesA);
+    ws['C20'] = { v: 0, t: 'n', s: { numFmt: CURR } };
+    ws['D20'] = formulaCell('C20-B20', c_bitstopFeesP - c_bitstopFeesA);
+
+    // Rent / Mgmt RPS / Mgmt Rep (rows 21-23) — both columns multiply
+    // their per-machine cost by B4 (the single shared machine count).
+    ws['A21'] = { v: 'Rent', t: 's' };
+    ws['B21'] = formulaCell('B13*B4', c_rentA);
+    ws['C21'] = formulaCell('C13*B4', c_rentP);
+    ws['D21'] = formulaCell('C21-B21', c_rentP - c_rentA);
+
+    ws['A22'] = { v: 'Mgmt RPS', t: 's' };
+    ws['B22'] = formulaCell('B14*B4', c_rpsA);
+    ws['C22'] = formulaCell('C14*B4', c_rpsP);
+    ws['D22'] = formulaCell('C22-B22', c_rpsP - c_rpsA);
+
+    ws['A23'] = { v: 'Mgmt Rep', t: 's' };
+    ws['B23'] = formulaCell('B15*B4', c_repA);
+    ws['C23'] = formulaCell('C15*B4', c_repP);
+    ws['D23'] = formulaCell('C23-B23', c_repP - c_repA);
+
+    // Pre-commission profit (row 24, helper row, italic + muted, no delta)
+    ws['A24'] = { v: 'Pre-commission profit', t: 's', s: mutedItalic };
+    ws['B24'] = { f: 'B19-B20-B21-B22-B23', v: c_preCommA, t: 'n', s: { ...mutedItalic, numFmt: CURR } };
+    ws['C24'] = { f: 'C19-C20-C21-C22-C23', v: c_preCommP, t: 'n', s: { ...mutedItalic, numFmt: CURR } };
+
+    // Commission (row 25) — MAX(0, preComm) clamp baked into the formula
+    ws['A25'] = { v: 'Commission', t: 's' };
+    ws['B25'] = formulaCell('MAX(0,B24)*B10', c_commA);
+    ws['C25'] = formulaCell('MAX(0,C24)*C10', c_commP);
+    ws['D25'] = formulaCell('C25-B25', c_commP - c_commA);
+
+    // Profit / Loss (row 26) — bold, top border across all four cells
+    const profitStyle = { font: { bold: true }, numFmt: CURR, ...profitTopBorder };
+    ws['A26'] = { v: 'Profit / Loss', t: 's', s: { font: { bold: true }, ...profitTopBorder } };
+    ws['B26'] = { f: 'B24-B25', v: c_profitA, t: 'n', s: profitStyle };
+    ws['C26'] = { f: 'C24-C25', v: c_profitP, t: 'n', s: profitStyle };
+    ws['D26'] = { f: 'C26-B26', v: c_profitP - c_profitA, t: 'n', s: profitStyle };
+
+    // Sheet bounds (A1:D26) and column widths
+    ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 25, c: 3 } });
+    ws['!cols'] = [{ wch: 32 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Scenario Model');
+    XLSX.writeFile(wb, `Denet_Scenario_Model_${filenameDate}.xlsx`);
   };
 
   const handleReset = () => {
@@ -348,10 +537,16 @@ export default function PlatformComparisonScenario({
               from the report above; override any value freely.
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-            Reset to defaults
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportExcel}>
+              <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+              Export to Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+              Reset to defaults
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
