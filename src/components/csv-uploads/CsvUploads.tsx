@@ -438,9 +438,9 @@ export default function CsvUploads() {
         } else if (currentPlatform === 'bitstop') {
           // ── Bitstop header validation ──
           const requiredBitstopHeaders = ['id', 'inserted', 'sent', 'cointype', 'createdat'];
-          const atmHeader = headers.some(h => ['atmid', 'atmId'].includes(h.trim()));
-          const atmNameHeader = headers.some(h => ['atm', 'atm.name'].includes(h.trim()));
           const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+          const atmHeader = normalizedHeaders.some(h => ['atmid', 'atm.id', 'atm_id'].includes(h));
+          const atmNameHeader = normalizedHeaders.some(h => ['atm', 'atm.name', 'atm_name'].includes(h));
 
           const missingHeaders: string[] = [];
           for (const req of requiredBitstopHeaders) {
@@ -486,8 +486,8 @@ export default function CsvUploads() {
             const rawTicker = getValue(row, 'CoinType');
             const mappedTicker = mapTicker(rawTicker);
 
-            const rawAtmId = getValue(row, 'ATMID') || getValue(row, 'AtmId');
-            const rawAtmName = getValue(row, 'Atm') || getValue(row, 'Atm.Name');
+            const rawAtmId = getValue(row, 'ATMID') || getValue(row, 'Atm.Id') || getValue(row, 'Atm_Id');
+            const rawAtmName = getValue(row, 'Atm') || getValue(row, 'Atm.Name') || getValue(row, 'Atm_Name');
             const atmData = mapATM(rawAtmId, rawAtmName);
 
             // New fee calculation: spread = Inserted - Sent, fee = spread * commission rate
