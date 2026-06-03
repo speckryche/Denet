@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Trash2, AlertCircle, Link, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, AlertCircle, Link, ChevronDown, ChevronRight, Check, X } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import {
   Table,
   TableBody,
@@ -61,6 +62,7 @@ interface AvailablePickup {
 }
 
 interface LinkedPickupDetail {
+  link_id: string;
   pickup_id: string;
   pickup_date: string;
   atm_name: string;
@@ -93,6 +95,10 @@ export function Deposits({ onUpdate }: DepositsProps) {
   const [detailDeposit, setDetailDeposit] = useState<Deposit | null>(null);
   const [detailPickups, setDetailPickups] = useState<LinkedPickupDetail[]>([]);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [confirmingLinkId, setConfirmingLinkId] = useState<string | null>(null);
+  const [unlinkingLinkId, setUnlinkingLinkId] = useState<string | null>(null);
+
+  const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     deposit_date: new Date().toISOString().split('T')[0],
@@ -285,6 +291,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
       const { data: links } = await supabase
         .from('deposit_pickup_links')
         .select(`
+          id,
           amount,
           cash_pickups!deposit_pickup_links_pickup_id_fkey (
             id,
@@ -296,6 +303,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
         .eq('deposit_id', deposit.id);
 
       const details: LinkedPickupDetail[] = (links || []).map((link: any) => ({
+        link_id: link.id,
         pickup_id: link.cash_pickups?.id || '',
         pickup_date: link.cash_pickups?.pickup_date || '',
         atm_name: link.cash_pickups?.atm_profiles?.location_name || 'Unknown',
@@ -309,6 +317,35 @@ export function Deposits({ onUpdate }: DepositsProps) {
       console.error('Error fetching linked pickups:', err);
     } finally {
       setIsLoadingDetail(false);
+    }
+  };
+
+  const handleUnlink = async (linkId: string) => {
+    const previous = detailPickups;
+    setUnlinkingLinkId(linkId);
+    setDetailPickups((rows) => rows.filter((r) => r.link_id !== linkId));
+    setConfirmingLinkId(null);
+
+    try {
+      const { error } = await supabase
+        .from('deposit_pickup_links')
+        .delete()
+        .eq('id', linkId);
+
+      if (error) throw error;
+
+      fetchData();
+      onUpdate();
+    } catch (err: any) {
+      console.error('Error unlinking pickup:', err);
+      setDetailPickups(previous);
+      toast({
+        title: 'Failed to remove link',
+        description: err?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUnlinkingLinkId(null);
     }
   };
 
@@ -422,6 +459,15 @@ export function Deposits({ onUpdate }: DepositsProps) {
         alert(`Amount for ${pickup.atm_name} exceeds remaining balance`);
         return;
       }
+    }
+
+    // Validate total linked amount does not exceed deposit amount
+    const totalAfterLink = alreadyLinkedAmount + addingNowTotal;
+    if (totalAfterLink > linkingDeposit.amount + 0.01) {
+      alert(
+        `Total linked amount ($${totalAfterLink.toLocaleString('en-US', { minimumFractionDigits: 2 })}) exceeds the deposit amount ($${linkingDeposit.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}).`
+      );
+      return;
     }
 
     try {
@@ -851,13 +897,23 @@ export function Deposits({ onUpdate }: DepositsProps) {
             </div>
           )}
 
+          {linkingDeposit && remainingToAllocate < -0.01 && (
+            <div className="flex items-start gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <div>
+                Total linked amount (${(alreadyLinkedAmount + addingNowTotal).toLocaleString('en-US', { minimumFractionDigits: 2 })})
+                {' '}exceeds the deposit amount (${linkingDeposit.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}).
+              </div>
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsLinkDialogOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleLinkPickups}
-              disabled={Object.keys(linkAmounts).length === 0}
+              disabled={Object.keys(linkAmounts).length === 0 || remainingToAllocate < -0.01}
             >
               Link ${addingNowTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} to {linkingDeposit?.deposit_id}
             </Button>
@@ -866,7 +922,12 @@ export function Deposits({ onUpdate }: DepositsProps) {
       </Dialog>
 
       {/* View Linked Pickups Detail Dialog */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+      <Dialog open={detailDialogOpen} onOpenChange={(open) => {
+        setDetailDialogOpen(open);
+        if (!open) {
+          setConfirmingLinkId(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>
@@ -892,21 +953,79 @@ export function Deposits({ onUpdate }: DepositsProps) {
                     <TableHead>Person</TableHead>
                     <TableHead>ATM</TableHead>
                     <TableHead className="text-right">Amount Linked</TableHead>
+                    <TableHead className="text-right w-[160px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {detailPickups.map((p, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>
-                        {new Date(p.pickup_date + 'T00:00:00').toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>{p.person_name}</TableCell>
-                      <TableCell>{p.atm_name}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        ${p.link_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {detailPickups.map((p) => {
+                    const isConfirming = confirmingLinkId === p.link_id;
+                    const isUnlinking = unlinkingLinkId === p.link_id;
+                    return (
+                      <TableRow key={p.link_id}>
+                        <TableCell>
+                          {new Date(p.pickup_date + 'T00:00:00').toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>{p.person_name}</TableCell>
+                        <TableCell>{p.atm_name}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          ${p.link_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell
+                          className="text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {isConfirming ? (
+                            <div className="flex justify-end items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Remove this link?</span>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleUnlink(p.link_id);
+                                }}
+                                disabled={isUnlinking}
+                                title="Confirm remove"
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setConfirmingLinkId(null);
+                                }}
+                                disabled={isUnlinking}
+                                title="Cancel"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setConfirmingLinkId(p.link_id);
+                              }}
+                              disabled={isUnlinking || (unlinkingLinkId !== null)}
+                              title="Remove link"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
               <div className="flex justify-between items-center px-2 py-3 border-t border-white/10 mt-2">
