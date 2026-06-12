@@ -12,6 +12,7 @@ import BTMDetails from "./components/btm-details/BTMDetails";
 import CsvUploads from "./components/csv-uploads/CsvUploads";
 import Liquidity from "./components/liquidity/Liquidity";
 import { Layout } from "./components/layout/Layout";
+import { Toaster } from "./components/ui/toaster";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -109,6 +110,7 @@ function App() {
             }
           />
         </Routes>
+        <Toaster />
       </>
     </Suspense>
   );

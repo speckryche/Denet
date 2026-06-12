@@ -27,9 +27,13 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
+        // Dark app theme → invert for max contrast: solid light card, dark text,
+        // green left-accent to signal success at a glance.
+        default:
+          "border border-green-600/30 border-l-4 border-l-green-500 bg-white text-slate-900 shadow-xl",
+        // Solid red, white text — clearly distinct from the light success toast.
         destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground",
+          "destructive group border-red-700 bg-red-600 text-white shadow-xl",
       },
     },
     defaultVariants: {
@@ -75,7 +79,9 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-1 top-1 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      // Inherit the toast's text color (dark on the light success card, white on
+      // the red destructive card) so the close affordance stays visible on both.
+      "absolute right-1 top-1 rounded-md p-1 text-current opacity-0 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-1 group-hover:opacity-60",
       className
     )}
     toast-close=""

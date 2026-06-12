@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DollarSign, Scale } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CashPickups } from './CashPickups';
 import { Deposits } from './Deposits';
+import { Adjustments } from './Adjustments';
+import AdjustBalanceModal from './AdjustBalanceModal';
 
 interface CashInTransit {
   person_id: string;
@@ -17,6 +20,12 @@ export default function CashManagement() {
   const [cashInTransit, setCashInTransit] = useState<CashInTransit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [adjustModalOpen, setAdjustModalOpen] = useState(false);
+  const [adjustModalPerson, setAdjustModalPerson] = useState<{
+    id: string;
+    name: string;
+    currentBalance: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchCashInTransit();
@@ -47,6 +56,17 @@ export default function CashManagement() {
 
       if (linksError) throw linksError;
 
+      // Get balance adjustments effective as of today. Adjustments are not
+      // floored at zero — a net-negative tracked balance is a meaningful
+      // signal that physical cash and records are diverging.
+      const todayISO = new Date().toISOString().slice(0, 10);
+      const { data: adjustments, error: adjustmentsError } = await supabase
+        .from('balance_adjustments')
+        .select('person_id, delta_amount')
+        .lte('effective_date', todayISO);
+
+      if (adjustmentsError) throw adjustmentsError;
+
       // Calculate total deposited per pickup
       const depositedByPickup = new Map<string, number>();
       links?.forEach(link => {
@@ -54,7 +74,9 @@ export default function CashManagement() {
         depositedByPickup.set(link.pickup_id, current + parseFloat(link.amount.toString()));
       });
 
-      // Calculate remaining balance per person (pickup amount - deposited amount)
+      // Calculate remaining balance per person (pickup amount - deposited amount).
+      // Per-pickup remainder is floored at 0 (an over-allocated pickup contributes
+      // 0, not a negative; that's a deposit-side reconciliation problem, not cash).
       const transitMap = new Map<string, number>();
       pickups?.forEach(pickup => {
         const pickupAmount = parseFloat(pickup.amount.toString());
@@ -67,11 +89,18 @@ export default function CashManagement() {
         }
       });
 
-      // Build result array
+      // Sum adjustments per person (signed; can be negative)
+      const adjustmentsByPerson = new Map<string, number>();
+      adjustments?.forEach(adj => {
+        const current = adjustmentsByPerson.get(adj.person_id) || 0;
+        adjustmentsByPerson.set(adj.person_id, current + Number(adj.delta_amount));
+      });
+
+      // Build result array — pickup-derived balance plus signed adjustment total
       const result: CashInTransit[] = people?.map(person => ({
         person_id: person.id,
         person_name: person.name,
-        amount: transitMap.get(person.id) || 0
+        amount: (transitMap.get(person.id) || 0) + (adjustmentsByPerson.get(person.id) || 0),
       })) || [];
 
       setCashInTransit(result);
@@ -106,11 +135,31 @@ export default function CashManagement() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
               {cashInTransit.map(person => (
-                <div key={person.person_id} className="text-center p-4 rounded-lg bg-slate-700/30 border border-slate-600/20">
+                <div
+                  key={person.person_id}
+                  className="relative text-center p-4 rounded-lg bg-slate-700/30 border border-slate-600/20"
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-1 right-1 h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setAdjustModalPerson({
+                        id: person.person_id,
+                        name: person.person_name,
+                        currentBalance: person.amount,
+                      });
+                      setAdjustModalOpen(true);
+                    }}
+                    title="Adjust balance"
+                  >
+                    <Scale className="w-4 h-4" />
+                  </Button>
                   <div className="text-sm font-semibold text-muted-foreground mb-1">
                     {person.person_name}
                   </div>
-                  <div className={`text-2xl font-bold ${person.amount > 0 ? 'text-green-500' : 'text-foreground'}`}>
+                  <div className={`text-2xl font-bold ${person.amount > 0 ? 'text-green-500' : person.amount < 0 ? 'text-red-500' : 'text-foreground'}`}>
                     ${person.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </div>
                 </div>
@@ -132,6 +181,7 @@ export default function CashManagement() {
           <TabsList>
             <TabsTrigger value="pickups">Cash Pickups</TabsTrigger>
             <TabsTrigger value="deposits">Deposits</TabsTrigger>
+            <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pickups" className="space-y-4">
@@ -141,8 +191,19 @@ export default function CashManagement() {
           <TabsContent value="deposits" className="space-y-4">
             <Deposits onUpdate={handleRefresh} />
           </TabsContent>
+
+          <TabsContent value="adjustments" className="space-y-4">
+            <Adjustments onUpdate={handleRefresh} />
+          </TabsContent>
         </Tabs>
       </div>
+
+      <AdjustBalanceModal
+        open={adjustModalOpen}
+        onOpenChange={setAdjustModalOpen}
+        onSuccess={handleRefresh}
+        person={adjustModalPerson}
+      />
     </div>
   );
 }

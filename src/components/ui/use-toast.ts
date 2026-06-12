@@ -7,7 +7,10 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+// Time a toast lingers in state AFTER it closes, before being purged — just long
+// enough to let the exit animation finish. (Auto-dismiss timing is the Radix
+// `duration` set per toast below, not this constant.)
+const TOAST_REMOVE_DELAY = 1000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -150,11 +153,17 @@ function toast({ ...props }: Toast) {
     })
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
+  // Per-variant auto-dismiss: errors get more reading time. Radix runs this timer
+  // natively and pauses it on hover/focus. An explicit `duration` prop overrides it.
+  const duration =
+    props.duration ?? (props.variant === "destructive" ? 8000 : 5000)
+
   dispatch({
     type: "ADD_TOAST",
     toast: {
       ...props,
       id,
+      duration,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()

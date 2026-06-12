@@ -124,6 +124,88 @@ export type Database = {
           },
         ]
       }
+      balance_adjustment_history: {
+        Row: {
+          action: string
+          adjustment_id: string | null
+          changed_at: string
+          changed_by: string | null
+          delta_amount: number
+          effective_date: string
+          id: string
+          person_id: string
+          reason: string
+        }
+        Insert: {
+          action: string
+          adjustment_id?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          delta_amount: number
+          effective_date: string
+          id?: string
+          person_id: string
+          reason: string
+        }
+        Update: {
+          action?: string
+          adjustment_id?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          delta_amount?: number
+          effective_date?: string
+          id?: string
+          person_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balance_adjustment_history_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "balance_adjustments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      balance_adjustments: {
+        Row: {
+          created_at: string
+          delta_amount: number
+          effective_date: string
+          id: string
+          person_id: string
+          reason: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delta_amount: number
+          effective_date?: string
+          id?: string
+          person_id: string
+          reason: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delta_amount?: number
+          effective_date?: string
+          id?: string
+          person_id?: string
+          reason?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balance_adjustments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bitstop_commissions: {
         Row: {
           commission_amount: number | null
@@ -845,7 +927,47 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_target_adjustment: {
+        Args: {
+          p_effective_date?: string
+          p_person_id: string
+          p_reason: string
+          p_target_total: number
+        }
+        Returns: {
+          created_at: string
+          delta_amount: number
+          effective_date: string
+          id: string
+          person_id: string
+          reason: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "balance_adjustments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_atm_state: {
+        Args: {
+          p_action: string
+          p_atm_id: string
+          p_cash_management_rep?: number
+          p_cash_management_rps?: number
+          p_city?: string
+          p_effective_date: string
+          p_location_name?: string
+          p_monthly_rent?: number
+          p_notes?: string
+          p_platform?: string
+          p_state?: string
+          p_street_address?: string
+          p_zip_code?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
