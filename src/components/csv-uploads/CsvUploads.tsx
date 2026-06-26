@@ -601,6 +601,7 @@ export default function CsvUploads() {
         // reads the raw cell (e.g. "6/13/26 10:28"); ISO strings also compare
         // chronologically as text, so the min below is correct.
         const firstTxDateByAtmId = new Map<string, string>();
+        const lastTxDateByAtmId = new Map<string, string>();
         const badDateSamples: string[] = [];
         mappedData.forEach((tx: any) => {
           if (!tx.atm_id) return;
@@ -614,8 +615,10 @@ export default function CsvUploads() {
             }
             return;
           }
-          const existing = firstTxDateByAtmId.get(tx.atm_id);
-          if (!existing || iso < existing) firstTxDateByAtmId.set(tx.atm_id, iso);
+          const first = firstTxDateByAtmId.get(tx.atm_id);
+          if (!first || iso < first) firstTxDateByAtmId.set(tx.atm_id, iso);
+          const last = lastTxDateByAtmId.get(tx.atm_id);
+          if (!last || iso > last) lastTxDateByAtmId.set(tx.atm_id, iso);
         });
         if (badDateSamples.length > 0) {
           setError(
@@ -639,6 +642,21 @@ export default function CsvUploads() {
           if (existingPlatform === currentPlatform) return; // Match — no action
           const firstTxDate = firstTxDateByAtmId.get(atmId);
           if (!firstTxDate) return;
+
+          // Flip-flop guard: if EVERY row this CSV brings for this machine is
+          // dated at or before the current active profile's install date, these
+          // are trailing rows from the already-closed prior profile — import
+          // them as plain transactions, do NOT trigger a (reverse) conversion.
+          // findProfileForTx attributes them to the historical window that
+          // contains them. Any row at/after the active install is a real change,
+          // so we only suppress when the rows are entirely historical. A null
+          // active install date can't be compared, so we don't suppress then.
+          const activeInstall = (existing.installed_date as string | null) ?? null;
+          const lastTxDate = lastTxDateByAtmId.get(atmId);
+          if (activeInstall && lastTxDate && lastTxDate <= activeInstall) {
+            return; // entirely historical relative to the active profile
+          }
+
           conversions.push({
             atm_id: atmId,
             current_profile_id: existing.id,
