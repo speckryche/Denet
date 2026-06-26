@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
 import Papa from 'papaparse';
 import { supabase } from '@/lib/supabase';
 
@@ -30,6 +31,15 @@ type PendingConversion = {
   location_name: string | null;
 };
 
+// Outcome of a single machine's conversion. The RPC is atomic per machine, so
+// `ok: false` means that machine was left fully untouched.
+type ConversionResult = {
+  atm_id: string;
+  location_name: string | null;
+  ok: boolean;
+  message?: string;
+};
+
 // Snapshot of the parsed CSV state captured at the moment we detect a pending
 // conversion. Held in component state across the user confirmation step, then
 // passed back into runImport() once they approve.
@@ -42,6 +52,32 @@ type PendingImportState = {
   fileName: string;
   negativeSpreadCount: number;
   commissionRateWarning: string | null;
+};
+
+// Normalize a raw CSV date cell to a 'YYYY-MM-DD' calendar date, or null if it
+// matches no known format. Handles ISO ("2026-06-13", "2026-06-13T10:28",
+// "2026-06-13 10:28") and US slash ("6/13/26 10:28", "06/13/2026"). Two-digit
+// years map to 20YY. Textual extraction only — never constructs a Date, so there
+// is no timezone day-shift. Callers must treat null as a loud error, not a skip.
+const toIsoDate = (raw: string | null | undefined): string | null => {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+
+  // ISO: YYYY-MM-DD (optionally followed by time)
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  // US slash: M/D/YY or M/D/YYYY (optionally followed by time)
+  const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})(?!\d)/);
+  if (us) {
+    const mm = us[1].padStart(2, '0');
+    const dd = us[2].padStart(2, '0');
+    const yyyy = us[3].length === 2 ? `20${us[3]}` : us[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return null;
 };
 
 export default function CsvUploads() {
@@ -62,6 +98,12 @@ export default function CsvUploads() {
   const [pendingConversions, setPendingConversions] = useState<PendingConversion[]>([]);
   const [pendingImport, setPendingImport] = useState<PendingImportState | null>(null);
   const [isConfirmingConversions, setIsConfirmingConversions] = useState(false);
+  // Conversion-failure message scoped to the dialog (rendered inside it), so it
+  // stays visible while the dialog is open — unlike the page-level `error`
+  // banner, which sits behind the modal overlay.
+  const [conversionError, setConversionError] = useState<string | null>(null);
+
+  const { toast } = useToast();
 
   const [transactionDates, setTransactionDates] = useState({
     denetFirst: null as string | null,
@@ -250,57 +292,73 @@ export default function CsvUploads() {
   // and insert a new active profile matching the CSV's platform with
   // installed_date set to the first new tx. Returns true on success, false
   // on the first DB error (caller should abort and surface the error).
-  const processConversions = async (conversions: PendingConversion[]): Promise<boolean> => {
+  // Route each conversion through the update_atm_state RPC instead of raw
+  // atm_profiles writes. The RPC is SECURITY DEFINER (so it bypasses the
+  // atm_profiles RLS that blocks the app's anon session), atomic per machine,
+  // computes removed_date = effective_date - 1 day server-side, and inherits
+  // rent / address / sales_rep / cash-mgmt from the closing profile (we pass no
+  // overrides, so all carry forward). p_effective_date = the first new tx's
+  // date, which becomes the new profile's installed_date.
+  // Each machine is independent and atomic; we capture per-machine results so a
+  // partial-batch failure can be reported precisely.
+  const processConversions = async (
+    conversions: PendingConversion[],
+  ): Promise<ConversionResult[]> => {
+    const results: ConversionResult[] = [];
     for (const c of conversions) {
-      const [y, m, d] = c.first_tx_date.split('-').map(Number);
-      const dayBefore = new Date(y, m - 1, d - 1);
-      const dayBeforeStr = `${dayBefore.getFullYear()}-${String(
-        dayBefore.getMonth() + 1,
-      ).padStart(2, '0')}-${String(dayBefore.getDate()).padStart(2, '0')}`;
-
-      const { error: closeErr } = await supabase
-        .from('atm_profiles')
-        .update({ removed_date: dayBeforeStr, active: false })
-        .eq('id', c.current_profile_id);
-      if (closeErr) {
-        console.error(`Failed to close profile ${c.current_profile_id}:`, closeErr);
-        setError(
-          `Failed to close existing profile for ATM ${c.atm_id}: ${closeErr.message}`,
-        );
-        return false;
-      }
-
-      const { error: insertErr } = await supabase.from('atm_profiles').insert({
-        atm_id: c.atm_id,
-        location_name: c.location_name,
-        platform: c.new_platform,
-        installed_date: c.first_tx_date,
-        active: true,
-        monthly_rent: 0,
-        cash_management_rps: 0,
-        cash_management_rep: 0,
+      const { error: rpcErr } = await supabase.rpc('update_atm_state', {
+        p_atm_id: c.atm_id,
+        p_effective_date: c.first_tx_date, // normalized YYYY-MM-DD from detection
+        p_action: 'convert',
+        p_platform: c.new_platform,
       });
-      if (insertErr) {
-        console.error(`Failed to insert new profile for ATM ${c.atm_id}:`, insertErr);
-        setError(
-          `Failed to create new profile for ATM ${c.atm_id}: ${insertErr.message}`,
-        );
-        return false;
+      if (rpcErr) {
+        console.error(`Conversion failed for ATM ${c.atm_id}:`, rpcErr);
+        results.push({
+          atm_id: c.atm_id,
+          location_name: c.location_name,
+          ok: false,
+          message: rpcErr.message,
+        });
+      } else {
+        results.push({ atm_id: c.atm_id, location_name: c.location_name, ok: true });
       }
     }
-    return true;
+    return results;
   };
 
   const handleConfirmConversions = async () => {
     if (!pendingImport) return;
     setIsConfirmingConversions(true);
+    setConversionError(null);
     try {
-      const ok = await processConversions(pendingConversions);
-      if (!ok) return;
+      const results = await processConversions(pendingConversions);
+      const failures = results.filter((r) => !r.ok);
+      if (failures.length > 0) {
+        // Abort + report: do NOT import any transactions. Succeeded machines
+        // are already converted (per-machine atomic); failed ones are untouched.
+        // The dialog stays open and shows the per-machine detail below.
+        const summary = `Conversion failed for ${failures.length} of ${results.length} machine(s) — import aborted.`;
+        const detail = failures
+          .map((f) => `${f.location_name || f.atm_id} (${f.atm_id}): ${f.message}`)
+          .join('\n');
+        setConversionError(`${summary}\n${detail}`);
+        toast({
+          title: 'Conversion failed — import aborted',
+          description: summary,
+          variant: 'destructive',
+        });
+        return;
+      }
       const state = pendingImport;
       setPendingConversions([]);
       setPendingImport(null);
       await runImport(state);
+    } catch (e) {
+      console.error('Unexpected error during conversion/import:', e);
+      const msg = e instanceof Error ? e.message : 'Conversion failed unexpectedly.';
+      setConversionError(msg);
+      toast({ title: 'Conversion failed', description: msg, variant: 'destructive' });
     } finally {
       setIsConfirmingConversions(false);
     }
@@ -309,6 +367,7 @@ export default function CsvUploads() {
   const handleCancelConversions = () => {
     setPendingConversions([]);
     setPendingImport(null);
+    setConversionError(null);
   };
 
   const handleFileSelect = (file: File) => {
@@ -535,17 +594,37 @@ export default function CsvUploads() {
           return;
         }
 
-        // Per-atm first new tx date. Used both for conversion windows below
-        // and (when the user approves) as the new profile's installed_date.
+        // Per-atm first new tx date (chronological min), normalized to
+        // YYYY-MM-DD. Used for conversion windows below and (when the user
+        // approves) as the new profile's installed_date. We normalize the raw
+        // CSV value here because the stored column is a timestamp and detection
+        // reads the raw cell (e.g. "6/13/26 10:28"); ISO strings also compare
+        // chronologically as text, so the min below is correct.
         const firstTxDateByAtmId = new Map<string, string>();
+        const badDateSamples: string[] = [];
         mappedData.forEach((tx: any) => {
-          if (!tx.atm_id || !tx.date) return;
-          const dateOnly = String(tx.date).split('T')[0];
-          const existing = firstTxDateByAtmId.get(tx.atm_id);
-          if (!existing || dateOnly < existing) {
-            firstTxDateByAtmId.set(tx.atm_id, dateOnly);
+          if (!tx.atm_id) return;
+          if (tx.date == null || String(tx.date).trim() === '') return;
+          const iso = toIsoDate(tx.date);
+          if (!iso) {
+            // Loud failure, never a silent skip: an unrecognized date format
+            // means the CSV changed shape and our parsing assumptions are stale.
+            if (badDateSamples.length < 3 && !badDateSamples.includes(String(tx.date))) {
+              badDateSamples.push(String(tx.date));
+            }
+            return;
           }
+          const existing = firstTxDateByAtmId.get(tx.atm_id);
+          if (!existing || iso < existing) firstTxDateByAtmId.set(tx.atm_id, iso);
         });
+        if (badDateSamples.length > 0) {
+          setError(
+            `Unrecognized date format in CSV — expected M/D/YY or ISO (YYYY-MM-DD). ` +
+              `Example value(s): ${badDateSamples.map((d) => `"${d}"`).join(', ')}. ` +
+              `Import aborted so no rows are silently skipped.`,
+          );
+          return;
+        }
 
         // Detect platform conversions: CSV brings tx data for an atm_id
         // whose currently-active profile is on a different platform.
@@ -582,6 +661,7 @@ export default function CsvUploads() {
         };
 
         if (conversions.length > 0) {
+          setConversionError(null);
           setPendingConversions(conversions);
           setPendingImport(importState);
           return;
@@ -781,6 +861,15 @@ export default function CsvUploads() {
               </div>
             ))}
           </div>
+          {conversionError && (
+            <Alert variant="destructive" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Conversion failed</AlertTitle>
+              <AlertDescription className="whitespace-pre-line">
+                {conversionError}
+              </AlertDescription>
+            </Alert>
+          )}
           <DialogFooter>
             <Button
               variant="outline"
