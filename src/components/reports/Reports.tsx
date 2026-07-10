@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { TrendingUp, DollarSign, BarChart3, Calendar, List, Shield, GitCompare, LineChart } from 'lucide-react';
+import { TrendingUp, DollarSign, BarChart3, Calendar, List, Shield, GitCompare, LineChart, Table2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import MonthlySalesSummary from './MonthlySalesSummary';
 import ATMProfitLoss from './ATMProfitLoss';
 import FleetMonthlyPnL from './FleetMonthlyPnL';
+import PerMachineMonthlyPnL from './PerMachineMonthlyPnL';
 import ATMSalesSummary from './ATMSalesSummary';
 import ATMMonthlySales from './ATMMonthlySales';
 import ATMTransactions from './ATMTransactions';
@@ -17,6 +18,7 @@ const TABS = [
   { key: 'atm-monthly', label: 'Sales - by ATM', icon: Calendar },
   { key: 'atm-pl', label: 'ATM P&L', icon: DollarSign },
   { key: 'fleet-pl', label: 'Fleet P&L', icon: LineChart },
+  { key: 'per-machine-pl', label: 'Per-Machine P&L', icon: Table2 },
   { key: 'atm-summary', label: 'ATM Summary', icon: BarChart3 },
   { key: 'atm-transactions', label: 'ATM Transactions', icon: List },
   { key: 'ctr-filings', label: 'CTR Filings', icon: Shield },
@@ -30,6 +32,7 @@ const TAB_CONTENT: Record<TabKey, React.FC> = {
   'atm-monthly': ATMMonthlySales,
   'atm-pl': ATMProfitLoss,
   'fleet-pl': FleetMonthlyPnL,
+  'per-machine-pl': PerMachineMonthlyPnL,
   'atm-summary': ATMSalesSummary,
   'atm-transactions': ATMTransactions,
   'ctr-filings': CTRReport,

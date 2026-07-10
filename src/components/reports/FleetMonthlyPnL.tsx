@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import {
   computeMonthlyPnL,
   monthRange,
-  addMonthsYM,
+  yearStartYM,
   classifyCommissionMonths,
   type Platform,
   type MonthlyPnLResult,
@@ -29,31 +29,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FileSpreadsheet, LineChart, EyeOff, AlertTriangle, Info } from 'lucide-react';
+import { FileSpreadsheet, LineChart, EyeOff } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
-
-const MONTH_ABBR = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-
-// 'YYYY-MM' -> "Jul 2026"
-const monthLabel = (ym: string): string => {
-  const [y, m] = ym.split('-').map(Number);
-  return `${MONTH_ABBR[m - 1]} ${y}`;
-};
-// 'YYYY-MM' -> "Jul '26" (compact, for column headers)
-const monthLabelShort = (ym: string): string => {
-  const [y, m] = ym.split('-').map(Number);
-  return `${MONTH_ABBR[m - 1]} '${String(y).slice(-2)}`;
-};
-
-const isValidYM = (s: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
-
-const fmtCurrency = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`;
-
-const PARTIAL_FOOTNOTE =
-  '◦ Partial month — data through the latest upload, not a full month.';
+import {
+  monthLabel,
+  monthLabelShort,
+  isValidYM,
+  fmtCurrency,
+  platformLabel,
+  commissionNote,
+  PARTIAL_FOOTNOTE,
+  CommissionBanners,
+  ReportFootnotes,
+} from './pnl-shared';
 
 // The six display rows, derived from the engine's PnLLineItems. `informational`
 // rows (Total Sales) are volume, not part of Net. `emphasis` is the Net row.
@@ -102,9 +90,6 @@ const sumMonths = (result: MonthlyPnLResult): PnLLineItems => {
   }
   return acc;
 };
-
-const platformLabel = (p: Platform) =>
-  p === 'both' ? 'All platforms' : p === 'bitstop' ? 'Bitstop platform' : 'Denet platform';
 
 // ---------------------------------------------------------------------------
 // Self-contained inline-SVG net-P&L line chart. This project has no charting
@@ -248,8 +233,9 @@ export default function FleetMonthlyPnL() {
       } catch (err) {
         console.error('Fleet P&L: error finding latest data month:', err);
       }
+      // Year-to-date default: January of the latest-data year → latest-data month.
       setToMonth(latestYM);
-      setFromMonth(addMonthsYM(latestYM, -5));
+      setFromMonth(yearStartYM(latestYM));
       setInitialized(true);
     };
     initRange();
@@ -299,10 +285,6 @@ export default function FleetMonthlyPnL() {
   const partialMonth = result?.partialMonth ?? null;
   const hasPartialInRange = !!partialMonth && months.includes(partialMonth);
 
-  const commissionNote = missingMonths.length
-    ? `Commission not calculated for ${missingMonths.map(monthLabel).join(', ')} — Net may be overstated.`
-    : '';
-
   const handleExportExcel = () => {
     if (!result) return;
     const excelData: (string | number)[][] = [];
@@ -334,7 +316,8 @@ export default function FleetMonthlyPnL() {
     // Caveat rows so Tom sees them in the file
     excelData.push([]);
     if (hasPartialInRange) excelData.push([PARTIAL_FOOTNOTE]);
-    if (commissionNote) excelData.push([`⚠ ${commissionNote}`]);
+    const note = commissionNote(missingMonths);
+    if (note) excelData.push([`⚠ ${note}`]);
 
     const ws = XLSX.utils.aoa_to_sheet(excelData);
 
@@ -476,32 +459,8 @@ export default function FleetMonthlyPnL() {
           </div>
         )}
 
-        {/* Commission-not-calculated WARNING banner (closed months only) */}
-        {missingMonths.length > 0 && (
-          <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-400/30 bg-amber-500/[0.08]">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <div className="font-semibold text-amber-300">Commission not calculated</div>
-              <div className="text-muted-foreground">
-                No commission calculation exists for{' '}
-                <span className="text-foreground font-medium">{missingMonths.map(monthLabel).join(', ')}</span>. Net
-                P&amp;L for {missingMonths.length > 1 ? 'these months' : 'this month'} may be overstated.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Pending-commission INFO banner (current/partial months — expected) */}
-        {pendingMonths.length > 0 && (
-          <div className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-white/[0.02]">
-            <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-            <div className="text-sm text-muted-foreground">
-              Commission for{' '}
-              <span className="text-foreground font-medium">{pendingMonths.map(monthLabel).join(', ')}</span> has not
-              been calculated yet — commission runs after month close.
-            </div>
-          </div>
-        )}
+        {/* Two-state commission-not-calculated banners */}
+        <CommissionBanners missingMonths={missingMonths} pendingMonths={pendingMonths} />
 
         {/* Trend chart */}
         {showChart && result && (
@@ -616,12 +575,7 @@ export default function FleetMonthlyPnL() {
         </div>
 
         {/* Footnotes */}
-        {result && (hasPartialInRange || missingMonths.length > 0) && (
-          <div className="space-y-1 text-xs text-muted-foreground">
-            {hasPartialInRange && <div>{PARTIAL_FOOTNOTE}</div>}
-            {missingMonths.length > 0 && <div>⚠ {commissionNote}</div>}
-          </div>
-        )}
+        {result && <ReportFootnotes hasPartial={hasPartialInRange} missingMonths={missingMonths} />}
       </CardContent>
     </Card>
   );

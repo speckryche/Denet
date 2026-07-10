@@ -474,6 +474,13 @@ export function computeMonthlyPnLFromInputs(
   };
 }
 
+// First month ('YYYY-01') of the year containing `ym`. Used for the reports'
+// year-to-date default range: January of the latest-data year is always <= the
+// latest-data month, so the resulting range can never be inverted or empty.
+export function yearStartYM(ym: string): string {
+  return `${ym.slice(0, 4)}-01`;
+}
+
 // Add `delta` months to a 'YYYY-MM' string (delta may be negative).
 export function addMonthsYM(ym: string, delta: number): string {
   const [y, m] = ym.split('-').map(Number);
