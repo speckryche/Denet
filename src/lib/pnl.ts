@@ -87,6 +87,11 @@ export interface MonthlyPnLResult {
   byMonthTotals: Record<string, PnLLineItems>;
   byMachineMonthNet: Record<string, Record<string, number>>; // atm_id -> YYYY-MM -> net
   machineMeta: Record<string, { atm_name: string; state: string }>;
+  // Distinct in-range 'YYYY-MM' that have at least one commission_details row —
+  // i.e. months for which commission has actually been calculated. A month
+  // absent from this list has NO commission calculation (distinct from a month
+  // that was calculated to $0). Used by the commission-not-calculated warning.
+  commissionMonths: string[];
 }
 
 const emptyLineItems = (): PnLLineItems => ({
@@ -448,6 +453,16 @@ export function computeMonthlyPnLFromInputs(
     byMachineMonthNet[c.atm_id][c.month] = (byMachineMonthNet[c.atm_id][c.month] || 0) + c.net_profit;
   }
 
+  // Which in-range months actually had a commission calculation (any detail row).
+  const monthSet = new Set(months);
+  const commMonthSet = new Set<string>();
+  for (const details of commissionDetailsByATM.values()) {
+    for (const d of details) {
+      if (monthSet.has(d.month_ym)) commMonthSet.add(d.month_ym);
+    }
+  }
+  const commissionMonths = [...commMonthSet].sort();
+
   return {
     months,
     cells,
@@ -455,7 +470,48 @@ export function computeMonthlyPnLFromInputs(
     byMonthTotals,
     byMachineMonthNet,
     machineMeta,
+    commissionMonths,
   };
+}
+
+// Add `delta` months to a 'YYYY-MM' string (delta may be negative).
+export function addMonthsYM(ym: string, delta: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  const total = y * 12 + (m - 1) + delta;
+  const ny = Math.floor(total / 12);
+  const nm = (total % 12) + 1;
+  return `${ny}-${String(nm).padStart(2, '0')}`;
+}
+
+export type CommissionMonthStatus =
+  | 'calculated' // has a commission calculation
+  | 'pending' // no commission yet, but expected — current/partial month (neutral)
+  | 'missing'; // no commission on a CLOSED past month — a real gap (warning)
+
+// Classify each selected month by commission-calculation state. A month with no
+// commission is 'pending' (informational — "commission runs after month close")
+// when it is the current calendar month or the partial (incomplete-data) month;
+// otherwise it is 'missing' (a closed month whose Net may be overstated).
+// A month can be BOTH partial and commission-missing — partial wins, so an
+// in-progress month never raises the warning.
+export function classifyCommissionMonths(opts: {
+  months: string[];
+  commissionMonths: string[];
+  partialMonth: string | null;
+  currentMonth: string; // 'YYYY-MM' of today
+}): Record<string, CommissionMonthStatus> {
+  const calc = new Set(opts.commissionMonths);
+  const out: Record<string, CommissionMonthStatus> = {};
+  for (const ym of opts.months) {
+    if (calc.has(ym)) {
+      out[ym] = 'calculated';
+    } else if (ym >= opts.currentMonth || ym === opts.partialMonth) {
+      out[ym] = 'pending';
+    } else {
+      out[ym] = 'missing';
+    }
+  }
+  return out;
 }
 
 // Production entry point: fetch + compute.

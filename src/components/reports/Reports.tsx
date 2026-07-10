@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { TrendingUp, DollarSign, BarChart3, Calendar, List, Shield, GitCompare } from 'lucide-react';
+import { TrendingUp, DollarSign, BarChart3, Calendar, List, Shield, GitCompare, LineChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import MonthlySalesSummary from './MonthlySalesSummary';
 import ATMProfitLoss from './ATMProfitLoss';
+import FleetMonthlyPnL from './FleetMonthlyPnL';
 import ATMSalesSummary from './ATMSalesSummary';
 import ATMMonthlySales from './ATMMonthlySales';
 import ATMTransactions from './ATMTransactions';
@@ -15,6 +16,7 @@ const TABS = [
   { key: 'monthly-sales', label: 'Sales - Totals', icon: TrendingUp },
   { key: 'atm-monthly', label: 'Sales - by ATM', icon: Calendar },
   { key: 'atm-pl', label: 'ATM P&L', icon: DollarSign },
+  { key: 'fleet-pl', label: 'Fleet P&L', icon: LineChart },
   { key: 'atm-summary', label: 'ATM Summary', icon: BarChart3 },
   { key: 'atm-transactions', label: 'ATM Transactions', icon: List },
   { key: 'ctr-filings', label: 'CTR Filings', icon: Shield },
@@ -27,6 +29,7 @@ const TAB_CONTENT: Record<TabKey, React.FC> = {
   'monthly-sales': MonthlySalesSummary,
   'atm-monthly': ATMMonthlySales,
   'atm-pl': ATMProfitLoss,
+  'fleet-pl': FleetMonthlyPnL,
   'atm-summary': ATMSalesSummary,
   'atm-transactions': ATMTransactions,
   'ctr-filings': CTRReport,
