@@ -40,7 +40,7 @@ import {
   Shield,
   X,
 } from 'lucide-react';
-import { CTR_THRESHOLD, findCtrQualifyingGroups } from '@/lib/ctr';
+import { CTR_THRESHOLD, findCtrQualifyingGroups, findSingleTxCtrKeys } from '@/lib/ctr';
 import { findProfileForTx } from '@/lib/atm-profile';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -106,6 +106,12 @@ export default function CTRReport() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('current');
   const [nameSearch, setNameSearch] = useState('');
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+  // View mode: 'aggregate' (default, full filing controls) vs 'single' (read-only
+  // view of days with a single tx >= threshold). singleTxKeys is lazy-loaded the
+  // first time single mode is selected, then cached.
+  const [viewMode, setViewMode] = useState<'aggregate' | 'single'>('aggregate');
+  const [singleTxKeys, setSingleTxKeys] = useState<Set<string> | null>(null);
+  const [loadingSingleKeys, setLoadingSingleKeys] = useState(false);
   const { toast } = useToast();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expansionCache, setExpansionCache] = useState<Map<string, ExpansionData>>(new Map());
@@ -127,6 +133,19 @@ export default function CTRReport() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Lazy-load the single-transaction key set the first time single mode is used.
+  useEffect(() => {
+    if (viewMode !== 'single' || singleTxKeys !== null || loadingSingleKeys) return;
+    setLoadingSingleKeys(true);
+    findSingleTxCtrKeys()
+      .then(setSingleTxKeys)
+      .catch((err) => {
+        console.error('Error loading single-transaction CTR keys:', err);
+        setSingleTxKeys(new Set()); // fail closed to an empty view, don't loop
+      })
+      .finally(() => setLoadingSingleKeys(false));
+  }, [viewMode, singleTxKeys, loadingSingleKeys]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -381,7 +400,7 @@ export default function CTRReport() {
     }
   };
 
-  // Filtering: category → name-search → filed-status
+  // Filtering: category → name-search → (aggregate: filed-status | single: key set)
   const categoryFiltered = items.filter(
     (i) => categoryFilter === 'all' || i.category === categoryFilter,
   );
@@ -391,7 +410,19 @@ export default function CTRReport() {
       )
     : categoryFiltered;
   const unfiled = searchedItems.filter((i) => !i.filed);
-  const displayItems = showFiled ? searchedItems : unfiled;
+
+  // Single mode: read-only, keyed intersection with the single-tx key set,
+  // filed-status stage skipped (all matching days shown). Aggregate mode is
+  // byte-for-byte unchanged.
+  const singleLoading = viewMode === 'single' && (loadingSingleKeys || singleTxKeys === null);
+  const displayItems =
+    viewMode === 'single'
+      ? singleTxKeys
+        ? searchedItems.filter((i) => singleTxKeys.has(`${i.customer_id}|${i.trigger_date}`))
+        : []
+      : showFiled
+      ? searchedItems
+      : unfiled;
 
   // Summary banner: tailored to selected category
   const currentUnfiled = items.filter((i) => i.category === 'current' && !i.filed).length;
@@ -421,29 +452,64 @@ export default function CTRReport() {
   return (
     <div className="space-y-6">
       {/* Summary Banner */}
-      <div
-        className={cn(
-          'flex items-center gap-4 p-4 rounded-lg border',
-          summaryCount > 0
-            ? 'bg-red-500/[0.06] border-red-400/20'
-            : 'bg-green-500/[0.06] border-green-400/20',
-        )}
-      >
-        {summaryCount > 0 ? (
-          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
-        ) : (
-          <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
-        )}
-        <div>
-          <div className="font-semibold">{summaryCopy}</div>
-          <div className="text-sm text-muted-foreground">
-            Customers with ${CTR_THRESHOLD.toLocaleString()}+ in Denet transactions within a single day
+      {viewMode === 'single' ? (
+        <div className="flex items-center gap-4 p-4 rounded-lg border bg-white/[0.03] border-white/10">
+          <Shield className="w-5 h-5 text-muted-foreground shrink-0" />
+          <div>
+            <div className="font-semibold">
+              {singleLoading
+                ? 'Loading single-transaction days…'
+                : `${displayItems.length} single-transaction day${
+                    displayItems.length !== 1 ? 's' : ''
+                  } ≥ ${formatCurrency(CTR_THRESHOLD)}`}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Days with at least one individual Denet transaction ≥ {formatCurrency(CTR_THRESHOLD)} · read-only view
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div
+          className={cn(
+            'flex items-center gap-4 p-4 rounded-lg border',
+            summaryCount > 0
+              ? 'bg-red-500/[0.06] border-red-400/20'
+              : 'bg-green-500/[0.06] border-green-400/20',
+          )}
+        >
+          {summaryCount > 0 ? (
+            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+          )}
+          <div>
+            <div className="font-semibold">{summaryCopy}</div>
+            <div className="text-sm text-muted-foreground">
+              Customers with ${CTR_THRESHOLD.toLocaleString()}+ in Denet transactions within a single day
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Filters: category + name search (historical only) + filed-status */}
+      {/* Filters: view-mode + category + name search + filed-status (aggregate only) */}
       <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === 'aggregate' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('aggregate')}
+          >
+            Aggregate
+          </Button>
+          <Button
+            variant={viewMode === 'single' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('single')}
+          >
+            Single tx ≥ ${CTR_THRESHOLD.toLocaleString()}
+          </Button>
+        </div>
+
         <div className="flex items-center gap-2">
           <Label htmlFor="category-filter" className="text-sm text-muted-foreground">
             Category
@@ -482,31 +548,42 @@ export default function CTRReport() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button
-            variant={showFiled ? 'outline' : 'default'}
-            size="sm"
-            onClick={() => setShowFiled(false)}
-          >
-            <FileWarning className="w-4 h-4 mr-1.5" />
-            Pending ({unfiled.length})
-          </Button>
-          <Button
-            variant={showFiled ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowFiled(true)}
-          >
-            <Shield className="w-4 h-4 mr-1.5" />
-            All ({searchedItems.length})
-          </Button>
-        </div>
+        {viewMode === 'aggregate' && (
+          <div className="flex items-center gap-3">
+            <Button
+              variant={showFiled ? 'outline' : 'default'}
+              size="sm"
+              onClick={() => setShowFiled(false)}
+            >
+              <FileWarning className="w-4 h-4 mr-1.5" />
+              Pending ({unfiled.length})
+            </Button>
+            <Button
+              variant={showFiled ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowFiled(true)}
+            >
+              <Shield className="w-4 h-4 mr-1.5" />
+              All ({searchedItems.length})
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* CTR Table */}
-      {displayItems.length === 0 ? (
+      {singleLoading ? (
         <Card className="bg-card/30 border-white/10">
           <CardContent className="py-12 text-center text-muted-foreground">
-            {showFiled
+            <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+            Loading single-transaction days...
+          </CardContent>
+        </Card>
+      ) : displayItems.length === 0 ? (
+        <Card className="bg-card/30 border-white/10">
+          <CardContent className="py-12 text-center text-muted-foreground">
+            {viewMode === 'single'
+              ? `No days with a single transaction ≥ ${formatCurrency(CTR_THRESHOLD)}.`
+              : showFiled
               ? 'No CTR entries match this filter.'
               : 'No pending CTR filings in this view.'}
           </CardContent>
@@ -528,7 +605,9 @@ export default function CTRReport() {
                   <TableHead>Filed Date</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead>Won't File Reason</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {viewMode === 'aggregate' && (
+                    <TableHead className="text-right">Actions</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -542,7 +621,10 @@ export default function CTRReport() {
                       <TableRow
                         className={cn(
                           'cursor-pointer',
-                          !item.filed && item.category === 'current' && 'bg-red-500/[0.03]',
+                          viewMode === 'aggregate' &&
+                            !item.filed &&
+                            item.category === 'current' &&
+                            'bg-red-500/[0.03]',
                         )}
                         onClick={() => toggleRow(item)}
                       >
@@ -595,29 +677,31 @@ export default function CTRReport() {
                         <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
                           {item.wont_file_reason || '—'}
                         </TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={togglingIds.has(item.id)}
-                              onClick={() => handleQuickToggle(item)}
-                              className={cn(
-                                !item.filed &&
-                                  'border-green-400/30 text-green-400 hover:bg-green-400/10 hover:text-green-300',
-                              )}
-                            >
-                              {item.filed ? 'Unmark' : 'Mark Filed'}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => openEditDialog(item)}>
-                              Edit
-                            </Button>
-                          </div>
-                        </TableCell>
+                        {viewMode === 'aggregate' && (
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={togglingIds.has(item.id)}
+                                onClick={() => handleQuickToggle(item)}
+                                className={cn(
+                                  !item.filed &&
+                                    'border-green-400/30 text-green-400 hover:bg-green-400/10 hover:text-green-300',
+                                )}
+                              >
+                                {item.filed ? 'Unmark' : 'Mark Filed'}
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => openEditDialog(item)}>
+                                Edit
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                       {isExpanded && (
                         <TableRow>
-                          <TableCell colSpan={12} className="p-0">
+                          <TableCell colSpan={viewMode === 'aggregate' ? 12 : 11} className="p-0">
                             <div className="bg-white/[0.02] border-t border-b border-white/[0.06] px-8 py-3">
                               {isExpansionLoading ? (
                                 <div className="text-xs text-muted-foreground py-2 flex items-center gap-2">
