@@ -5,6 +5,7 @@ import {
   profilesForWindow,
   txsByProfile as groupTxsByProfile,
 } from '@/lib/atm-profile';
+import { ownsCommissionMonth } from '@/lib/pnl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -282,7 +283,13 @@ export default function ATMProfitLoss() {
         const monthlyMgmtRps = profile.cash_management_rps || 0;
         const monthlyMgmtRep = profile.cash_management_rep || 0;
         const atmCommDetails = commissionDetailsByATM.get(profile.atm_id) || [];
-        const totalCommissions = atmCommDetails.reduce((s, d) => s + d.amount, 0);
+        // Window-owned commission: exactly one profile owns each month, so a
+        // month's commission never lands on two profiles (fixes the zero-tx
+        // fallback-unfiltered and same-month-conversion double-counts). Same
+        // rule used on both the fallback and tx paths below.
+        const ownedCommissions = atmCommDetails
+          .filter((d) => ownsCommissionMonth(profile, d.month_ym, relevantProfiles))
+          .reduce((s, d) => s + d.amount, 0);
 
         // Zero-tx fallback: keep the row (so rent losses stay visible) and use
         // atm_profiles.platform as a label-of-last-resort. Skip when all three
@@ -297,7 +304,7 @@ export default function ATMProfitLoss() {
           const rent = monthlyRent * totalExpenseMonths;
           const mgmt_rps = monthlyMgmtRps * totalExpenseMonths;
           const mgmt_rep = monthlyMgmtRep * totalExpenseMonths;
-          const net_profit = -rent - mgmt_rps - mgmt_rep - totalCommissions;
+          const net_profit = -rent - mgmt_rps - mgmt_rep - ownedCommissions;
 
           resultData.push({
             active: profile.active,
@@ -313,7 +320,7 @@ export default function ATMProfitLoss() {
             rent,
             mgmt_rps,
             mgmt_rep,
-            commissions: totalCommissions,
+            commissions: ownedCommissions,
             net_profit,
             has_override: false,
             transactions: [],
@@ -350,9 +357,8 @@ export default function ATMProfitLoss() {
         const profileLastYM = profile.removed_date
           ? profile.removed_date.slice(0, 7)
           : '9999-12';
-        const profileCommissions = atmCommDetails
-          .filter((d) => d.month_ym >= profileFirstYM && d.month_ym <= profileLastYM)
-          .reduce((s, d) => s + d.amount, 0);
+        // profileFirstYM/profileLastYM retained for the Bitstop fee-override
+        // window below; commission now uses ownedCommissions (computed above).
 
         // Bitstop fee overrides: only when this profile is on Bitstop AND
         // only for months inside the profile's window. The override map is
@@ -395,7 +401,7 @@ export default function ATMProfitLoss() {
         const mgmt_rep = monthlyMgmtRep * totalExpenseMonths;
         const fee_pct = total_sales > 0 ? (total_fees / total_sales) * 100 : 0;
         const net_profit =
-          total_fees - bitstop_fees - rent - mgmt_rps - mgmt_rep - profileCommissions;
+          total_fees - bitstop_fees - rent - mgmt_rps - mgmt_rep - ownedCommissions;
 
         const drillDownTransactions: TransactionRow[] = atmTransactions.map((tx: any) => ({
           id: tx.id || '',
@@ -425,7 +431,7 @@ export default function ATMProfitLoss() {
           rent,
           mgmt_rps,
           mgmt_rep,
-          commissions: profileCommissions,
+          commissions: ownedCommissions,
           net_profit,
           has_override,
           transactions: drillDownTransactions,
