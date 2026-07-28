@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { Pencil, History, Search, Download, X, Check, Plus, Monitor, DollarSign, CreditCard, RefreshCw } from 'lucide-react';
+import { Pencil, History, Search, Download, Check, Plus, Monitor, RefreshCw, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import UpdateMachineStateModal from './UpdateMachineStateModal';
@@ -44,6 +44,14 @@ interface ATMProfile {
   notes: string | null;
 }
 
+// Formats a row's address as one muted line: "Street · City, State Zip".
+// Any missing piece is dropped gracefully; returns '' when nothing is present.
+const formatAddress = (p: ATMProfile): string => {
+  const cityState = [p.city, p.state].filter(Boolean).join(', ');
+  const cityStateZip = [cityState, p.zip_code].filter(Boolean).join(' ');
+  return [p.street_address, cityStateZip].filter(Boolean).join(' · ');
+};
+
 export default function BTMDetails() {
   const [profiles, setProfiles] = useState<ATMProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +60,7 @@ export default function BTMDetails() {
   const [historyModal, setHistoryModal] = useState<{ atmId: string; open: boolean }>({ atmId: '', open: false });
   const [historyData, setHistoryData] = useState<ATMProfile[]>([]);
   const [updateStateProfile, setUpdateStateProfile] = useState<ATMProfile | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
   const [addingNew, setAddingNew] = useState(false);
@@ -158,6 +167,10 @@ export default function BTMDetails() {
   const startEdit = (profile: ATMProfile) => {
     setEditingId(profile.id);
     setEditForm(profile);
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedId(prev => (prev === id ? null : id));
   };
 
   const cancelEdit = () => {
@@ -280,7 +293,7 @@ export default function BTMDetails() {
     a.click();
   };
 
-  const renderTable = (data: ATMProfile[], title: string, showWarehouse = false) => {
+  const renderTable = (data: ATMProfile[], title: string) => {
     // Determine which sort config to use based on the table
     let sortConfig, setSortConfig;
     if (title === 'Active - Denet') {
@@ -349,6 +362,11 @@ export default function BTMDetails() {
       return sortConfig.direction === 'asc' ? '↑' : '↓';
     };
 
+    // Inactive table gets an extra "Removed" column; drives colSpan for the
+    // full-width edit form and drawer rows.
+    const isInactive = title === 'Inactive';
+    const colCount = isInactive ? 9 : 8;
+
     return (
       <Card className="p-6 mb-8 bg-[#1a1f2e] border-[#2a3142]">
         <div className="flex justify-between items-center mb-4">
@@ -367,278 +385,354 @@ export default function BTMDetails() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#2a3142]">
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Status</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Platform</th>
-                <th 
-                  className="text-left p-2 text-[#F5F1E8] font-mono cursor-pointer hover:text-[#0066FF]" 
+              <tr className="border-b border-[#2a3142] text-xs uppercase tracking-wide text-gray-500">
+                <th
+                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
                   onClick={() => handleSort('atm_id')}
                 >
-                  ATM ID {getSortIcon('atm_id')}
+                  Machine {getSortIcon('atm_id')}
                 </th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Serial #</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Bitstop</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">CoinRadar</th>
-                <th 
-                  className="text-left p-2 text-[#F5F1E8] font-mono cursor-pointer hover:text-[#0066FF]" 
+                <th
+                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
                   onClick={() => handleSort('location_name')}
                 >
                   Location {getSortIcon('location_name')}
                 </th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Rent</th>
+                <th className="text-center px-3 py-2 font-mono font-normal">Listed</th>
+                <th className="text-right px-3 py-2 font-mono font-normal">Rent</th>
+                <th className="text-right px-3 py-2 font-mono font-normal">Mgmt</th>
                 <th
-                  className="text-left p-2 text-[#F5F1E8] font-mono cursor-pointer hover:text-[#0066FF]"
+                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
                   onClick={() => handleSort('rent_payment_method')}
                 >
-                  Rent Paid {getSortIcon('rent_payment_method')}
+                  Pay {getSortIcon('rent_payment_method')}
                 </th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Mgmt RPS</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Mgmt Rep</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Street</th>
-                <th 
-                  className="text-left p-2 text-[#F5F1E8] font-mono cursor-pointer hover:text-[#0066FF]" 
-                  onClick={() => handleSort('city')}
-                >
-                  City {getSortIcon('city')}
-                </th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">State</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Zip</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Installed</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Removed</th>
-                {showWarehouse && <th className="text-left p-2 text-[#F5F1E8] font-mono">Warehouse</th>}
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Notes</th>
-                <th className="text-left p-2 text-[#F5F1E8] font-mono">Actions</th>
+                <th className="text-left px-3 py-2 font-mono font-normal">Installed</th>
+                {isInactive && <th className="text-left px-3 py-2 font-mono font-normal">Removed</th>}
+                <th className="w-10 px-3 py-2" aria-label="Expand" />
               </tr>
             </thead>
             <tbody>
-              {sorted.map(profile => (
-                <tr key={profile.id} className="border-b border-[#2a3142] hover:bg-[#252b3d]">
-                  {editingId === profile.id ? (
-                    <>
-                      <td className="p-2 text-[#F5F1E8]">{profile.status}</td>
-                      <td className="p-2 text-[#F5F1E8]">{profile.platform}</td>
-                      <td className="p-2">
-                        <Input
-                          value={editForm.atm_id || ''}
-                          onChange={(e) => setEditForm({ ...editForm, atm_id: e.target.value })}
-                          className="w-28 h-8"
-                          placeholder="ATM ID"
-                        />
+              {sorted.map((profile, idx) => {
+                const isExpanded = expandedId === profile.id;
+                const address = formatAddress(profile);
+
+                if (editingId === profile.id) {
+                  return (
+                    <Fragment key={profile.id}>
+                      <tr className="bg-[#0F1419] border-b border-[#2a3142]">
+                        <td colSpan={colCount} className="p-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">ATM ID</label>
+                              <Input
+                                value={editForm.atm_id || ''}
+                                onChange={(e) => setEditForm({ ...editForm, atm_id: e.target.value })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                placeholder="ATM ID"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Serial #</label>
+                              <Input
+                                value={editForm.serial_number || ''}
+                                onChange={(e) => setEditForm({ ...editForm, serial_number: e.target.value })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <label className="block text-xs text-gray-400 mb-1">Location Name</label>
+                              <Input
+                                value={editForm.location_name || ''}
+                                onChange={(e) => setEditForm({ ...editForm, location_name: e.target.value })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Monthly Rent ($)</label>
+                              <Input
+                                type="number"
+                                value={editForm.monthly_rent || 0}
+                                onChange={(e) => setEditForm({ ...editForm, monthly_rent: parseFloat(e.target.value) })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Rent Payment Method</label>
+                              <Select
+                                value={editForm.rent_payment_method || ''}
+                                onValueChange={(value) => setEditForm({ ...editForm, rent_payment_method: value })}
+                              >
+                                <SelectTrigger className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]">
+                                  <SelectValue placeholder="Select..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="ACH">ACH</SelectItem>
+                                  <SelectItem value="Bill Pay">Bill Pay</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Mgmt - RPS ($)</label>
+                              <Input
+                                type="number"
+                                value={editForm.cash_management_rps || 0}
+                                onChange={(e) => setEditForm({ ...editForm, cash_management_rps: parseFloat(e.target.value) })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Mgmt - Rep ($)</label>
+                              <Input
+                                type="number"
+                                value={editForm.cash_management_rep || 0}
+                                onChange={(e) => setEditForm({ ...editForm, cash_management_rep: parseFloat(e.target.value) })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <label className="block text-xs text-gray-400 mb-1">Street Address</label>
+                              <Input
+                                value={editForm.street_address || ''}
+                                onChange={(e) => setEditForm({ ...editForm, street_address: e.target.value })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">City</label>
+                              <Input
+                                value={editForm.city || ''}
+                                onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">State</label>
+                              <Input
+                                value={editForm.state || ''}
+                                onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Zip</label>
+                              <Input
+                                value={editForm.zip_code || ''}
+                                onChange={(e) => setEditForm({ ...editForm, zip_code: e.target.value })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Installed Date</label>
+                              <Input
+                                type="date"
+                                value={editForm.installed_date || ''}
+                                onChange={(e) => setEditForm({ ...editForm, installed_date: e.target.value })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Removed Date</label>
+                              <Input
+                                type="date"
+                                value={editForm.removed_date || ''}
+                                onChange={(e) => setEditForm({ ...editForm, removed_date: e.target.value })}
+                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                              />
+                            </div>
+                            {isInactive && (
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Warehouse</label>
+                                <Select
+                                  value={editForm.warehouse_location || ''}
+                                  onValueChange={(value) => setEditForm({ ...editForm, warehouse_location: value })}
+                                >
+                                  <SelectTrigger className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]">
+                                    <SelectValue placeholder="Select..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Arizona (Steven)">Arizona (Steven)</SelectItem>
+                                    <SelectItem value="Oregon (RPS)">Oregon (RPS)</SelectItem>
+                                    <SelectItem value="Oregon (Portland)">Oregon (Portland)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            <div className="flex items-end gap-4 pb-1">
+                              <label className="flex items-center gap-2 text-sm text-[#F5F1E8]">
+                                <input
+                                  type="checkbox"
+                                  checked={editForm.on_bitstop || false}
+                                  onChange={(e) => setEditForm({ ...editForm, on_bitstop: e.target.checked })}
+                                  className="w-4 h-4"
+                                />
+                                On Bitstop
+                              </label>
+                              <label className="flex items-center gap-2 text-sm text-[#F5F1E8]">
+                                <input
+                                  type="checkbox"
+                                  checked={editForm.on_coinradar || false}
+                                  onChange={(e) => setEditForm({ ...editForm, on_coinradar: e.target.checked })}
+                                  className="w-4 h-4"
+                                />
+                                On CoinRadar
+                              </label>
+                            </div>
+                            <div className="col-span-2 md:col-span-4">
+                              <label className="block text-xs text-gray-400 mb-1">Notes</label>
+                              <Textarea
+                                value={editForm.notes || ''}
+                                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                                className="bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                rows={2}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-2 mt-4">
+                            <Button size="sm" onClick={saveEdit}>Save</Button>
+                            <Button size="sm" variant="outline" onClick={cancelEdit}>Cancel</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                }
+
+                return (
+                  <Fragment key={profile.id}>
+                    <tr
+                      onClick={() => toggleExpand(profile.id)}
+                      className={cn(
+                        'border-b border-[#2a3142]/60 cursor-pointer transition-colors hover:bg-[#252b3d]',
+                        idx % 2 === 1 && !isExpanded && 'bg-white/[0.02]',
+                        isExpanded && 'bg-[#252b3d]'
+                      )}
+                    >
+                      {/* Machine */}
+                      <td className="px-3 py-3 align-top">
+                        <div className="font-mono font-bold text-[#F5F1E8]">{profile.atm_id || 'N/A'}</div>
+                        <div className="font-mono text-xs text-gray-500">{profile.serial_number || 'N/A'}</div>
                       </td>
-                      <td className="p-2">
-                        <Input
-                          value={editForm.serial_number || ''}
-                          onChange={(e) => setEditForm({ ...editForm, serial_number: e.target.value })}
-                          className="w-28 h-8"
-                        />
+                      {/* Location */}
+                      <td className="px-3 py-3 align-top">
+                        <div className="font-semibold text-[#F5F1E8]">{profile.location_name}</div>
+                        <div className="text-xs text-gray-500">{address || '—'}</div>
                       </td>
-                      <td className="p-2">
-                        <input
-                          type="checkbox"
-                          checked={editForm.on_bitstop || false}
-                          onChange={(e) => setEditForm({ ...editForm, on_bitstop: e.target.checked })}
-                          className="w-4 h-4"
-                        />
+                      {/* Listed (Bitstop OR CoinRadar) */}
+                      <td className="px-3 py-3 text-center align-top">
+                        {profile.on_bitstop || profile.on_coinradar ? (
+                          <Check className="w-4 h-4 text-green-500 inline" />
+                        ) : (
+                          <span className="text-gray-600">—</span>
+                        )}
                       </td>
-                      <td className="p-2">
-                        <input
-                          type="checkbox"
-                          checked={editForm.on_coinradar || false}
-                          onChange={(e) => setEditForm({ ...editForm, on_coinradar: e.target.checked })}
-                          className="w-4 h-4"
-                        />
+                      {/* Rent */}
+                      <td className="px-3 py-3 text-right align-top font-mono tabular-nums text-[#F5F1E8]">
+                        ${profile.monthly_rent}
                       </td>
-                      <td className="p-2">
-                        <Input
-                          value={editForm.location_name || ''}
-                          onChange={(e) => setEditForm({ ...editForm, location_name: e.target.value })}
-                          className="w-32 h-8"
-                        />
+                      {/* Mgmt (RPS | Rep) */}
+                      <td className="px-3 py-3 text-right align-top font-mono tabular-nums text-[#F5F1E8] whitespace-nowrap">
+                        ${profile.cash_management_rps} | ${profile.cash_management_rep}
                       </td>
-                      <td className="p-2">
-                        <Input
-                          type="number"
-                          value={editForm.monthly_rent || 0}
-                          onChange={(e) => setEditForm({ ...editForm, monthly_rent: parseFloat(e.target.value) })}
-                          className="w-24 h-8"
-                        />
+                      {/* Pay */}
+                      <td className="px-3 py-3 align-top">
+                        {profile.rent_payment_method ? (
+                          <span className="inline-flex items-center rounded-md border border-[#2a3142] bg-[#0F1419] px-2 py-0.5 text-xs font-medium text-gray-300">
+                            {profile.rent_payment_method}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600">—</span>
+                        )}
                       </td>
-                      <td className="p-2">
-                        <Select
-                          value={editForm.rent_payment_method || ''}
-                          onValueChange={(value) => setEditForm({ ...editForm, rent_payment_method: value })}
-                        >
-                          <SelectTrigger className="w-32 h-8 bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
-                            <SelectValue placeholder="Select..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ACH">ACH</SelectItem>
-                            <SelectItem value="Bill Pay">Bill Pay</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      {/* Installed */}
+                      <td className="px-3 py-3 align-top font-mono tabular-nums text-gray-400">
+                        {profile.installed_date || '—'}
                       </td>
-                      <td className="p-2">
-                        <Input
-                          type="number"
-                          value={editForm.cash_management_rps || 0}
-                          onChange={(e) => setEditForm({ ...editForm, cash_management_rps: parseFloat(e.target.value) })}
-                          className="w-24 h-8"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          type="number"
-                          value={editForm.cash_management_rep || 0}
-                          onChange={(e) => setEditForm({ ...editForm, cash_management_rep: parseFloat(e.target.value) })}
-                          className="w-24 h-8"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          value={editForm.street_address || ''}
-                          onChange={(e) => setEditForm({ ...editForm, street_address: e.target.value })}
-                          className="w-32 h-8"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          value={editForm.city || ''}
-                          onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                          className="w-24 h-8"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          value={editForm.state || ''}
-                          onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
-                          className="w-16 h-8"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          value={editForm.zip_code || ''}
-                          onChange={(e) => setEditForm({ ...editForm, zip_code: e.target.value })}
-                          className="w-24 h-8"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          type="date"
-                          value={editForm.installed_date || ''}
-                          onChange={(e) => setEditForm({ ...editForm, installed_date: e.target.value })}
-                          className="w-32 h-8"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          type="date"
-                          value={editForm.removed_date || ''}
-                          onChange={(e) => setEditForm({ ...editForm, removed_date: e.target.value })}
-                          className="w-32 h-8"
-                        />
-                      </td>
-                      {showWarehouse && (
-                        <td className="p-2">
-                          <Select
-                            value={editForm.warehouse_location || ''}
-                            onValueChange={(value) => setEditForm({ ...editForm, warehouse_location: value })}
-                          >
-                            <SelectTrigger className="w-40 h-8">
-                              <SelectValue placeholder="Select..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Arizona (Steven)">Arizona (Steven)</SelectItem>
-                              <SelectItem value="Oregon (RPS)">Oregon (RPS)</SelectItem>
-                              <SelectItem value="Oregon (Portland)">Oregon (Portland)</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      {/* Removed (Inactive only) */}
+                      {isInactive && (
+                        <td className="px-3 py-3 align-top font-mono tabular-nums text-gray-400">
+                          {profile.removed_date || '—'}
                         </td>
                       )}
-                      <td className="p-2">
-                        <Textarea
-                          value={editForm.notes || ''}
-                          onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                          className="w-32 h-8"
+                      {/* Chevron */}
+                      <td className="px-3 py-3 text-right align-top">
+                        <ChevronDown
+                          className={cn(
+                            'w-4 h-4 text-gray-500 transition-transform inline',
+                            isExpanded && 'rotate-180'
+                          )}
                         />
                       </td>
-                      <td className="p-2">
-                        <div className="flex gap-1">
-                          <Button size="sm" onClick={saveEdit}>Save</Button>
-                          <Button size="sm" variant="outline" onClick={cancelEdit}>Cancel</Button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="p-2 text-[#F5F1E8]">{profile.status}</td>
-                      <td className="p-2 text-[#F5F1E8]">{profile.platform}</td>
-                      <td className="p-2 text-[#F5F1E8] font-mono">{profile.atm_id || 'N/A'}</td>
-                      <td className="p-2 text-[#F5F1E8] font-mono">{profile.serial_number || 'N/A'}</td>
-                      <td className="p-2">
-                        {profile.on_bitstop ? (
-                          <Check className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <X className="w-5 h-5 text-red-500" />
-                        )}
-                      </td>
-                      <td className="p-2">
-                        {profile.on_coinradar ? (
-                          <Check className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <X className="w-5 h-5 text-red-500" />
-                        )}
-                      </td>
-                      <td className="p-2 text-[#F5F1E8]">{profile.location_name}</td>
-                      <td className="p-2 text-[#F5F1E8] font-mono">${profile.monthly_rent}</td>
-                      <td className={`p-2 font-mono ${profile.rent_payment_method === 'ACH' ? 'text-green-400' : profile.rent_payment_method === 'Bill Pay' ? 'text-blue-400' : 'text-[#F5F1E8]'}`}>{profile.rent_payment_method}</td>
-                      <td className="p-2 text-[#F5F1E8] font-mono">${profile.cash_management_rps}</td>
-                      <td className="p-2 text-[#F5F1E8] font-mono">${profile.cash_management_rep}</td>
-                      <td className="p-2 text-[#F5F1E8]">{profile.street_address || '-'}</td>
-                      <td className="p-2 text-[#F5F1E8]">{profile.city || '-'}</td>
-                      <td className="p-2 text-[#F5F1E8]">{profile.state || '-'}</td>
-                      <td className="p-2 text-[#F5F1E8]">{profile.zip_code || '-'}</td>
-                      <td className="p-2 text-[#F5F1E8] font-mono">{profile.installed_date || '-'}</td>
-                      <td className="p-2 text-[#F5F1E8] font-mono">{profile.removed_date || '-'}</td>
-                      {showWarehouse && <td className="p-2 text-[#F5F1E8]">{profile.warehouse_location || '-'}</td>}
-                      <td className="p-2 text-[#F5F1E8] text-xs truncate max-w-[100px]">{profile.notes || '-'}</td>
-                      <td className="p-2">
-                        <div className="flex gap-1">
-                          {isAdmin && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              title="Edit profile"
-                              onClick={() => startEdit(profile)}
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                          )}
-                          {isAdmin && profile.active && profile.atm_id && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              title="Update machine state"
-                              onClick={() => setUpdateStateProfile(profile)}
-                            >
-                              <RefreshCw className="w-3 h-3" />
-                            </Button>
-                          )}
-                          {hasHistory(profile.atm_id) && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              title="View profile history"
-                              onClick={() => showHistory(profile.atm_id)}
-                            >
-                              <History className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
+                    </tr>
+
+                    {isExpanded && (
+                      <tr className="bg-[#0F1419] border-b border-[#2a3142]">
+                        <td colSpan={colCount} className="px-6 py-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5 text-sm">
+                              <div>
+                                <span className="text-gray-500">Address: </span>
+                                <span className="text-[#F5F1E8]">{address || '—'}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Bitstop listed: </span>
+                                <span className="text-[#F5F1E8]">{profile.on_bitstop ? 'Yes' : 'No'}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">CoinRadar listed: </span>
+                                <span className="text-[#F5F1E8]">{profile.on_coinradar ? 'Yes' : 'No'}</span>
+                              </div>
+                              {profile.warehouse_location && (
+                                <div>
+                                  <span className="text-gray-500">Warehouse: </span>
+                                  <span className="text-[#F5F1E8]">{profile.warehouse_location}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-sm">
+                              <div className="text-gray-500 mb-1">Notes</div>
+                              <div className="text-[#F5F1E8] whitespace-pre-wrap">{profile.notes || '—'}</div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[#2a3142]">
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => startEdit(profile)}
+                              >
+                                <Pencil className="w-3.5 h-3.5" /> Edit
+                              </Button>
+                            )}
+                            {isAdmin && profile.active && profile.atm_id && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => setUpdateStateProfile(profile)}
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" /> Relocate / Convert / Retire
+                              </Button>
+                            )}
+                            {hasHistory(profile.atm_id) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => showHistory(profile.atm_id!)}
+                              >
+                                <History className="w-3.5 h-3.5" /> History
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1053,7 +1147,7 @@ export default function BTMDetails() {
         {renderTable(activeDenet, 'Active - Denet')}
         {renderTable(activeBitstop, 'Active - Bitstop')}
         {renderTable(pending, 'Pending')}
-        {renderTable(inactive, 'Inactive', true)}
+        {renderTable(inactive, 'Inactive')}
 
         <Dialog open={historyModal.open} onOpenChange={(open) => setHistoryModal({ ...historyModal, open })}>
           <DialogContent className="max-w-3xl bg-[#1a1f2e] text-[#F5F1E8] max-h-[85vh] overflow-y-auto">
