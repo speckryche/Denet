@@ -17,6 +17,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import Papa from 'papaparse';
 import { supabase } from '@/lib/supabase';
+import { TX_STATUSES, type TxStatus } from '@/lib/transaction-status';
 
 // A pending platform switch on a single ATM: the currently-active profile is
 // on `currentPlatform`, but the inbound CSV brings tx data for `newPlatform`.
@@ -52,6 +53,7 @@ type PendingImportState = {
   fileName: string;
   negativeSpreadCount: number;
   commissionRateWarning: string | null;
+  statusWarning: string | null;
 };
 
 // Normalize a raw CSV date cell to a 'YYYY-MM-DD' calendar date, or null if it
@@ -80,10 +82,32 @@ const toIsoDate = (raw: string | null | undefined): string | null => {
   return null;
 };
 
+// Normalize a raw stage/status cell to one of the stored statuses (the single
+// source of truth is TX_STATUSES in @/lib/transaction-status). Denet/operator
+// CSVs carry a lowercase `stage` column (completed/sending/frozen/refunded/
+// expired); Bitstop CSVs carry `Stage`/`DisplayStage` (Completed/Frozen/…).
+// Normalization is case-insensitive to a single lowercase value.
+//
+// A missing/blank cell is the documented fallback (older exports lack the
+// column) → 'completed', no warning. A present but UNrecognized token also
+// falls back to 'completed' but is returned in `unknown` so the caller can
+// surface a visible warning — never silently mislabeled.
+const normalizeStatus = (
+  raw: string | null | undefined,
+): { status: TxStatus; unknown: string | null } => {
+  if (raw == null) return { status: 'completed', unknown: null };
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return { status: 'completed', unknown: null };
+  if ((TX_STATUSES as readonly string[]).includes(s)) {
+    return { status: s as TxStatus, unknown: null };
+  }
+  return { status: 'completed', unknown: String(raw).trim() };
+};
+
 export default function CsvUploads() {
   const navigate = useNavigate();
   const [showDedupeBanner, setShowDedupeBanner] = useState(false);
-  const [uploadStats, setUploadStats] = useState({ processed: 0, duplicates: 0, negativeSpreadCount: 0, commissionRateWarning: null as string | null });
+  const [uploadStats, setUploadStats] = useState({ processed: 0, inserted: 0, updated: 0, negativeSpreadCount: 0, commissionRateWarning: null as string | null, statusWarning: null as string | null });
   const [error, setError] = useState<string | null>(null);
   const [uploadHistoryKey, setUploadHistoryKey] = useState(0);
   const [newATMIds, setNewATMIds] = useState<string[]>([]);
@@ -188,6 +212,7 @@ export default function CsvUploads() {
       fileName,
       negativeSpreadCount,
       commissionRateWarning,
+      statusWarning,
     } = state;
 
     try {
@@ -221,6 +246,12 @@ export default function CsvUploads() {
     }
 
     try {
+      // Dedup is now an UPSERT keyed on the transaction hash (transactions.id,
+      // the primary key). The existence check below is retained for REPORTING
+      // only — to tell the user how many rows were newly inserted vs. updated —
+      // and no longer gates whether a row is written. Every mapped row is
+      // upserted, so a re-uploaded transaction updates its status + amounts
+      // (e.g. frozen/sending → completed) instead of being skipped.
       const transactionIds = mappedData.map((row) => row.id);
       const batchSize = 500;
       const existingIds = new Set();
@@ -235,37 +266,45 @@ export default function CsvUploads() {
         existingBatch?.forEach((t) => existingIds.add(t.id));
       }
 
-      const newTransactions = mappedData.filter((row) => !existingIds.has(row.id));
-      const duplicateCount = mappedData.length - newTransactions.length;
+      const updatedCount = mappedData.filter((row) => existingIds.has(row.id)).length;
+      const insertedCount = mappedData.length - updatedCount;
 
       const { data: uploadData, error: uploadError } = await supabase
         .from('uploads')
         .insert({
           filename: fileName,
           platform: currentPlatform,
-          record_count: newTransactions.length,
+          // Rows genuinely new to the table this upload (updates are not counted
+          // here — they're surfaced separately in the completion banner).
+          record_count: insertedCount,
         })
         .select()
         .single();
       if (uploadError) throw uploadError;
       const uploadId = uploadData.id;
 
-      if (newTransactions.length > 0) {
-        const dataWithUploadId = newTransactions.map((row) => ({
-          ...row,
-          upload_id: uploadId,
-        }));
-        const { error: insertError } = await supabase
+      // Upsert all rows in batches, on conflict of the primary key (id/hash).
+      // Batched to stay within request-size limits, matching the existence-check
+      // batch size above.
+      const dataWithUploadId = mappedData.map((row) => ({
+        ...row,
+        upload_id: uploadId,
+      }));
+      for (let i = 0; i < dataWithUploadId.length; i += batchSize) {
+        const batch = dataWithUploadId.slice(i, i + batchSize);
+        const { error: upsertError } = await supabase
           .from('transactions')
-          .insert(dataWithUploadId);
-        if (insertError) throw insertError;
+          .upsert(batch, { onConflict: 'id' });
+        if (upsertError) throw upsertError;
       }
 
       setUploadStats({
         processed: mappedData.length,
-        duplicates: duplicateCount,
+        inserted: insertedCount,
+        updated: updatedCount,
         negativeSpreadCount,
         commissionRateWarning,
+        statusWarning,
       });
       setShowDedupeBanner(true);
       setError(null);
@@ -461,6 +500,10 @@ export default function CsvUploads() {
         let mappedData: any[] = [];
         let negativeSpreadCount = 0;
         let commissionRateWarning: string | null = null;
+        // Present-but-unrecognized status tokens seen across all rows (both
+        // platforms). Populated in the maps below; surfaced as a visible warning
+        // after parsing so unknown values are never silently mislabeled.
+        const unknownStatusValues = new Set<string>();
 
         if (currentPlatform === 'denet') {
           mappedData = allData.map(row => {
@@ -472,8 +515,13 @@ export default function CsvUploads() {
             const rawAtmName = getValue(row, 'atm.name') || getValue(row, 'atm_name');
             const atmData = mapATM(rawAtmId, rawAtmName);
 
+            // Denet/operator CSV: lowercase `stage` column.
+            const statusResult = normalizeStatus(getValue(row, 'stage'));
+            if (statusResult.unknown) unknownStatusValues.add(statusResult.unknown);
+
             return {
               id: id,
+              status: statusResult.status,
               customer_id: getValue(row, 'customer_id'),
               customer_first_name: getValue(row, 'customer.first_name') || getValue(row, 'customer_first_name'),
               customer_last_name: getValue(row, 'customer.last_name') || getValue(row, 'customer_last_name'),
@@ -562,8 +610,15 @@ export default function CsvUploads() {
               negativeSpreadCount++;
             }
 
+            // Bitstop/affiliate CSV: `Stage` (falling back to `DisplayStage`).
+            const statusResult = normalizeStatus(
+              getValue(row, 'Stage') ?? getValue(row, 'DisplayStage'),
+            );
+            if (statusResult.unknown) unknownStatusValues.add(statusResult.unknown);
+
             return {
               id: id,
+              status: statusResult.status,
               customer_id: null,
               customer_first_name: null,
               customer_last_name: null,
@@ -592,6 +647,18 @@ export default function CsvUploads() {
         if (mappedData.length === 0) {
           setError(`No valid records found in CSV. Please check column headers.`);
           return;
+        }
+
+        // Unrecognized status/stage tokens are NOT a hard abort (unlike bad
+        // dates) — they default to 'completed' so the import still lands — but
+        // we surface them prominently so they're never silently mislabeled.
+        let statusWarning: string | null = null;
+        if (unknownStatusValues.size > 0) {
+          const list = Array.from(unknownStatusValues).join(', ');
+          statusWarning =
+            `⚠️ ${unknownStatusValues.size} unrecognized status value(s) in the CSV ` +
+            `were defaulted to 'completed': ${list}. ` +
+            `Expected: ${TX_STATUSES.join(', ')}. Verify the CSV's Stage column.`;
         }
 
         // Per-atm first new tx date (chronological min), normalized to
@@ -676,6 +743,7 @@ export default function CsvUploads() {
           fileName: file.name,
           negativeSpreadCount,
           commissionRateWarning,
+          statusWarning,
         };
 
         if (conversions.length > 0) {
@@ -729,7 +797,7 @@ export default function CsvUploads() {
             <AlertDescription className="flex items-center justify-between">
               <div>
                 <span>
-                  Processed {uploadStats.processed} records. <span className="font-bold">{uploadStats.duplicates} duplicates were skipped.</span>
+                  Processed {uploadStats.processed} records. <span className="font-bold">{uploadStats.inserted} new, {uploadStats.updated} updated.</span>
                 </span>
                 {uploadStats.negativeSpreadCount > 0 && (
                   <div className="mt-1 text-amber-400">
@@ -739,6 +807,11 @@ export default function CsvUploads() {
                 {uploadStats.commissionRateWarning && (
                   <div className="mt-1 text-amber-400">
                     {uploadStats.commissionRateWarning}
+                  </div>
+                )}
+                {uploadStats.statusWarning && (
+                  <div className="mt-1 text-amber-400">
+                    {uploadStats.statusWarning}
                   </div>
                 )}
               </div>
