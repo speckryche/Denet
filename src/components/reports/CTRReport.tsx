@@ -41,6 +41,7 @@ import {
   X,
 } from 'lucide-react';
 import { CTR_THRESHOLD, findCtrQualifyingGroups, findSingleTxCtrKeys } from '@/lib/ctr';
+import { CTR_STATUSES } from '@/lib/transaction-status';
 import { findProfileForTx } from '@/lib/atm-profile';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -243,6 +244,9 @@ export default function CTRReport() {
           'id, customer_address, customer_city, customer_state, customer_zipcode, sale, date, atm_id, atm_name',
         )
         .eq('platform', 'denet')
+        // Match the CTR qualification set so the expansion detail reflects the
+        // same transactions counted toward the threshold (transaction-status.ts).
+        .in('status', CTR_STATUSES)
         .eq('customer_id', item.customer_id)
         .gte('date', dayStart)
         .lt('date', nextDayStr)

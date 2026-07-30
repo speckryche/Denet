@@ -6,6 +6,7 @@ import {
   txsByProfile as groupTxsByProfile,
 } from '@/lib/atm-profile';
 import { ownsCommissionMonth } from '@/lib/pnl';
+import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -171,6 +172,8 @@ export default function ATMProfitLoss() {
       const { count } = await supabase
         .from('transactions')
         .select('*', { count: 'exact', head: true })
+        // Financial surface: completed only (status rules in transaction-status.ts).
+        .in('status', FINANCIAL_STATUSES)
         .gte('date', startDate)
         .lte('date', endDate);
 
@@ -184,6 +187,7 @@ export default function ATMProfitLoss() {
         const { data, error } = await supabase
           .from('transactions')
           .select('id, atm_id, atm_name, sale, fee, bitstop_fee, platform, date, customer_first_name, customer_last_name, ticker')
+          .in('status', FINANCIAL_STATUSES)
           .gte('date', startDate)
           .lte('date', endDate)
           .range(from, to);

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { CTR_STATUSES } from './transaction-status';
 
 export const CTR_THRESHOLD = 10001;
 
@@ -65,6 +66,10 @@ export async function findCtrQualifyingGroups(opts: {
     .from('transactions')
     .select('customer_id, customer_first_name, customer_last_name, sale, date')
     .eq('platform', 'denet')
+    // CTR counts completed + frozen + sending + under_review; excludes refunded
+    // + expired (status rules in transaction-status.ts). A refunded transaction
+    // must NOT count toward the $10,001 threshold.
+    .in('status', CTR_STATUSES)
     .not('customer_id', 'is', null)
     .gte('date', opts.fromDate);
 
@@ -105,6 +110,8 @@ export async function findSingleTxCtrKeys(
     .from('transactions')
     .select('customer_id, sale, date')
     .eq('platform', 'denet')
+    // Same CTR status set as findCtrQualifyingGroups (transaction-status.ts).
+    .in('status', CTR_STATUSES)
     .not('customer_id', 'is', null)
     .gte('sale', threshold);
   if (error) throw error;

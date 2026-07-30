@@ -13,6 +13,7 @@ import {
   txsByProfile as groupTxsByProfile,
   calculateExpenseMonths,
 } from './atm-profile';
+import { FINANCIAL_STATUSES } from './transaction-status';
 
 export type Platform = 'both' | 'denet' | 'bitstop';
 
@@ -226,6 +227,8 @@ export async function fetchTransactionsInRange(fromMonth: string, toMonth: strin
   const { count } = await supabase
     .from('transactions')
     .select('*', { count: 'exact', head: true })
+    // Financial surface: count completed only (status rules in transaction-status.ts).
+    .in('status', FINANCIAL_STATUSES)
     .gte('date', startDate)
     .lte('date', endDate);
   const batchSize = 1000;
@@ -235,6 +238,7 @@ export async function fetchTransactionsInRange(fromMonth: string, toMonth: strin
     const { data, error } = await supabase
       .from('transactions')
       .select('id, atm_id, atm_name, sale, fee, bitstop_fee, platform, date')
+      .in('status', FINANCIAL_STATUSES)
       .gte('date', startDate)
       .lte('date', endDate)
       .range(from, from + batchSize - 1);

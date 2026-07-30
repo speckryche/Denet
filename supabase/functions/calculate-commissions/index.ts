@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/utils.ts';
+// Deno mirror of src/lib/transaction-status.ts (kept in lockstep — see that file).
+import { FINANCIAL_STATUSES } from '../_shared/transaction-status.ts';
 
 interface CommissionRequest {
   month: string;
@@ -61,6 +63,9 @@ Deno.serve(async (req) => {
     const { data: transactions, error: txError } = await supabase
       .from('transactions')
       .select('atm_id, fee, bitstop_fee, sale, date')
+      // Financial surface: completed only (status rules mirrored from
+      // src/lib/transaction-status.ts).
+      .in('status', FINANCIAL_STATUSES)
       .gte('date', startDate.toISOString().split('T')[0])
       .lte('date', `${endDate.toISOString().split('T')[0]}T23:59:59`);
 

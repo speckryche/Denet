@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
+import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,10 +98,12 @@ export default function ATMTransactions() {
       const startDate = fromDate;
       const endDate = `${toDate}T23:59:59`;
 
-      // Get count with filters
+      // Get count with filters. Financial surface: completed only (status rules
+      // in transaction-status.ts) — keeps the per-ATM sale/fee totals correct.
       let countQuery = supabase
         .from('transactions')
         .select('*', { count: 'exact', head: true })
+        .in('status', FINANCIAL_STATUSES)
         .gte('date', startDate)
         .lte('date', endDate);
 
@@ -125,6 +128,7 @@ export default function ATMTransactions() {
         let query = supabase
           .from('transactions')
           .select('id, date, atm_id, atm_name, platform, customer_first_name, customer_last_name, ticker, sale, fee, bitstop_fee')
+          .in('status', FINANCIAL_STATUSES)
           .gte('date', startDate)
           .lte('date', endDate)
           .range(from, to);

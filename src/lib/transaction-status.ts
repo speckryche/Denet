@@ -12,17 +12,24 @@
 // whether it counts toward each surface.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type TxStatus = 'completed' | 'frozen' | 'sending' | 'refunded' | 'expired';
+export type TxStatus =
+  | 'completed'
+  | 'frozen'
+  | 'sending'
+  | 'refunded'
+  | 'expired'
+  | 'under_review';
 
 // Canonical ordered list of every stored status. The CSV parser uses this to
 // recognize/normalize incoming values; keep it in sync with the DB CHECK
-// constraint.
+// constraint (migrations 20240522000038 + 20240522000039).
 export const TX_STATUSES: readonly TxStatus[] = [
   'completed',
   'frozen',
   'sending',
   'refunded',
   'expired',
+  'under_review',
 ];
 
 // The calculation surfaces a status can count toward.
@@ -49,6 +56,10 @@ export const STATUS_RULES: Record<TxStatus, StatusRule> = {
   // small visible understatement, never silent revenue inflation. When the rule
   // is confirmed, change ONLY this line.
   expired: { financial: false, ctr: false },
+  // INTERIM (awaiting Nonce confirmation — likely a manual hold): treated
+  // identically to frozen/sending — counts toward CTR, excluded from revenue.
+  // When the rule is confirmed, change ONLY this line.
+  under_review: { financial: false, ctr: true },
 };
 
 // Derived status lists for building queries/filters. Import these into any

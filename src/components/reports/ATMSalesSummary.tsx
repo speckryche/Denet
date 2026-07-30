@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { findProfileForTx } from '@/lib/atm-profile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,6 +89,8 @@ export default function ATMSalesSummary() {
       let countQuery = supabase
         .from('transactions')
         .select('*', { count: 'exact', head: true })
+        // Financial surface: completed only (status rules in transaction-status.ts).
+        .in('status', FINANCIAL_STATUSES)
         .gte('date', startDate)
         .lte('date', endDate);
 
@@ -110,6 +113,7 @@ export default function ATMSalesSummary() {
         let query = supabase
           .from('transactions')
           .select('atm_id, sale, fee, platform, date')
+          .in('status', FINANCIAL_STATUSES)
           .gte('date', startDate)
           .lte('date', endDate)
           .range(from, to);

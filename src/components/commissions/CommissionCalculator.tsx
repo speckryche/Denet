@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import * as XLSX from 'xlsx-js-style';
@@ -290,6 +291,8 @@ export default function CommissionCalculator() {
         .from('transactions')
         .select('id, date, atm_id, atm_name, customer_first_name, customer_last_name, ticker, sale, fee, platform')
         .in('atm_id', atmIds)
+        // Financial surface: completed only (status rules in transaction-status.ts).
+        .in('status', FINANCIAL_STATUSES)
         .gte('date', startDate.toISOString())
         .lte('date', endDate.toISOString())
         .order('date', { ascending: true });
