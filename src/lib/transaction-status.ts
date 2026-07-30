@@ -77,3 +77,40 @@ export const countsFinancial = (status: string | null | undefined): boolean =>
 
 export const countsCtr = (status: string | null | undefined): boolean =>
   !!status && STATUS_RULES[status as TxStatus]?.ctr === true;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Presentation helpers for LIST views (ATM Transactions, Dashboard recent list).
+// LIST views show EVERY transaction — including non-completed ones — greyed and
+// tagged, while their money totals stay completed-only (use countsFinancial for
+// the "counts toward totals?" check; never hardcode a status list in a
+// component). These helpers exist so components render status badges without
+// hardcoding status strings.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Human-readable label for a status badge/tag.
+export const STATUS_LABELS: Record<TxStatus, string> = {
+  completed: 'Completed',
+  frozen: 'Frozen',
+  sending: 'Sending',
+  refunded: 'Refunded',
+  expired: 'Expired',
+  under_review: 'Under Review',
+};
+
+export const formatStatusLabel = (status: string | null | undefined): string => {
+  if (!status) return '';
+  return STATUS_LABELS[status as TxStatus] ?? status;
+};
+
+// Tailwind pill classes per status for list-view tags (subtle, dark-theme).
+const STATUS_BADGE_CLASSES: Record<TxStatus, string> = {
+  completed: 'bg-white/10 text-muted-foreground',
+  frozen: 'bg-sky-500/15 text-sky-300',
+  sending: 'bg-amber-500/15 text-amber-300',
+  refunded: 'bg-rose-500/15 text-rose-300',
+  expired: 'bg-zinc-500/15 text-zinc-300',
+  under_review: 'bg-violet-500/15 text-violet-300',
+};
+
+export const statusBadgeClass = (status: string | null | undefined): string =>
+  (status && STATUS_BADGE_CLASSES[status as TxStatus]) || 'bg-white/10 text-muted-foreground';

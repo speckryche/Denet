@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
+import { countsFinancial, formatStatusLabel } from '@/lib/transaction-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,12 +98,12 @@ export default function ATMTransactions() {
       const startDate = fromDate;
       const endDate = `${toDate}T23:59:59`;
 
-      // Get count with filters. Financial surface: completed only (status rules
-      // in transaction-status.ts) — keeps the per-ATM sale/fee totals correct.
+      // LIST view: fetch ALL statuses. Non-completed rows are shown greyed/tagged
+      // (TransactionsTable) but excluded from the completed-only totals. Do NOT
+      // filter by status here — the completed-only check lives in the totals.
       let countQuery = supabase
         .from('transactions')
         .select('*', { count: 'exact', head: true })
-        .in('status', FINANCIAL_STATUSES)
         .gte('date', startDate)
         .lte('date', endDate);
 
@@ -127,8 +127,7 @@ export default function ATMTransactions() {
 
         let query = supabase
           .from('transactions')
-          .select('id, date, atm_id, atm_name, platform, customer_first_name, customer_last_name, ticker, sale, fee, bitstop_fee')
-          .in('status', FINANCIAL_STATUSES)
+          .select('id, date, atm_id, atm_name, platform, customer_first_name, customer_last_name, ticker, sale, fee, bitstop_fee, status')
           .gte('date', startDate)
           .lte('date', endDate)
           .range(from, to);
@@ -182,6 +181,7 @@ export default function ATMTransactions() {
         sale: tx.sale || 0,
         fee: tx.fee || 0,
         bitstop_fee: tx.bitstop_fee || 0,
+        status: tx.status || 'completed',
       })));
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -204,16 +204,21 @@ export default function ATMTransactions() {
     [data, sortField, sortDirection],
   );
 
-  const totals = data.reduce((acc, row) => ({
-    sale: acc.sale + row.sale,
-    fee: acc.fee + row.fee,
-    bitstop_fee: acc.bitstop_fee + row.bitstop_fee,
-  }), { sale: 0, fee: 0, bitstop_fee: 0 });
+  // Export totals count COMPLETED-only (financial surface). Non-completed rows
+  // are still written to the export (with a Status column) but excluded here.
+  const totals = data.reduce((acc, row) => {
+    if (!countsFinancial(row.status)) return acc;
+    return {
+      sale: acc.sale + row.sale,
+      fee: acc.fee + row.fee,
+      bitstop_fee: acc.bitstop_fee + row.bitstop_fee,
+    };
+  }, { sale: 0, fee: 0, bitstop_fee: 0 });
 
   const dateRangeText = formatDateRangeText(fromDate, toDate);
 
   const handleExportCSV = () => {
-    const headers = ['Date', 'ATM ID', 'ATM Name', 'Platform', 'Customer', 'Ticker', 'Sale', 'Fee', 'Bitstop Fee'];
+    const headers = ['Date', 'ATM ID', 'ATM Name', 'Platform', 'Customer', 'Ticker', 'Sale', 'Fee', 'Bitstop Fee', 'Status'];
 
     const rows = sortedData.map(row => [
       formatTransactionDate(row.date),
@@ -225,13 +230,15 @@ export default function ATMTransactions() {
       Math.round(row.sale),
       Math.round(row.fee),
       Math.round(row.bitstop_fee),
+      formatStatusLabel(row.status),
     ]);
 
     rows.push([
-      'TOTAL', '', '', '', '', '',
+      'TOTAL (completed only)', '', '', '', '', '',
       Math.round(totals.sale),
       Math.round(totals.fee),
       Math.round(totals.bitstop_fee),
+      '',
     ]);
 
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
@@ -255,7 +262,7 @@ export default function ATMTransactions() {
     excelData.push([`ATM Transactions - ${atmText} - ${dateRangeText} (${platformText})`]);
     excelData.push([]);
 
-    const headers = ['Date', 'ATM ID', 'ATM Name', 'Platform', 'Customer', 'Ticker', 'Sale', 'Fee', 'Bitstop Fee'];
+    const headers = ['Date', 'ATM ID', 'ATM Name', 'Platform', 'Customer', 'Ticker', 'Sale', 'Fee', 'Bitstop Fee', 'Status'];
     excelData.push(headers);
 
     sortedData.forEach(row => {
@@ -269,14 +276,16 @@ export default function ATMTransactions() {
         Math.round(row.sale),
         Math.round(row.fee),
         Math.round(row.bitstop_fee),
+        formatStatusLabel(row.status),
       ]);
     });
 
     excelData.push([
-      'TOTAL', '', '', '', '', '',
+      'TOTAL (completed only)', '', '', '', '', '',
       Math.round(totals.sale),
       Math.round(totals.fee),
       Math.round(totals.bitstop_fee),
+      '',
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet(excelData);
@@ -291,6 +300,7 @@ export default function ATMTransactions() {
       { wch: 12 },  // Sale
       { wch: 12 },  // Fee
       { wch: 12 },  // Bitstop Fee
+      { wch: 14 },  // Status
     ];
 
     // Style title row
@@ -299,7 +309,7 @@ export default function ATMTransactions() {
       alignment: { horizontal: 'left', vertical: 'center' },
       fill: { fgColor: { rgb: "D1D5DB" } }
     };
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }];
 
     // Style header row (row 3)
     const headerStyle = {
@@ -314,7 +324,7 @@ export default function ATMTransactions() {
       }
     };
 
-    ['A3', 'B3', 'C3', 'D3', 'E3', 'F3', 'G3', 'H3', 'I3'].forEach(cell => {
+    ['A3', 'B3', 'C3', 'D3', 'E3', 'F3', 'G3', 'H3', 'I3', 'J3'].forEach(cell => {
       if (ws[cell]) ws[cell].s = headerStyle;
     });
 
@@ -325,8 +335,8 @@ export default function ATMTransactions() {
     for (let i = dataStartRow; i <= totalRow; i++) {
       const isTotal = i === totalRow;
 
-      // Text columns (A-F)
-      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
+      // Text columns (A-F, plus Status in J)
+      ['A', 'B', 'C', 'D', 'E', 'F', 'J'].forEach(col => {
         const cell = `${col}${i}`;
         if (ws[cell]) {
           const cellValue = ws[cell].v;

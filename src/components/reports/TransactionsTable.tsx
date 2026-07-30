@@ -7,6 +7,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { countsFinancial, formatStatusLabel, statusBadgeClass } from '@/lib/transaction-status';
 
 export interface TransactionRow {
   id: string;
@@ -20,6 +21,11 @@ export interface TransactionRow {
   sale: number;
   fee: number;
   bitstop_fee: number;
+  /** Raw transaction status. Optional: consumers that pass completed-only rows
+   *  (e.g. the sales drill-down) may omit it — such rows render normally with no
+   *  badge and count toward totals. Non-completed rows render greyed + tagged
+   *  and are excluded from the footer totals. */
+  status?: string;
 }
 
 export type TransactionsSortField = keyof TransactionRow;
@@ -137,7 +143,15 @@ export default function TransactionsTable({
   feeOverrides,
   overrideMonthRange,
 }: TransactionsTableProps) {
-  const totals = rows.reduce(
+  // Totals count COMPLETED-only rows (financial surface — see
+  // transaction-status.ts). Non-completed rows are shown greyed/tagged below but
+  // never contribute to a sum. Rows with no status are treated as completed.
+  const isCounted = (row: TransactionRow) =>
+    row.status == null || countsFinancial(row.status);
+  const completedRows = rows.filter(isCounted);
+  const nonCompletedCount = rows.length - completedRows.length;
+
+  const totals = completedRows.reduce(
     (acc, row) => ({
       sale: acc.sale + row.sale,
       fee: acc.fee + row.fee,
@@ -146,7 +160,7 @@ export default function TransactionsTable({
     { sale: 0, fee: 0, bitstop_fee: 0 },
   );
 
-  const adjustedFeeTotals = computeAdjustedFeeTotal(rows, feeOverrides, overrideMonthRange);
+  const adjustedFeeTotals = computeAdjustedFeeTotal(completedRows, feeOverrides, overrideMonthRange);
 
   const SortButton = ({
     field,
@@ -201,19 +215,31 @@ export default function TransactionsTable({
             </TableRow>
           ) : (
             <>
-              {rows.map((row, idx) => (
-                <TableRow key={row.id || idx} className="border-white/5">
+              {rows.map((row, idx) => {
+                const counted = isCounted(row);
+                return (
+                <TableRow
+                  key={row.id || idx}
+                  className={counted ? 'border-white/5' : 'border-white/5 bg-white/[0.02] text-muted-foreground/70'}
+                >
                   <TableCell>{formatTransactionDate(row.date)}</TableCell>
                   <TableCell className="font-medium">{row.atm_id}</TableCell>
                   <TableCell>{row.atm_name}</TableCell>
                   <TableCell>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      row.platform === 'bitstop'
-                        ? 'bg-blue-500/20 text-blue-300'
-                        : 'bg-green-500/20 text-green-300'
-                    }`}>
-                      {row.platform === 'bitstop' ? 'Bitstop' : 'Denet'}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        row.platform === 'bitstop'
+                          ? 'bg-blue-500/20 text-blue-300'
+                          : 'bg-green-500/20 text-green-300'
+                      }`}>
+                        {row.platform === 'bitstop' ? 'Bitstop' : 'Denet'}
+                      </span>
+                      {!counted && (
+                        <span className={`px-2 py-1 rounded text-xs ${statusBadgeClass(row.status)}`}>
+                          {formatStatusLabel(row.status)}
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>{row.customer_first_name} {row.customer_last_name}</TableCell>
                   <TableCell>{row.ticker}</TableCell>
@@ -227,10 +253,14 @@ export default function TransactionsTable({
                     ${Math.round(row.bitstop_fee).toLocaleString('en-US')}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
               <TableRow className="border-white/10 bg-white/5 font-bold">
                 <TableCell colSpan={6}>
-                  TOTAL ({rows.length.toLocaleString('en-US')} transactions)
+                  TOTAL ({completedRows.length.toLocaleString('en-US')} completed
+                  {nonCompletedCount > 0
+                    ? ` of ${rows.length.toLocaleString('en-US')} shown`
+                    : ''} transaction{completedRows.length === 1 && nonCompletedCount === 0 ? '' : 's'})
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   ${Math.round(totals.sale).toLocaleString('en-US')}
@@ -252,6 +282,11 @@ export default function TransactionsTable({
           )}
         </TableBody>
       </Table>
+      {nonCompletedCount > 0 && (
+        <p className="text-xs text-muted-foreground mt-2">
+          {nonCompletedCount.toLocaleString('en-US')} non-completed transaction{nonCompletedCount === 1 ? '' : 's'} shown greyed and tagged — excluded from totals.
+        </p>
+      )}
       {adjustedFeeTotals.hasOverrides && (
         <p className="text-xs text-yellow-400/70 mt-2">
           * Fee total adjusted with Bitstop actual fee overrides. Individual transaction fees shown are calculated estimates.

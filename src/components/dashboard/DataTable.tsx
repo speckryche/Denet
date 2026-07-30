@@ -20,6 +20,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Search, ChevronLeft, ChevronRight, SlidersHorizontal, FileX } from "lucide-react";
+import { countsFinancial, formatStatusLabel, statusBadgeClass } from "@/lib/transaction-status";
 
 interface DataTableProps {
   data: any[];
@@ -237,9 +238,29 @@ export function DataTable({ data = [], columns = [] }: DataTableProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedData.map((row, i) => (
-                <TableRow key={i} className="border-white/5 hover:bg-white/5 transition-colors">
+              paginatedData.map((row, i) => {
+                // Non-completed rows (financial surface — transaction-status.ts)
+                // are shown greyed/tagged but excluded from the Overview metrics.
+                // Rows without a status field are never muted (keeps DataTable
+                // generic for any future non-transaction use).
+                const muted = row.status != null && !countsFinancial(row.status);
+                return (
+                <TableRow
+                  key={i}
+                  className={`border-white/5 hover:bg-white/5 transition-colors ${muted ? 'bg-white/[0.02] text-muted-foreground/70' : ''}`}
+                >
                   {columns.map((col) => {
+                    // Status column: render a tag instead of the raw value.
+                    if (col === 'status') {
+                      return visibleColumns[col] && (
+                        <TableCell key={`${i}-${col}`} className="text-xs">
+                          <span className={`px-2 py-1 rounded ${statusBadgeClass(row.status)}`}>
+                            {formatStatusLabel(row.status) || '—'}
+                          </span>
+                        </TableCell>
+                      );
+                    }
+
                     // Format date for date column
                     let cellValue = row[col];
                     if (col === 'date' && cellValue) {
@@ -274,7 +295,8 @@ export function DataTable({ data = [], columns = [] }: DataTableProps) {
                     );
                   })}
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

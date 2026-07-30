@@ -46,8 +46,10 @@ export default function Dashboard() {
       let query = supabase
         .from('transactions')
         .select('*')
-        // Financial surface: completed only (status rules in transaction-status.ts).
-        .in('status', FINANCIAL_STATUSES)
+        // LIST view: fetch ALL statuses. Non-completed rows are shown greyed/
+        // tagged (DataTable) but excluded from the Overview metrics, which are
+        // computed separately in fetchMetrics (completed-only). Do NOT filter by
+        // status here.
         .order('date', { ascending: false });
 
       if (selectedPlatform !== 'all') {
@@ -304,7 +306,8 @@ export default function Dashboard() {
     "fee",
     "sent",
     "bitstop_fee",
-    "date"
+    "date",
+    "status"
   ];
 
   return (
