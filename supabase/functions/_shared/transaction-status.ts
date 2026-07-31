@@ -17,7 +17,8 @@ export type TxStatus =
   | 'sending'
   | 'refunded'
   | 'expired'
-  | 'under_review';
+  | 'under_review'
+  | 'failed';
 
 export const TX_STATUSES: readonly TxStatus[] = [
   'completed',
@@ -26,6 +27,7 @@ export const TX_STATUSES: readonly TxStatus[] = [
   'refunded',
   'expired',
   'under_review',
+  'failed',
 ];
 
 // Orthogonal to financial/ctr: settled outcome vs. still awaiting resolution.
@@ -50,6 +52,7 @@ export const STATUS_RULES: Record<TxStatus, StatusRule> = {
   refunded: { financial: false, ctr: false, resolution: 'final', manualTarget: true },
   expired: { financial: false, ctr: false, resolution: 'final', manualTarget: false },
   under_review: { financial: false, ctr: true, resolution: 'pending', manualTarget: false },
+  failed: { financial: false, ctr: false, resolution: 'final', manualTarget: false },
 };
 
 export const FINANCIAL_STATUSES: TxStatus[] = TX_STATUSES.filter(

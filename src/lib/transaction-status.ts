@@ -18,7 +18,8 @@ export type TxStatus =
   | 'sending'
   | 'refunded'
   | 'expired'
-  | 'under_review';
+  | 'under_review'
+  | 'failed';
 
 // Canonical ordered list of every stored status. The CSV parser uses this to
 // recognize/normalize incoming values; keep it in sync with the DB CHECK
@@ -30,6 +31,7 @@ export const TX_STATUSES: readonly TxStatus[] = [
   'refunded',
   'expired',
   'under_review',
+  'failed',
 ];
 
 // Is this status a FINAL outcome, or is the transaction still in flight and
@@ -90,6 +92,16 @@ export const STATUS_RULES: Record<TxStatus, StatusRule> = {
   // `resolution: 'pending'` is NOT interim: a held transaction is exactly the
   // kind of row the tracker exists to surface. Leave it when the flags move.
   under_review: { financial: false, ctr: true, resolution: 'pending', manualTarget: false },
+  // INTERIM (awaiting Nonce confirmation — same footing as 'expired'): excluded
+  // from EVERYTHING. A failed transaction never completed, so no money moved and
+  // nothing is owed; counting it would inflate revenue. When the rule is
+  // confirmed, change ONLY this line.
+  // Appeared in real Denet CSV data 2026-07-31 and was caught by the importer's
+  // unknown-status guard, which defaulted it to 'completed' with a warning —
+  // the wrong home for it, hence this entry plus migration 20240522000042.
+  // `resolution: 'final'` is NOT interim: a failed transaction is over. It is
+  // terminal, not actionable — nothing to chase, so it gets no resolve buttons.
+  failed: { financial: false, ctr: false, resolution: 'final', manualTarget: false },
 };
 
 // Derived status lists for building queries/filters. Import these into any
@@ -174,6 +186,7 @@ export const STATUS_LABELS: Record<TxStatus, string> = {
   refunded: 'Refunded',
   expired: 'Expired',
   under_review: 'Under Review',
+  failed: 'Failed',
 };
 
 export const formatStatusLabel = (status: string | null | undefined): string => {
@@ -189,6 +202,7 @@ const STATUS_BADGE_CLASSES: Record<TxStatus, string> = {
   refunded: 'bg-rose-500/15 text-rose-300',
   expired: 'bg-zinc-500/15 text-zinc-300',
   under_review: 'bg-violet-500/15 text-violet-300',
+  failed: 'bg-orange-500/15 text-orange-300',
 };
 
 export const statusBadgeClass = (status: string | null | undefined): string =>
