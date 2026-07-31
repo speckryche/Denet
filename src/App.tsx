@@ -10,6 +10,7 @@ import CashManagement from "./components/cash-management/CashManagement";
 import BitstopCommissions from "./components/bitstop/BitstopCommissions";
 import BTMDetails from "./components/btm-details/BTMDetails";
 import CsvUploads from "./components/csv-uploads/CsvUploads";
+import PendingResolution from "./components/pending/PendingResolution";
 import Liquidity from "./components/liquidity/Liquidity";
 import { Layout } from "./components/layout/Layout";
 import { Toaster } from "./components/ui/toaster";
@@ -58,6 +59,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <CommissionCalculator />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pending-resolution"
+            element={
+              <ProtectedRoute>
+                <PendingResolution />
               </ProtectedRoute>
             }
           />

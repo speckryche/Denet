@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { cn, getPacificDateString } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,9 +89,6 @@ const formatDate = (dateStr: string): string => {
   const [year, month, day] = dateStr.split('-');
   return `${month}/${day}/${year}`;
 };
-
-const getPacificDateString = () =>
-  new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
 
 // Add one day to an ISO date string, returning an ISO date string. UTC math.
 const addOneDay = (isoDate: string): string => {

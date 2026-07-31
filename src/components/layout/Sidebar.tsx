@@ -11,16 +11,20 @@ import {
   Server,
   Upload,
   Wallet,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { usePendingCount } from '@/components/pending/pending-count';
 
 interface NavItem {
   name: string;
   path: string;
   icon: React.ReactNode;
   title: string;
+  // When true, the actionable pending-resolution count renders as a badge.
+  showPendingBadge?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -35,6 +39,13 @@ const navItems: NavItem[] = [
     path: '/csv-uploads',
     icon: <Upload className="w-5 h-5" />,
     title: 'CSV Uploads'
+  },
+  {
+    name: 'Pending Resolution',
+    path: '/pending-resolution',
+    icon: <Clock className="w-5 h-5" />,
+    title: 'Pending Resolution',
+    showPendingBadge: true
   },
   {
     name: 'Reports',
@@ -84,6 +95,9 @@ export function Sidebar() {
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
+  // null while loading or on error — the badge hides rather than showing a
+  // misleading "0", which would read as "nothing to chase".
+  const pendingCount = usePendingCount();
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -123,25 +137,48 @@ export function Sidebar() {
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const active = isActive(item.path);
+          const badgeCount =
+            item.showPendingBadge && pendingCount !== null && pendingCount > 0
+              ? pendingCount
+              : null;
           return (
             <Button
               key={item.path}
               variant={active ? "secondary" : "ghost"}
               className={cn(
-                "w-full justify-start transition-all",
+                "w-full justify-start transition-all relative",
                 isCollapsed ? "px-2" : "px-4",
                 active
                   ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
               )}
               onClick={() => navigate(item.path)}
-              title={isCollapsed ? item.title : undefined}
+              title={
+                isCollapsed
+                  ? badgeCount
+                    ? `${item.title} (${badgeCount} awaiting resolution)`
+                    : item.title
+                  : undefined
+              }
             >
               <span className={cn(isCollapsed ? "mx-auto" : "mr-3")}>
                 {item.icon}
               </span>
               {!isCollapsed && (
                 <span className="text-sm font-medium">{item.name}</span>
+              )}
+              {badgeCount !== null && (
+                <span
+                  className={cn(
+                    "flex items-center justify-center rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold tabular-nums",
+                    // Collapsed: float over the icon. Expanded: sit at the row end.
+                    isCollapsed
+                      ? "absolute top-1 right-1 h-4 min-w-4 px-1"
+                      : "ml-auto h-5 min-w-5 px-1.5"
+                  )}
+                >
+                  {badgeCount}
+                </span>
               )}
             </Button>
           );

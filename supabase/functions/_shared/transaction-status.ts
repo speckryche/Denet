@@ -28,19 +28,28 @@ export const TX_STATUSES: readonly TxStatus[] = [
   'under_review',
 ];
 
+// Orthogonal to financial/ctr: settled outcome vs. still awaiting resolution.
+// This field and `manualTarget` are consumed only by the app-side Pending
+// Resolution tracker — no edge function reads either. Mirrored here anyway so
+// the STATUS_RULES block stays diffable against src/lib/transaction-status.ts
+// line for line.
+export type Resolution = 'pending' | 'final';
+
 export interface StatusRule {
   financial: boolean;
   ctr: boolean;
+  resolution: Resolution;
+  manualTarget: boolean;
 }
 
 // THE ONE PLACE TO EDIT (mirror of src/lib/transaction-status.ts).
 export const STATUS_RULES: Record<TxStatus, StatusRule> = {
-  completed: { financial: true, ctr: true },
-  frozen: { financial: false, ctr: true },
-  sending: { financial: false, ctr: true },
-  refunded: { financial: false, ctr: false },
-  expired: { financial: false, ctr: false },
-  under_review: { financial: false, ctr: true },
+  completed: { financial: true, ctr: true, resolution: 'final', manualTarget: true },
+  frozen: { financial: false, ctr: true, resolution: 'pending', manualTarget: false },
+  sending: { financial: false, ctr: true, resolution: 'pending', manualTarget: false },
+  refunded: { financial: false, ctr: false, resolution: 'final', manualTarget: true },
+  expired: { financial: false, ctr: false, resolution: 'final', manualTarget: false },
+  under_review: { financial: false, ctr: true, resolution: 'pending', manualTarget: false },
 };
 
 export const FINANCIAL_STATUSES: TxStatus[] = TX_STATUSES.filter(
