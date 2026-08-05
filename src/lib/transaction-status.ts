@@ -19,11 +19,12 @@ export type TxStatus =
   | 'refunded'
   | 'expired'
   | 'under_review'
-  | 'failed';
+  | 'failed'
+  | 'partial';
 
 // Canonical ordered list of every stored status. The CSV parser uses this to
 // recognize/normalize incoming values; keep it in sync with the DB CHECK
-// constraint (migrations 20240522000038 + 20240522000039).
+// constraint (migrations 20240522000038 + 20240522000039 + 20240522000043).
 export const TX_STATUSES: readonly TxStatus[] = [
   'completed',
   'frozen',
@@ -32,6 +33,7 @@ export const TX_STATUSES: readonly TxStatus[] = [
   'expired',
   'under_review',
   'failed',
+  'partial',
 ];
 
 // Is this status a FINAL outcome, or is the transaction still in flight and
@@ -102,6 +104,14 @@ export const STATUS_RULES: Record<TxStatus, StatusRule> = {
   // `resolution: 'final'` is NOT interim: a failed transaction is over. It is
   // terminal, not actionable — nothing to chase, so it gets no resolve buttons.
   failed: { financial: false, ctr: false, resolution: 'final', manualTarget: false },
+  // INTERIM (awaiting Nonce confirmation): DisplayStage='Pending' — a not-yet-
+  // final transaction. Treated identically to frozen/sending/under_review —
+  // counts toward CTR, excluded from revenue, and PENDING (the tracker's
+  // actionable group). When the rule is confirmed, change ONLY this line.
+  // Appeared in real Bitstop CSV data and was caught by the importer's
+  // unknown-status guard (defaulted to 'completed' with a warning) — the wrong
+  // home for it, hence this entry plus migration 20240522000043.
+  partial: { financial: false, ctr: true, resolution: 'pending', manualTarget: false },
 };
 
 // Derived status lists for building queries/filters. Import these into any
@@ -187,6 +197,7 @@ export const STATUS_LABELS: Record<TxStatus, string> = {
   expired: 'Expired',
   under_review: 'Under Review',
   failed: 'Failed',
+  partial: 'Partial',
 };
 
 export const formatStatusLabel = (status: string | null | undefined): string => {
@@ -203,6 +214,7 @@ const STATUS_BADGE_CLASSES: Record<TxStatus, string> = {
   expired: 'bg-zinc-500/15 text-zinc-300',
   under_review: 'bg-violet-500/15 text-violet-300',
   failed: 'bg-orange-500/15 text-orange-300',
+  partial: 'bg-teal-500/15 text-teal-300',
 };
 
 export const statusBadgeClass = (status: string | null | undefined): string =>
