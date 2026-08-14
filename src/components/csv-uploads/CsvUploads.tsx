@@ -253,11 +253,20 @@ export default function CsvUploads() {
       // upserted, so a re-uploaded transaction updates its status + amounts
       // (e.g. frozen/sending → completed) instead of being skipped.
       const transactionIds = mappedData.map((row) => row.id);
-      const batchSize = 500;
+      const batchSize = 500; // upsert below is a POST body — large batch is fine.
       const existingIds = new Set();
 
-      for (let i = 0; i < transactionIds.length; i += batchSize) {
-        const batch = transactionIds.slice(i, i + batchSize);
+      // The existence check is a GET: ids go in the URL as ?id=in.(id1,id2,...).
+      // Bitstop ids are 64-char hashes, so 500 per request built a ~32 KB URL
+      // that nginx/Cloudflare reject with 400 (Denet's short ids stayed under the
+      // limit, which is why only Bitstop broke). Chunk this lookup small: the
+      // request line is ~53 + 65·N bytes, so N=100 ≈ 6.6 KB — safely under the
+      // strictest common limit (nginx's ~8 KB request line). This is independent
+      // of the upsert batch size and reporting-only (new vs updated counts); the
+      // upsert writes every row regardless.
+      const lookupBatchSize = 100;
+      for (let i = 0; i < transactionIds.length; i += lookupBatchSize) {
+        const batch = transactionIds.slice(i, i + lookupBatchSize);
         const { data: existingBatch, error: checkError } = await supabase
           .from('transactions')
           .select('id')
