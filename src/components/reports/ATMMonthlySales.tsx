@@ -4,7 +4,8 @@ import { findProfileForTx } from '@/lib/atm-profile';
 import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Download, FileSpreadsheet, ArrowUp, ArrowDown, ArrowUpDown, Search, X } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -172,6 +173,7 @@ export default function ATMMonthlySales() {
 
   const [sortKey, setSortKey] = useState<SortKey>('total');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchAvailableYears();
@@ -420,8 +422,17 @@ export default function ATMMonthlySales() {
   };
 
   // Display pipeline: rawData → filteredData → sortedData → visibleMonths → table + exports
-  // Filter step is a pass-through for now (search box plugs in here).
-  const filteredData = useMemo(() => rawData, [rawData]);
+  // Search narrows rows here; hidden months, TOTAL row, and exports all follow.
+  const trimmedSearch = searchTerm.trim();
+
+  const filteredData = useMemo(() => {
+    const term = trimmedSearch.toLowerCase();
+    if (!term) return rawData;
+    return rawData.filter(row =>
+      String(row.atm_id ?? '').toLowerCase().includes(term) ||
+      (row.atm_name ?? '').toLowerCase().includes(term)
+    );
+  }, [rawData, trimmedSearch]);
 
   const sortedData = useMemo(
     () => sortRows(filteredData, sortKey, sortDir),
@@ -474,7 +485,9 @@ export default function ATMMonthlySales() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `atm-monthly-sales-${selectedYear}-${exportFileSuffix(selectedPlatform)}.csv`;
+    // Flag filtered exports so a filtered TOTAL isn't mistaken for the full total
+    const filteredSuffix = trimmedSearch ? '_filtered' : '';
+    link.download = `atm-monthly-sales-${selectedYear}-${exportFileSuffix(selectedPlatform)}${filteredSuffix}.csv`;
     link.click();
   };
 
@@ -491,7 +504,7 @@ export default function ATMMonthlySales() {
         : 'Denet platform';
 
     const excelData: ExportCell[][] = [
-      [`Sales by Month - by ATM - ${selectedYear} (${platformText})`],
+      [`Sales by Month - by ATM - ${selectedYear} (${platformText})${trimmedSearch ? ` — Filtered: "${trimmedSearch}"` : ''}`],
       [], // Empty row
       headers,
       ...body,
@@ -668,7 +681,7 @@ export default function ATMMonthlySales() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filters */}
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select Year" />
@@ -692,6 +705,27 @@ export default function ATMMonthlySales() {
               <SelectItem value="bitstop">Bitstop</SelectItem>
             </SelectContent>
           </Select>
+
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+            <Input
+              placeholder="Search ATM ID or name"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`pl-9 ${searchTerm ? 'pr-8' : ''}`}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+                title="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -726,10 +760,23 @@ export default function ATMMonthlySales() {
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : sortedData.length === 0 ? (
+              ) : rawData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columnCount} className="text-center text-muted-foreground">
                     No data available for {selectedYear}
+                  </TableCell>
+                </TableRow>
+              ) : sortedData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={columnCount} className="text-center text-muted-foreground">
+                    No ATMs match "{trimmedSearch}"{' '}
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="underline hover:text-foreground"
+                    >
+                      Clear search
+                    </button>
                   </TableCell>
                 </TableRow>
               ) : (
