@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { findProfileForTx } from '@/lib/atm-profile';
 import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet } from 'lucide-react';
+import { Download, FileSpreadsheet, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -33,15 +33,145 @@ interface ATMMonthlyData {
   yearTotal: number;
 }
 
+type SortKey = 'atm_id' | 'atm_name' | 'total';
+type SortDir = 'asc' | 'desc';
+
+interface VisibleMonth {
+  label: string;    // "Jan"
+  monthNum: number; // 1-12
+  key: string;      // "YYYY-MM"
+}
+
+type ExportCell = string | number | null;
+
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Status, Install, Removed, ATM ID, ATM Name, Platform — columns before the months
+const FIXED_COL_COUNT = 6;
+
+const collator = new Intl.Collator('en-US', { numeric: true, sensitivity: 'base' });
+
+// A value is "zero" if it would display as $0 — drives the dash, hidden
+// months, and blank export cells so all three always agree.
+const isZero = (value: number) => Math.round(value) === 0;
+
+const formatMoney = (value: number) =>
+  isZero(value) ? '–' : `$${Math.round(value).toLocaleString('en-US')}`;
+
+const platformLabel = (platform: string) => (platform === 'bitstop' ? 'Bitstop' : 'Denet');
+
+// Format date helper function
+const formatDate = (dateStr: string | null): string => {
+  if (!dateStr) return '-';
+  const [year, month, day] = dateStr.split('-');
+  return `${month}/${day}/${year.slice(2)}`;
+};
+
+const sortRows = (rows: ATMMonthlyData[], key: SortKey, dir: SortDir): ATMMonthlyData[] => {
+  const sign = dir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const primary = key === 'total'
+      ? a.yearTotal - b.yearTotal
+      : collator.compare(a[key] ?? '', b[key] ?? '');
+    if (primary !== 0) return primary * sign;
+    // Stable tie-breakers (always ascending) so equal rows don't shuffle
+    return collator.compare(a.atm_id, b.atm_id)
+      || a.platform.localeCompare(b.platform)
+      || (a.installed_date ?? '').localeCompare(b.installed_date ?? '');
+  });
+};
+
+const getVisibleMonths = (rows: ATMMonthlyData[], year: number): VisibleMonth[] =>
+  MONTH_LABELS
+    .map((label, idx) => ({
+      label,
+      monthNum: idx + 1,
+      key: `${year}-${String(idx + 1).padStart(2, '0')}`,
+    }))
+    .filter(month => rows.some(row => !isZero(row.monthlyTotals[month.key] || 0)));
+
+const computeTotals = (rows: ATMMonthlyData[], visibleMonths: VisibleMonth[]) =>
+  rows.reduce((acc, row) => {
+    visibleMonths.forEach(({ key }) => {
+      acc.monthlyTotals[key] = (acc.monthlyTotals[key] || 0) + (row.monthlyTotals[key] || 0);
+    });
+    acc.yearTotal += row.yearTotal;
+    return acc;
+  }, { monthlyTotals: {} as { [key: string]: number }, yearTotal: 0 });
+
+// Shared by CSV + Excel: same columns and row order as the on-screen table.
+// Zero amounts become null (blank cell) so SUM works; others stay numeric.
+const buildExportRows = (
+  rows: ATMMonthlyData[],
+  visibleMonths: VisibleMonth[],
+  totals: ReturnType<typeof computeTotals>,
+) => {
+  const amount = (value: number): ExportCell => (isZero(value) ? null : Math.round(value));
+
+  const headers: ExportCell[] = [
+    'Status', 'Install', 'Removed', 'ATM ID', 'ATM Name', 'Platform',
+    ...visibleMonths.map(m => m.label),
+    'Totals',
+  ];
+
+  const body: ExportCell[][] = rows.map(row => [
+    row.active === false ? 'Inactive' : 'Active',
+    formatDate(row.installed_date),
+    formatDate(row.removed_date),
+    row.atm_id,
+    row.atm_name,
+    platformLabel(row.platform),
+    ...visibleMonths.map(m => amount(row.monthlyTotals[m.key] || 0)),
+    amount(row.yearTotal),
+  ]);
+
+  const totalRow: ExportCell[] = [
+    '', '', '', 'TOTAL', '', '',
+    ...visibleMonths.map(m => amount(totals.monthlyTotals[m.key] || 0)),
+    amount(totals.yearTotal),
+  ];
+
+  return { headers, body, totalRow };
+};
+
+const toCsvField = (cell: ExportCell): string => {
+  if (cell === null) return '';
+  if (typeof cell === 'number') return String(cell);
+  return /[",\r\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
+};
+
+// CSV amount cells (months, Totals column, TOTAL row): the builder gives
+// rounded numbers or null for zero. Written as quoted whole-dollar text —
+// "-" (plain hyphen, not en dash) for zero so Excel doesn't garble encoding.
+const toCsvAmountField = (cell: ExportCell): string => {
+  if (cell === null || cell === '') return '-';
+  if (typeof cell !== 'number') return toCsvField(cell);
+  const dollars = Math.abs(cell).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return `"${cell < 0 ? '-' : ''}$${dollars}"`;
+};
+
+const exportFileSuffix = (platform: string) =>
+  platform === 'both' ? 'Both' : platform === 'bitstop' ? 'Bitstop' : 'Denet';
+
+// Table colors. The app's theme colors are fixed dark values (tailwind.config.js),
+// so banding uses explicit opaque colors — sticky cells must be opaque to
+// cover columns scrolling underneath them.
+const ROW_BAND = ['bg-card', 'bg-[#262E38]'];
+const TOTAL_COL_BAND = ['bg-slate-700', 'bg-slate-600'];
+const ROW_HOVER = 'group-hover:bg-[#323C49]';
+const TOTAL_COL_HOVER = 'group-hover:bg-slate-500';
+const TOTAL_COL_EDGE = 'bg-slate-500 text-white font-bold border-l-2 border-slate-400';
+
 export default function ATMMonthlySales() {
-  const [data, setData] = useState<ATMMonthlyData[]>([]);
+  const [rawData, setRawData] = useState<ATMMonthlyData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedPlatform, setSelectedPlatform] = useState<string>('both');
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const [sortKey, setSortKey] = useState<SortKey>('total');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   useEffect(() => {
     fetchAvailableYears();
@@ -280,21 +410,8 @@ export default function ATMMonthlySales() {
         }
       });
 
-      // Sort data based on selected platform
-      const sortedData = Array.from(atmData.values()).sort((a, b) => {
-        if (selectedPlatform === 'both') {
-          // When "Both" is selected: First by Platform, then by Totals (descending)
-          if (a.platform !== b.platform) {
-            return a.platform.localeCompare(b.platform);
-          }
-          return b.yearTotal - a.yearTotal;
-        } else {
-          // When specific platform selected: Sort by Totals only (descending)
-          return b.yearTotal - a.yearTotal;
-        }
-      });
-
-      setData(sortedData);
+      // Display order is derived below (sortedData), not here.
+      setRawData(Array.from(atmData.values()));
     } catch (error) {
       console.error('Error fetching monthly sales:', error);
     } finally {
@@ -302,79 +419,69 @@ export default function ATMMonthlySales() {
     }
   };
 
-  // Format date helper function
-  const formatDate = (dateStr: string | null): string => {
-    if (!dateStr) return '-';
-    const [year, month, day] = dateStr.split('-');
-    return `${month}/${day}/${year.slice(2)}`;
+  // Display pipeline: rawData → filteredData → sortedData → visibleMonths → table + exports
+  // Filter step is a pass-through for now (search box plugs in here).
+  const filteredData = useMemo(() => rawData, [rawData]);
+
+  const sortedData = useMemo(
+    () => sortRows(filteredData, sortKey, sortDir),
+    [filteredData, sortKey, sortDir],
+  );
+
+  const visibleMonths = useMemo(
+    () => getVisibleMonths(sortedData, selectedYear),
+    [sortedData, selectedYear],
+  );
+
+  const totals = useMemo(
+    () => computeTotals(sortedData, visibleMonths),
+    [sortedData, visibleMonths],
+  );
+
+  const columnCount = FIXED_COL_COUNT + visibleMonths.length + 1;
+
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir(dir => (dir === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'total' ? 'desc' : 'asc');
+    }
+  };
+
+  const renderSortLabel = (label: string, key: SortKey, align: 'left' | 'center' = 'left') => {
+    const active = sortKey === key;
+    const Icon = !active ? ArrowUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown;
+    return (
+      <button
+        type="button"
+        onClick={() => handleSort(key)}
+        className={`inline-flex items-center gap-1 font-bold hover:underline ${align === 'center' ? 'justify-center w-full' : ''}`}
+        title={`Sort by ${label}`}
+      >
+        {label}
+        <Icon className={`w-3.5 h-3.5 ${active ? '' : 'opacity-40'}`} />
+      </button>
+    );
   };
 
   const handleExportCSV = () => {
-    const headers = ['Status', 'Install', 'Removed', 'ATM ID', 'ATM Name', 'Platform', ...months, 'Totals'];
-    const rows = data.map(row => {
-      const monthValues = months.map((_, idx) => {
-        const monthKey = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`;
-        return row.monthlyTotals[monthKey] || 0;
-      });
-      return [
-        row.active === false ? 'Inactive' : 'Active',
-        formatDate(row.installed_date),
-        formatDate(row.removed_date),
-        row.atm_id,
-        row.atm_name,
-        row.platform === 'bitstop' ? 'Bitstop' : 'Denet',
-        ...monthValues.map(v => v.toFixed(0)),
-        row.yearTotal.toFixed(0)
-      ];
-    });
-
-    // Add totals row
-    const totals = data.reduce((acc, row) => {
-      months.forEach((_, idx) => {
-        const monthKey = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`;
-        if (!acc.monthlyTotals[monthKey]) {
-          acc.monthlyTotals[monthKey] = 0;
-        }
-        acc.monthlyTotals[monthKey] += row.monthlyTotals[monthKey] || 0;
-      });
-      acc.yearTotal += row.yearTotal;
-      return acc;
-    }, { monthlyTotals: {} as { [key: string]: number }, yearTotal: 0 });
-
-    const monthTotals = months.map((_, idx) => {
-      const monthKey = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`;
-      return totals.monthlyTotals[monthKey] || 0;
-    });
-
-    rows.push([
-      '',
-      '',
-      '',
-      'TOTAL',
-      '',
-      '',
-      ...monthTotals.map(v => v.toFixed(0)),
-      totals.yearTotal.toFixed(0)
-    ]);
-
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const { headers, body, totalRow } = buildExportRows(sortedData, visibleMonths, totals);
+    const formatRow = (row: ExportCell[]) =>
+      row.map((cell, col) => (col < FIXED_COL_COUNT ? toCsvField(cell) : toCsvAmountField(cell))).join(',');
+    const csv = [headers.map(toCsvField).join(','), ...[...body, totalRow].map(formatRow)].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-
-    const platformSuffix = selectedPlatform === 'both'
-      ? 'Both'
-      : selectedPlatform === 'bitstop'
-        ? 'Bitstop'
-        : 'Denet';
-
-    link.download = `atm-monthly-sales-${selectedYear}-${platformSuffix}.csv`;
+    link.download = `atm-monthly-sales-${selectedYear}-${exportFileSuffix(selectedPlatform)}.csv`;
     link.click();
   };
 
   const handleExportExcel = () => {
-    const excelData = [];
+    const { headers, body, totalRow } = buildExportRows(sortedData, visibleMonths, totals);
+    const lastCol = headers.length - 1;
+    const monthStartCol = FIXED_COL_COUNT;
 
     // Add title row with platform filter
     const platformText = selectedPlatform === 'both'
@@ -383,76 +490,29 @@ export default function ATMMonthlySales() {
         ? 'Bitstop platform'
         : 'Denet platform';
 
-    excelData.push([`Sales by Month - by ATM - ${selectedYear} (${platformText})`]);
-    excelData.push([]); // Empty row
+    const excelData: ExportCell[][] = [
+      [`Sales by Month - by ATM - ${selectedYear} (${platformText})`],
+      [], // Empty row
+      headers,
+      ...body,
+      totalRow,
+    ];
 
-    // Add headers
-    excelData.push(['Status', 'Install', 'Removed', 'ATM ID', 'ATM Name', 'Platform', ...months, 'Totals']);
-
-    // Add data rows (sorted by Year Total descending)
-    const sortedExcelData = [...data].sort((a, b) => b.yearTotal - a.yearTotal);
-
-    sortedExcelData.forEach(row => {
-      const monthValues = months.map((_, idx) => {
-        const monthKey = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`;
-        return Math.round(row.monthlyTotals[monthKey] || 0);
-      });
-      excelData.push([
-        row.active === false ? 'Inactive' : 'Active',
-        formatDate(row.installed_date),
-        formatDate(row.removed_date),
-        row.atm_id,
-        row.atm_name,
-        row.platform === 'bitstop' ? 'Bitstop' : 'Denet',
-        ...monthValues,
-        Math.round(row.yearTotal)
-      ]);
-    });
-
-    // Add totals row
-    const totals = data.reduce((acc, row) => {
-      months.forEach((_, idx) => {
-        const monthKey = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`;
-        if (!acc.monthlyTotals[monthKey]) {
-          acc.monthlyTotals[monthKey] = 0;
-        }
-        acc.monthlyTotals[monthKey] += row.monthlyTotals[monthKey] || 0;
-      });
-      acc.yearTotal += row.yearTotal;
-      return acc;
-    }, { monthlyTotals: {} as { [key: string]: number }, yearTotal: 0 });
-
-    const monthTotals = months.map((_, idx) => {
-      const monthKey = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`;
-      return Math.round(totals.monthlyTotals[monthKey] || 0);
-    });
-
-    excelData.push([
-      '',
-      '',
-      '',
-      'TOTAL',
-      '',
-      '',
-      ...monthTotals,
-      Math.round(totals.yearTotal)
-    ]);
-
-    // Create worksheet
+    // Create worksheet. Null (zero) cells are omitted so they're truly blank in
+    // Excel; xlsx-js-style can't write a value-less cell, so blanks carry no style.
     const ws = XLSX.utils.aoa_to_sheet(excelData);
 
     // Set column widths
-    const colWidths = [
+    ws['!cols'] = [
       { wch: 10 },  // Status
       { wch: 12 },  // Install
       { wch: 12 },  // Removed
       { wch: 10 },  // ATM ID
       { wch: 30 },  // ATM Name
       { wch: 12 },  // Platform
-      ...months.map(() => ({ wch: 12 })), // Month columns
+      ...visibleMonths.map(() => ({ wch: 12 })), // Month columns
       { wch: 15 }   // Totals
     ];
-    ws['!cols'] = colWidths;
 
     // Style the title row (row 1)
     ws['A1'].s = {
@@ -461,134 +521,109 @@ export default function ATMMonthlySales() {
       fill: { fgColor: { rgb: "D1D5DB" } }
     };
 
-    // Merge title cells (19 columns total: Status, Install, Removed, ATM ID, Name, Platform + 12 months + Totals)
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 18 } }];
+    // Merge title cells across all exported columns
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: lastCol } }];
+
+    const border = {
+      top: { style: 'thin', color: { rgb: "000000" } },
+      bottom: { style: 'thin', color: { rgb: "000000" } },
+      left: { style: 'thin', color: { rgb: "000000" } },
+      right: { style: 'thin', color: { rgb: "000000" } }
+    };
 
     // Style header row (row 3)
     const headerStyle = {
       font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
       fill: { fgColor: { rgb: "1F2937" } },
       alignment: { horizontal: 'center', vertical: 'center' },
-      border: {
-        top: { style: 'thin', color: { rgb: "000000" } },
-        bottom: { style: 'thin', color: { rgb: "000000" } },
-        left: { style: 'thin', color: { rgb: "000000" } },
-        right: { style: 'thin', color: { rgb: "000000" } }
-      }
+      border
     };
 
-    const headerCells = ['A3', 'B3', 'C3', 'D3', 'E3', 'F3', 'G3', 'H3', 'I3', 'J3', 'K3', 'L3', 'M3', 'N3', 'O3', 'P3', 'Q3', 'R3', 'S3'];
-    headerCells.forEach(cell => {
-      if (ws[cell]) {
-        ws[cell].s = headerStyle;
-      }
-    });
+    const headerRowIdx = 2;
+    for (let c = 0; c <= lastCol; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r: headerRowIdx, c })];
+      if (cell) cell.s = headerStyle;
+    }
 
     // Style data rows and totals row
-    const dataStartRow = 4;
-    const totalRow = dataStartRow + sortedExcelData.length;
+    const dataStartRowIdx = headerRowIdx + 1;
+    const totalRowIdx = dataStartRowIdx + body.length;
 
-    for (let i = dataStartRow; i <= totalRow; i++) {
-      const isTotal = i === totalRow;
+    for (let r = dataStartRowIdx; r <= totalRowIdx; r++) {
+      const isTotal = r === totalRowIdx;
+      const rowData = isTotal ? null : sortedData[r - dataStartRowIdx];
 
-      // Status column (A) - with red/green color
-      const statusCell = `A${i}`;
-      if (ws[statusCell]) {
-        const statusValue = ws[statusCell].v;
-        const isInactive = statusValue === 'Inactive';
-        ws[statusCell].s = {
-          font: {
-            bold: isTotal,
-            sz: 12,
-            color: isTotal ? undefined : (isInactive ? { rgb: "EF4444" } : { rgb: "22C55E" }) // red-500 or green-500
-          },
-          alignment: { horizontal: 'left', vertical: 'center' },
-          border: {
-            top: { style: 'thin', color: { rgb: "000000" } },
-            bottom: { style: 'thin', color: { rgb: "000000" } },
-            left: { style: 'thin', color: { rgb: "000000" } },
-            right: { style: 'thin', color: { rgb: "000000" } }
-          },
-          fill: isTotal ? { fgColor: { rgb: "D1D5DB" } } : undefined
-        };
-      }
+      for (let c = 0; c <= lastCol; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r, c })];
+        if (!cell) continue; // blank zero cell
+        const cellValue = cell.v;
 
-      // Install, Removed, ATM ID, Name, and Platform columns (B, C, D, E, F)
-      ['B', 'C', 'D', 'E', 'F'].forEach(col => {
-        const cell = `${col}${i}`;
-        if (ws[cell]) {
-          const cellValue = ws[cell].v;
-          const isBitstop = col === 'F' && cellValue === 'Bitstop';
-          const isDenet = col === 'F' && cellValue === 'Denet';
-
-          ws[cell].s = {
-            font: { 
-              bold: isTotal, 
+        if (c === 0) {
+          // Status column - with red/green color
+          const isInactive = cellValue === 'Inactive';
+          cell.s = {
+            font: {
+              bold: isTotal,
               sz: 12,
-              color: col === 'F' && !isTotal
+              color: isTotal ? undefined : (isInactive ? { rgb: "EF4444" } : { rgb: "22C55E" }) // red-500 or green-500
+            },
+            alignment: { horizontal: 'left', vertical: 'center' },
+            border,
+            fill: isTotal ? { fgColor: { rgb: "D1D5DB" } } : undefined
+          };
+        } else if (c < monthStartCol) {
+          // Install, Removed, ATM ID, Name, and Platform columns
+          const isPlatformCol = c === monthStartCol - 1;
+          const isBitstop = isPlatformCol && cellValue === 'Bitstop';
+          const isDenet = isPlatformCol && cellValue === 'Denet';
+
+          cell.s = {
+            font: {
+              bold: isTotal,
+              sz: 12,
+              color: isPlatformCol && !isTotal
                 ? (isBitstop ? { rgb: "3B82F6" } : isDenet ? { rgb: "22C55E" } : undefined)
                 : undefined
             },
             alignment: { horizontal: 'left', vertical: 'center' },
-            border: {
-              top: { style: 'thin', color: { rgb: "000000" } },
-              bottom: { style: 'thin', color: { rgb: "000000" } },
-              left: { style: 'thin', color: { rgb: "000000" } },
-              right: { style: 'thin', color: { rgb: "000000" } }
-            },
-            fill: isTotal 
+            border,
+            fill: isTotal
               ? { fgColor: { rgb: "D1D5DB" } }
-              : col === 'F' && !isTotal
+              : isPlatformCol
                 ? (isBitstop ? { fgColor: { rgb: "DBEAFE" } } : isDenet ? { fgColor: { rgb: "D1FAE5" } } : undefined)
                 : undefined
           };
-        }
-      });
-
-      // Month columns (G through R) and Total column (S) - currency format
-      ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'].forEach((col, colIdx) => {
-        const cell = `${col}${i}`;
-        if (ws[cell]) {
-          const cellValue = ws[cell].v;
+        } else {
+          // Month columns and Total column (last) - currency format
+          const isTotalsCol = c === lastCol;
           const isNegative = typeof cellValue === 'number' && cellValue < 0;
 
           // Determine if this is the install or removal month for this ATM
           let isInstallMonth = false;
           let isRemovalMonth = false;
-          if (!isTotal && colIdx < 12) { // Only for month columns, not Totals column
-            const rowData = sortedExcelData[i - dataStartRow];
+          if (rowData && !isTotalsCol) {
+            const monthNum = visibleMonths[c - monthStartCol].monthNum;
 
-            // Check install month
-            if (rowData?.installed_date) {
+            if (rowData.installed_date) {
               const [iYear, iMonth] = rowData.installed_date.split('-').map(Number);
-              if (iYear === selectedYear && iMonth === colIdx + 1) {
-                isInstallMonth = true;
-              }
+              isInstallMonth = iYear === selectedYear && iMonth === monthNum;
             }
 
-            // Check removal month
-            if (rowData?.removed_date) {
+            if (rowData.removed_date) {
               const [rYear, rMonth] = rowData.removed_date.split('-').map(Number);
-              if (rYear === selectedYear && rMonth === colIdx + 1) {
-                isRemovalMonth = true;
-              }
+              isRemovalMonth = rYear === selectedYear && rMonth === monthNum;
             }
           }
 
-          ws[cell].s = {
+          cell.s = {
             font: {
               sz: 12,
               color: isNegative ? { rgb: "DC2626" } : undefined,
-              bold: col === 'S' || isTotal // Bold for Totals column or totals row
+              bold: isTotalsCol || isTotal // Bold for Totals column or totals row
             },
             alignment: { horizontal: 'center', vertical: 'center' },
             numFmt: '$#,##0',
-            border: {
-              top: { style: 'thin', color: { rgb: "000000" } },
-              bottom: { style: 'thin', color: { rgb: "000000" } },
-              left: { style: 'thin', color: { rgb: "000000" } },
-              right: { style: 'thin', color: { rgb: "000000" } }
-            },
+            border,
             fill: isTotal
               ? { fgColor: { rgb: "D1D5DB" } }
               : isRemovalMonth
@@ -598,34 +633,16 @@ export default function ATMMonthlySales() {
                   : undefined
           };
         }
-      });
+      }
     }
 
     // Create workbook and download
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'ATM Monthly Sales');
-
-    const platformSuffix = selectedPlatform === 'both'
-      ? 'Both'
-      : selectedPlatform === 'bitstop'
-        ? 'Bitstop'
-        : 'Denet';
-
-    XLSX.writeFile(wb, `atm-monthly-sales-${selectedYear}-${platformSuffix}.xlsx`);
+    XLSX.writeFile(wb, `atm-monthly-sales-${selectedYear}-${exportFileSuffix(selectedPlatform)}.xlsx`);
   };
 
-  // Calculate totals for the table footer
-  const totals = data.reduce((acc, row) => {
-    months.forEach((_, idx) => {
-      const monthKey = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`;
-      if (!acc.monthlyTotals[monthKey]) {
-        acc.monthlyTotals[monthKey] = 0;
-      }
-      acc.monthlyTotals[monthKey] += row.monthlyTotals[monthKey] || 0;
-    });
-    acc.yearTotal += row.yearTotal;
-    return acc;
-  }, { monthlyTotals: {} as { [key: string]: number }, yearTotal: 0 });
+  const stickyHead = 'sticky z-20 bg-muted text-foreground font-bold';
 
   return (
     <Card>
@@ -680,105 +697,108 @@ export default function ATMMonthlySales() {
         {/* Table */}
         <div className="rounded-md border border-white/10 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-white/10">
-                <TableHead className="font-bold sticky left-0 z-20 bg-slate-950 w-[90px] min-w-[90px]">Status</TableHead>
-                <TableHead className="font-bold sticky left-[90px] z-20 bg-slate-950 w-[100px] min-w-[100px]">Install</TableHead>
-                <TableHead className="font-bold sticky left-[190px] z-20 bg-slate-950 w-[100px] min-w-[100px]">Removed</TableHead>
-                <TableHead className="font-bold sticky left-[290px] z-20 bg-slate-950 w-[100px] min-w-[100px]">ATM ID</TableHead>
-                <TableHead className="font-bold sticky left-[390px] z-20 bg-slate-950 w-[250px] min-w-[250px]">ATM Name</TableHead>
-                <TableHead className="font-bold sticky left-[640px] z-20 bg-slate-950 w-[100px] min-w-[100px] border-r-2 border-white/20">Platform</TableHead>
-                {months.map(month => (
-                  <TableHead key={month} className="text-center font-bold w-[110px] min-w-[110px] max-w-[110px]">{month}</TableHead>
+            <TableHeader>
+              <TableRow className="border-white/10 hover:bg-transparent">
+                <TableHead className={`${stickyHead} left-0 w-[90px] min-w-[90px]`}>Status</TableHead>
+                <TableHead className={`${stickyHead} left-[90px] w-[100px] min-w-[100px]`}>Install</TableHead>
+                <TableHead className={`${stickyHead} left-[190px] w-[100px] min-w-[100px]`}>Removed</TableHead>
+                <TableHead className={`${stickyHead} left-[290px] w-[100px] min-w-[100px]`}>
+                  {renderSortLabel('ATM ID', 'atm_id')}
+                </TableHead>
+                <TableHead className={`${stickyHead} left-[390px] w-[250px] min-w-[250px]`}>
+                  {renderSortLabel('ATM Name', 'atm_name')}
+                </TableHead>
+                <TableHead className={`${stickyHead} left-[640px] w-[100px] min-w-[100px] border-r-2 border-white/20`}>Platform</TableHead>
+                {visibleMonths.map(month => (
+                  <TableHead key={month.key} className="text-center font-bold text-foreground bg-muted w-[110px] min-w-[110px] max-w-[110px]">
+                    {month.label}
+                  </TableHead>
                 ))}
-                <TableHead className="text-center font-bold w-[110px] min-w-[110px] max-w-[110px]">Totals</TableHead>
+                <TableHead className={`text-center w-[120px] min-w-[120px] ${TOTAL_COL_EDGE}`}>
+                  {renderSortLabel('Totals', 'total', 'center')}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={19} className="text-center text-muted-foreground">
+                  <TableCell colSpan={columnCount} className="text-center text-muted-foreground">
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : data.length === 0 ? (
+              ) : sortedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={19} className="text-center text-muted-foreground">
+                  <TableCell colSpan={columnCount} className="text-center text-muted-foreground">
                     No data available for {selectedYear}
                   </TableCell>
                 </TableRow>
               ) : (
                 <>
-                  {data.map((row, idx) => (
-                    <TableRow key={idx} className="border-white/5">
-                      <TableCell className={`font-semibold sticky left-0 z-20 bg-slate-950 w-[90px] min-w-[90px] ${row.active === false ? 'text-red-500' : 'text-green-500'}`}>
-                        {row.active === false ? 'Inactive' : 'Active'}
-                      </TableCell>
-                      <TableCell className="sticky left-[90px] z-20 bg-slate-950 w-[100px] min-w-[100px]">{formatDate(row.installed_date)}</TableCell>
-                      <TableCell className="sticky left-[190px] z-20 bg-slate-950 w-[100px] min-w-[100px]">{formatDate(row.removed_date)}</TableCell>
-                      <TableCell className="font-medium sticky left-[290px] z-20 bg-slate-950 w-[100px] min-w-[100px]">{row.atm_id}</TableCell>
-                      <TableCell className="whitespace-nowrap sticky left-[390px] z-20 bg-slate-950 w-[250px] min-w-[250px]">{row.atm_name}</TableCell>
-                      <TableCell className="sticky left-[640px] z-20 bg-slate-950 w-[100px] min-w-[100px] border-r-2 border-white/20">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          row.platform === 'bitstop'
-                            ? 'bg-blue-500/20 text-blue-300'
-                            : 'bg-green-500/20 text-green-300'
-                        }`}>
-                          {row.platform === 'bitstop' ? 'Bitstop' : 'Denet'}
-                        </span>
-                      </TableCell>
-                      {months.map((_, monthIdx) => {
-                        const monthKey = `${selectedYear}-${String(monthIdx + 1).padStart(2, '0')}`;
-                        const value = row.monthlyTotals[monthKey] || 0;
-
-                        // Check if this is the install month for this ATM
-                        let isInstallMonth = false;
-                        if (row.installed_date) {
-                          const [iYear, iMonth] = row.installed_date.split('-').map(Number);
-                          if (iYear === selectedYear && iMonth === monthIdx + 1) {
-                            isInstallMonth = true;
-                          }
-                        }
-
-                        // Check if this is the removal month for this ATM
-                        let isRemovalMonth = false;
-                        if (row.removed_date) {
-                          const [rYear, rMonth] = row.removed_date.split('-').map(Number);
-                          if (rYear === selectedYear && rMonth === monthIdx + 1) {
-                            isRemovalMonth = true;
-                          }
-                        }
-
-                        return (
-                          <TableCell
-                            key={monthIdx}
-                            className="text-center font-mono w-[110px] min-w-[110px] max-w-[110px]"
-                          >
-                            <span className={isRemovalMonth ? 'text-red-600 font-semibold' : isInstallMonth ? 'text-green-600 font-semibold' : ''}>
-                              ${Math.round(value).toLocaleString('en-US')}
-                            </span>
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell className="text-center font-mono font-semibold w-[110px] min-w-[110px] max-w-[110px]">
-                        ${Math.round(row.yearTotal).toLocaleString('en-US')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {/* Totals Row */}
-                  <TableRow className="border-white/10 bg-white/5 font-bold">
-                    <TableCell colSpan={6} className="sticky left-0 z-20 bg-slate-900 border-r-2 border-white/20">TOTAL</TableCell>
-                    {months.map((_, monthIdx) => {
-                      const monthKey = `${selectedYear}-${String(monthIdx + 1).padStart(2, '0')}`;
-                      const value = totals.monthlyTotals[monthKey] || 0;
-                      return (
-                        <TableCell key={monthIdx} className="text-center font-mono w-[110px] min-w-[110px] max-w-[110px]">
-                          ${Math.round(value).toLocaleString('en-US')}
+                  {sortedData.map((row, idx) => {
+                    const band = `${ROW_BAND[idx % 2]} ${ROW_HOVER}`;
+                    const sticky = `sticky z-20 ${band}`;
+                    return (
+                      <TableRow key={idx} className="group border-white/5">
+                        <TableCell className={`font-semibold ${sticky} left-0 w-[90px] min-w-[90px] ${row.active === false ? 'text-red-500' : 'text-green-500'}`}>
+                          {row.active === false ? 'Inactive' : 'Active'}
                         </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-center font-mono w-[110px] min-w-[110px] max-w-[110px]">
-                      ${Math.round(totals.yearTotal).toLocaleString('en-US')}
+                        <TableCell className={`${sticky} left-[90px] w-[100px] min-w-[100px]`}>{formatDate(row.installed_date)}</TableCell>
+                        <TableCell className={`${sticky} left-[190px] w-[100px] min-w-[100px]`}>{formatDate(row.removed_date)}</TableCell>
+                        <TableCell className={`font-medium ${sticky} left-[290px] w-[100px] min-w-[100px]`}>{row.atm_id}</TableCell>
+                        <TableCell className={`whitespace-nowrap ${sticky} left-[390px] w-[250px] min-w-[250px]`}>{row.atm_name}</TableCell>
+                        <TableCell className={`${sticky} left-[640px] w-[100px] min-w-[100px] border-r-2 border-white/20`}>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            row.platform === 'bitstop'
+                              ? 'bg-blue-500/20 text-blue-300'
+                              : 'bg-green-500/20 text-green-300'
+                          }`}>
+                            {platformLabel(row.platform)}
+                          </span>
+                        </TableCell>
+                        {visibleMonths.map(month => {
+                          const value = row.monthlyTotals[month.key] || 0;
+
+                          // Check if this is the install month for this ATM
+                          let isInstallMonth = false;
+                          if (row.installed_date) {
+                            const [iYear, iMonth] = row.installed_date.split('-').map(Number);
+                            isInstallMonth = iYear === selectedYear && iMonth === month.monthNum;
+                          }
+
+                          // Check if this is the removal month for this ATM
+                          let isRemovalMonth = false;
+                          if (row.removed_date) {
+                            const [rYear, rMonth] = row.removed_date.split('-').map(Number);
+                            isRemovalMonth = rYear === selectedYear && rMonth === month.monthNum;
+                          }
+
+                          return (
+                            <TableCell
+                              key={month.key}
+                              className={`text-center font-mono w-[110px] min-w-[110px] max-w-[110px] ${band}`}
+                            >
+                              <span className={isRemovalMonth ? 'text-red-600 font-semibold' : isInstallMonth ? 'text-green-600 font-semibold' : isZero(value) ? 'text-muted-foreground' : ''}>
+                                {formatMoney(value)}
+                              </span>
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className={`text-center font-mono font-bold text-white w-[120px] min-w-[120px] border-l-2 border-slate-400 ${TOTAL_COL_BAND[idx % 2]} ${TOTAL_COL_HOVER}`}>
+                          {formatMoney(row.yearTotal)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {/* Totals Row */}
+                  <TableRow className="border-t-2 border-white/20 font-bold hover:bg-transparent">
+                    <TableCell colSpan={FIXED_COL_COUNT} className="sticky left-0 z-20 bg-muted border-r-2 border-white/20">TOTAL</TableCell>
+                    {visibleMonths.map(month => (
+                      <TableCell key={month.key} className="text-center font-mono bg-muted w-[110px] min-w-[110px] max-w-[110px]">
+                        {formatMoney(totals.monthlyTotals[month.key] || 0)}
+                      </TableCell>
+                    ))}
+                    <TableCell className={`text-center font-mono w-[120px] min-w-[120px] ${TOTAL_COL_EDGE}`}>
+                      {formatMoney(totals.yearTotal)}
                     </TableCell>
                   </TableRow>
                 </>
