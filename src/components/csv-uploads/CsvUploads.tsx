@@ -54,6 +54,7 @@ type PendingImportState = {
   negativeSpreadCount: number;
   commissionRateWarning: string | null;
   statusWarning: string | null;
+  retiredATMWarning: string | null;
 };
 
 // Normalize a raw CSV date cell to a 'YYYY-MM-DD' calendar date, or null if it
@@ -107,7 +108,7 @@ const normalizeStatus = (
 export default function CsvUploads() {
   const navigate = useNavigate();
   const [showDedupeBanner, setShowDedupeBanner] = useState(false);
-  const [uploadStats, setUploadStats] = useState({ processed: 0, inserted: 0, updated: 0, negativeSpreadCount: 0, commissionRateWarning: null as string | null, statusWarning: null as string | null });
+  const [uploadStats, setUploadStats] = useState({ processed: 0, inserted: 0, updated: 0, negativeSpreadCount: 0, commissionRateWarning: null as string | null, statusWarning: null as string | null, retiredATMWarning: null as string | null });
   const [error, setError] = useState<string | null>(null);
   const [uploadHistoryKey, setUploadHistoryKey] = useState(0);
   const [newATMIds, setNewATMIds] = useState<string[]>([]);
@@ -213,6 +214,7 @@ export default function CsvUploads() {
       negativeSpreadCount,
       commissionRateWarning,
       statusWarning,
+      retiredATMWarning,
     } = state;
 
     try {
@@ -314,6 +316,7 @@ export default function CsvUploads() {
         negativeSpreadCount,
         commissionRateWarning,
         statusWarning,
+        retiredATMWarning,
       });
       setShowDedupeBanner(true);
       setError(null);
@@ -437,23 +440,47 @@ export default function CsvUploads() {
         };
 
         const newATMsInUpload: string[] = [];
+        // Known-but-retired ATMs seen in this CSV. Never auto-created; used
+        // only to warn when their rows post-date the removal.
+        const retiredATMsInUpload: string[] = [];
 
         console.log('Fetching existing ticker mappings and ATM profiles...');
         const { data: existingTickers } = await supabase
           .from('ticker_mappings')
           .select('*');
 
-        // atm_profiles now has multiple rows per atm_id. The map below keys by
-        // atm_id for the "is this ATM currently in the system?" check, so we
-        // filter to active=true — guaranteed unique per atm_id by migration
-        // 20240522000034's partial unique index.
+        // atm_profiles has multiple rows per atm_id (one per install window).
+        // Fetch ALL rows, not just active ones: an atm_id whose only profiles
+        // are inactive/removed is a KNOWN, RETIRED machine, and auto-creating a
+        // fresh $0 profile for it every time its historical transactions are
+        // re-uploaded is a bug. Two distinct questions, two structures:
+        //   atmMap      — the ACTIVE profile, for name/platform resolution
+        //                 (unique per atm_id via migration 20240522000034's
+        //                 partial unique index)
+        //   knownATMIds — "has any profile row at all, any state, any
+        //                 platform", which is what gates auto-create
         const { data: existingATMs } = await supabase
           .from('atm_profiles')
-          .select('*')
-          .eq('active', true);
+          .select('*');
 
         const tickerMap = new Map(existingTickers?.map(t => [t.original_value, t.display_value || t.original_value]) || []);
-        const atmMap = new Map(existingATMs?.map(a => [a.atm_id, a]) || []);
+        const atmMap = new Map(
+          (existingATMs || []).filter(a => a.active && a.atm_id).map(a => [a.atm_id, a]),
+        );
+        const knownATMIds = new Set(
+          (existingATMs || []).map(a => a.atm_id).filter(Boolean) as string[],
+        );
+
+        // Retired = known, but with no active profile row. Value is the latest
+        // removed_date across its rows, for the "transactions after removal"
+        // warning below.
+        const retiredCutoffByAtmId = new Map<string, string | null>();
+        for (const a of existingATMs || []) {
+          if (!a.atm_id || atmMap.has(a.atm_id)) continue;
+          const prev = retiredCutoffByAtmId.get(a.atm_id) ?? null;
+          const next = (a.removed_date as string | null) ?? null;
+          retiredCutoffByAtmId.set(a.atm_id, !prev || (next && next > prev) ? next : prev);
+        }
 
         const newTickers = new Set<string>();
         const newATMsToInsert = new Map<string, { atm_id: string, atm_name: string | null }>();
@@ -483,6 +510,21 @@ export default function CsvUploads() {
             return {
               atm_id: cleanAtmId,
               atm_name: existing.atm_name || originalAtmName?.toString().trim() || null
+            };
+          }
+
+          // Known but retired (only inactive/removed profiles): NEVER
+          // auto-create. Pass the transaction through under its existing
+          // atm_id — findProfileForTx attributes it to the historical window
+          // that contains it — and record the id so the post-pass below can
+          // warn if any row post-dates the removal.
+          if (knownATMIds.has(cleanAtmId)) {
+            if (!retiredATMsInUpload.includes(cleanAtmId)) {
+              retiredATMsInUpload.push(cleanAtmId);
+            }
+            return {
+              atm_id: cleanAtmId,
+              atm_name: originalAtmName?.toString().trim() || null
             };
           }
 
@@ -705,6 +747,26 @@ export default function CsvUploads() {
           return;
         }
 
+        // A retired machine carrying transactions after its removed_date means
+        // either the removal date is wrong or the CSV is. Warn loudly; never
+        // paper over it by creating a profile. Reuses lastTxDateByAtmId above
+        // so there is only one date parser in this path.
+        let retiredATMWarning: string | null = null;
+        if (retiredATMsInUpload.length > 0) {
+          const lines = retiredATMsInUpload.flatMap((atmId) => {
+            const cutoff = retiredCutoffByAtmId.get(atmId) ?? null;
+            const last = lastTxDateByAtmId.get(atmId);
+            return cutoff && last && last > cutoff
+              ? [`ATM ${atmId}: transactions through ${last}, removed ${cutoff}`]
+              : [];
+          });
+          if (lines.length > 0) {
+            retiredATMWarning =
+              `⚠️ Transactions dated after removal for retired ATM(s) — no profile ` +
+              `was created: ${lines.join('; ')}. Verify the removed_date or the CSV.`;
+          }
+        }
+
         // Detect platform conversions: CSV brings tx data for an atm_id
         // whose currently-active profile is on a different platform.
         const conversions: PendingConversion[] = [];
@@ -753,6 +815,7 @@ export default function CsvUploads() {
           negativeSpreadCount,
           commissionRateWarning,
           statusWarning,
+          retiredATMWarning,
         };
 
         if (conversions.length > 0) {
@@ -821,6 +884,11 @@ export default function CsvUploads() {
                 {uploadStats.statusWarning && (
                   <div className="mt-1 text-amber-400">
                     {uploadStats.statusWarning}
+                  </div>
+                )}
+                {uploadStats.retiredATMWarning && (
+                  <div className="mt-1 text-amber-400">
+                    {uploadStats.retiredATMWarning}
                   </div>
                 )}
               </div>
