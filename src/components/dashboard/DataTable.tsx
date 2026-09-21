@@ -20,7 +20,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Search, ChevronLeft, ChevronRight, SlidersHorizontal, FileX } from "lucide-react";
-import { countsFinancial, formatStatusLabel, statusBadgeClass } from "@/lib/transaction-status";
+import { formatStatusLabel, statusBadgeClass } from "@/lib/transaction-status";
+import { countsFinancialTx } from "@/lib/refund-overrides";
+import { useRefundedIds } from "@/lib/refund-overrides-data";
 
 interface DataTableProps {
   data: any[];
@@ -28,6 +30,7 @@ interface DataTableProps {
 }
 
 export function DataTable({ data = [], columns = [] }: DataTableProps) {
+  const refundedIds = useRefundedIds();
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -243,7 +246,7 @@ export function DataTable({ data = [], columns = [] }: DataTableProps) {
                 // are shown greyed/tagged but excluded from the Overview metrics.
                 // Rows without a status field are never muted (keeps DataTable
                 // generic for any future non-transaction use).
-                const muted = row.status != null && !countsFinancial(row.status);
+                const muted = !countsFinancialTx(row, refundedIds);
                 return (
                 <TableRow
                   key={i}

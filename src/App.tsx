@@ -12,6 +12,7 @@ import BTMDetails from "./components/btm-details/BTMDetails";
 import CsvUploads from "./components/csv-uploads/CsvUploads";
 import PendingResolution from "./components/pending/PendingResolution";
 import Liquidity from "./components/liquidity/Liquidity";
+import Refunds from "./components/refunds/Refunds";
 import QboEntries from "./components/qbo-entries/QboEntries";
 import { Layout } from "./components/layout/Layout";
 import { Toaster } from "./components/ui/toaster";
@@ -88,6 +89,14 @@ function App() {
             }
           />
           <Route
+            path="/refunds"
+            element={
+              <ProtectedRoute>
+                <Refunds />
+              </ProtectedRoute>
+            }
+          />
+                    <Route
             path="/bitstop-commissions"
             element={
               <ProtectedRoute>

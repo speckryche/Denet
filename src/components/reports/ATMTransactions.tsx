@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { countsFinancial, formatStatusLabel } from '@/lib/transaction-status';
+import { formatStatusLabel } from '@/lib/transaction-status';
+import { countsFinancialTx } from '@/lib/refund-overrides';
+import { useRefundedIds } from '@/lib/refund-overrides-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -199,15 +201,18 @@ export default function ATMTransactions() {
     }
   };
 
+  const refundedIds = useRefundedIds();
+
   const sortedData = useMemo(
     () => sortTransactionRows(data, sortField, sortDirection),
     [data, sortField, sortDirection],
   );
 
-  // Export totals count COMPLETED-only (financial surface). Non-completed rows
-  // are still written to the export (with a Status column) but excluded here.
+  // Export totals count only the financial surface — completed AND not
+  // refund-overridden, matching financial_transactions. Excluded rows are still
+  // written to the export (with a Status column) but never reach these sums.
   const totals = data.reduce((acc, row) => {
-    if (!countsFinancial(row.status)) return acc;
+    if (!countsFinancialTx(row, refundedIds)) return acc;
     return {
       sale: acc.sale + row.sale,
       fee: acc.fee + row.fee,

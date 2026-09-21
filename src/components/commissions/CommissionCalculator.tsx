@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import * as XLSX from 'xlsx-js-style';
@@ -142,7 +141,7 @@ export default function CommissionCalculator() {
     });
   };
 
-  const handleCalculateCommissions = async () => {
+  const handleCalculateCommissions = async (force = false) => {
     if (!selectedMonth || !selectedYear) {
       setError('Please select both month and year');
       return;
@@ -157,10 +156,40 @@ export default function CommissionCalculator() {
         body: {
           month: selectedMonth,
           year: parseInt(selectedYear),
+          ...(force ? { force: true } : {}),
         },
       });
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        // A non-2xx arrives as FunctionsHttpError, whose .message is the
+        // generic "Edge Function returned a non-2xx status code". The useful
+        // text is in the response body, so read it before deciding what to
+        // show — otherwise the paid-month guard's explanation is lost.
+        let body: any = null;
+        try {
+          body = await (response.error as any)?.context?.json?.();
+        } catch {
+          // Body already consumed or not JSON — fall through to the generic path.
+        }
+
+        if (body?.code === 'month_already_paid') {
+          // Never force silently: recalculating a settled month is the user's
+          // call, and the server preserves paid/paid_date/notes when they say yes.
+          const proceed = window.confirm(
+            `${body.error}\n\nRecalculate anyway? The paid flag, paid date and notes ` +
+              `will be preserved, but the commission amounts and per-ATM details ` +
+              `for this month will be rebuilt.`,
+          );
+          if (!proceed) {
+            setError(body.error);
+            return;
+          }
+          setIsCalculating(false);
+          return handleCalculateCommissions(true);
+        }
+
+        throw new Error(body?.error || response.error.message || 'Failed to calculate commissions');
+      }
 
       setSuccessMessage(
         `Commissions calculated successfully! ${response.data.commissionsCreated} commission records created.`
@@ -288,11 +317,9 @@ export default function CommissionCalculator() {
 
       // Fetch all transactions for this sales rep's ATMs in the given month
       const { data: transactions, error: txError } = await supabase
-        .from('transactions')
+        .from('financial_transactions')
         .select('id, date, atm_id, atm_name, customer_first_name, customer_last_name, ticker, sale, fee, platform')
         .in('atm_id', atmIds)
-        // Financial surface: completed only (status rules in transaction-status.ts).
-        .in('status', FINANCIAL_STATUSES)
         .gte('date', startDate.toISOString())
         .lte('date', endDate.toISOString())
         .order('date', { ascending: true });
@@ -708,7 +735,7 @@ export default function CommissionCalculator() {
                 </Select>
               </div>
 
-              <Button onClick={handleCalculateCommissions} disabled={isCalculating}>
+              <Button onClick={() => handleCalculateCommissions()} disabled={isCalculating}>
                 <Calculator className="w-4 h-4 mr-2" />
                 {isCalculating ? 'Calculating...' : 'Calculate'}
               </Button>

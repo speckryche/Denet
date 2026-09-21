@@ -2,7 +2,6 @@
 // modules beside this one; this file only reads and writes rows.
 
 import { supabase } from '@/lib/supabase';
-import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { monthEndDate, monthStartDate } from './period';
 import type {
   AccountKey,
@@ -89,9 +88,8 @@ export async function fetchTransactionsForRange(
   const all: SalesTxLike[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
-      .from('transactions')
+      .from('financial_transactions')
       .select('id, atm_id, date, ticker, status, sale, fee, sent, bitstop_fee')
-      .in('status', FINANCIAL_STATUSES)
       .gte('date', fromDate)
       .lte('date', `${toDate} 23:59:59`)
       .range(from, from + PAGE - 1);
@@ -102,20 +100,35 @@ export async function fetchTransactionsForRange(
   return all;
 }
 
-// Non-completed rows are counted (not listed) for the INFO check, so a count
-// query is enough and keeps the payload small.
+// Rows excluded from the financial surface, counted (not listed) for the INFO
+// check, so a count query is enough and keeps the payload small.
+//
+// Derived as (all rows in range) − (financial rows in range) rather than by
+// inverting the status filter. Exclusion is no longer a property of `status`
+// alone: a refund override removes a transaction that is still stored as
+// 'completed'. Inverting the status list would count the non-completed rows and
+// silently miss every refunded one, so the INFO check would under-report
+// exactly the exclusions a human most needs to know about. Subtracting the view
+// from the base table tracks whatever `financial_transactions` decides, for
+// free, including any future rule.
 export async function countNonCompletedInRange(
   fromDate: string,
   toDate: string,
 ): Promise<number> {
-  const { count, error } = await supabase
-    .from('transactions')
-    .select('id', { count: 'exact', head: true })
-    .not('status', 'in', `(${FINANCIAL_STATUSES.join(',')})`)
-    .gte('date', fromDate)
-    .lte('date', `${toDate} 23:59:59`);
-  if (error) throw error;
-  return count || 0;
+  const inRange = (q: any) =>
+    q.gte('date', fromDate).lte('date', `${toDate} 23:59:59`);
+
+  const { count: totalCount, error: totalError } = await inRange(
+    supabase.from('transactions').select('id', { count: 'exact', head: true }),
+  );
+  if (totalError) throw totalError;
+
+  const { count: financialCount, error: financialError } = await inRange(
+    supabase.from('financial_transactions').select('id', { count: 'exact', head: true }),
+  );
+  if (financialError) throw financialError;
+
+  return Math.max(0, (totalCount || 0) - (financialCount || 0));
 }
 
 export async function fetchProfiles(): Promise<SalesProfileLike[]> {

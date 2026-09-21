@@ -19,7 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Save, Plus, Trash2, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, Plus, Trash2, TrendingUp, ChevronDown, ChevronRight, Upload, ClipboardList } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
+import ReportUploadDialog from './ReportUploadDialog';
+import AuditItemsDialog from './AuditItemsDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -33,6 +37,7 @@ interface BitstopCommission {
   commission_percent: number;
   paid: boolean;
   date_paid: string | null;
+  amount_received: number | null;
   notes: string | null;
 }
 
@@ -47,7 +52,13 @@ const MONTH_ORDER: { [key: string]: number } = {
 };
 
 export default function BitstopCommissions() {
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
   const [records, setRecords] = useState<BitstopCommission[]>([]);
+  // Open-audit counts per month row, for the badge in the Audit column.
+  const [openCounts, setOpenCounts] = useState<Record<string, number>>({});
+  const [uploadFor, setUploadFor] = useState<BitstopCommission | null>(null);
+  const [auditFor, setAuditFor] = useState<BitstopCommission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -63,6 +74,25 @@ export default function BitstopCommissions() {
         .order('year', { ascending: false });
 
       if (error) throw error;
+
+      // Open-audit counts drive the per-month badge. Fetched as one pass over
+      // open items rather than a count per row, so the page still makes two
+      // queries no matter how many months exist.
+      const { data: openItems, error: itemsError } = await supabase
+        .from('bitstop_audit_items')
+        .select('commission_id')
+        .eq('status', 'open');
+      if (itemsError) {
+        // A badge failing to load must not blank the page it sits on.
+        console.error('Error fetching audit item counts:', itemsError);
+        setOpenCounts({});
+      } else {
+        const counts: Record<string, number> = {};
+        (openItems || []).forEach((r: any) => {
+          counts[r.commission_id] = (counts[r.commission_id] || 0) + 1;
+        });
+        setOpenCounts(counts);
+      }
 
       // Sort by year (desc) then by month (desc)
       const sorted = (data || []).sort((a, b) => {
@@ -186,6 +216,7 @@ export default function BitstopCommissions() {
         commission_percent: record.commission_percent,
         paid: record.paid,
         date_paid: record.date_paid,
+        amount_received: record.amount_received,
         notes: record.notes,
         updated_at: new Date().toISOString()
       }));
@@ -330,8 +361,10 @@ export default function BitstopCommissions() {
                                   <TableHead className="min-w-[100px]">Comm %</TableHead>
                                   <TableHead className="min-w-[100px]">Paid</TableHead>
                                   <TableHead className="min-w-[120px]">Date Paid</TableHead>
+                                  <TableHead className="min-w-[130px]">Amount Received</TableHead>
+                                  <TableHead className="min-w-[110px]">Audit</TableHead>
                                   <TableHead className="min-w-[200px]">Notes</TableHead>
-                                  <TableHead className="min-w-[80px]">Actions</TableHead>
+                                  <TableHead className="min-w-[120px]">Actions</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -431,6 +464,48 @@ export default function BitstopCommissions() {
                           />
                         </TableCell>
                         <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={record.amount_received ?? ''}
+                            onChange={(e) =>
+                              handleFieldChange(
+                                record.id,
+                                'amount_received',
+                                e.target.value === '' ? null : parseFloat(e.target.value),
+                              )
+                            }
+                            placeholder="—"
+                            className="bg-card border-white/10"
+                          />
+                          {/* Report total vs what Bitstop actually deposited. Part 2
+                              subtracts expected clawbacks from the expected figure. */}
+                          {record.amount_received != null &&
+                            record.commission_amount != null &&
+                            Math.abs(record.amount_received - record.commission_amount) > 0.01 && (
+                              <div className="text-xs text-amber-400 mt-1">
+                                {record.amount_received > record.commission_amount ? '+' : ''}
+                                {(record.amount_received - record.commission_amount).toLocaleString('en-US', {
+                                  style: 'currency', currency: 'USD',
+                                })}{' '}vs report
+                              </div>
+                            )}
+                        </TableCell>
+                        <TableCell>
+                          {openCounts[record.id] > 0 ? (
+                            <Badge
+                              className="bg-red-500/15 text-red-400 border-red-500/30 cursor-pointer"
+                              onClick={() => setAuditFor(record)}
+                            >
+                              {openCounts[record.id]} open
+                            </Badge>
+                          ) : record.received_report ? (
+                            <span className="text-xs text-green-400">clear</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <Textarea
                             value={record.notes || ''}
                             onChange={(e) => handleFieldChange(record.id, 'notes', e.target.value || null)}
@@ -440,14 +515,37 @@ export default function BitstopCommissions() {
                           />
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteRecord(record.id)}
-                            className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setUploadFor(record)}
+                                title="Upload Bitstop report (.xlsx)"
+                                className="text-secondary hover:text-secondary/80"
+                              >
+                                <Upload className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setAuditFor(record)}
+                              title="View audit results"
+                            >
+                              <ClipboardList className="w-4 h-4" />
+                            </Button>
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteRecord(record.id)}
+                                className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                                     </TableCell>
                                   </TableRow>
                                 ))}
@@ -503,6 +601,19 @@ export default function BitstopCommissions() {
           </CardContent>
         </Card>
       </div>
+      <ReportUploadDialog
+        monthRow={uploadFor as any}
+        open={uploadFor !== null}
+        onOpenChange={(o) => { if (!o) setUploadFor(null); }}
+        onImported={fetchData}
+      />
+      <AuditItemsDialog
+        monthRow={auditFor as any}
+        open={auditFor !== null}
+        onOpenChange={(o) => { if (!o) setAuditFor(null); }}
+        onChanged={fetchData}
+      />
+
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -7,7 +8,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { countsFinancial, formatStatusLabel, statusBadgeClass } from '@/lib/transaction-status';
+import { formatStatusLabel, statusBadgeClass } from '@/lib/transaction-status';
+import { countsFinancialTx } from '@/lib/refund-overrides';
+import { useAuth } from '@/contexts/AuthContext';
+import MarkRefundedDialog, { type RefundTarget } from '@/components/refunds/MarkRefundedDialog';
+import { Button } from '@/components/ui/button';
+import { Undo2 } from 'lucide-react';
+import { useRefundedIds } from '@/lib/refund-overrides-data';
 
 export interface TransactionRow {
   id: string;
@@ -143,11 +150,17 @@ export default function TransactionsTable({
   feeOverrides,
   overrideMonthRange,
 }: TransactionsTableProps) {
-  // Totals count COMPLETED-only rows (financial surface — see
-  // transaction-status.ts). Non-completed rows are shown greyed/tagged below but
-  // never contribute to a sum. Rows with no status are treated as completed.
-  const isCounted = (row: TransactionRow) =>
-    row.status == null || countsFinancial(row.status);
+  // Totals count only rows on the financial surface — completed AND not
+  // refund-overridden, the same rule financial_transactions applies in SQL.
+  // Excluded rows are shown greyed/tagged below but never contribute to a sum.
+  // Rows with no status are treated as completed.
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
+  // Bumped after a refund is recorded so the hook re-reads and the row greys out.
+  const [refundNonce, setRefundNonce] = useState(0);
+  const [refundTarget, setRefundTarget] = useState<RefundTarget | null>(null);
+  const refundedIds = useRefundedIds(refundNonce);
+  const isCounted = (row: TransactionRow) => countsFinancialTx(row, refundedIds);
   const completedRows = rows.filter(isCounted);
   const nonCompletedCount = rows.length - completedRows.length;
 
@@ -198,18 +211,19 @@ export default function TransactionsTable({
             <TableHead className="text-right font-bold"><SortButton field="sale" label="Sale" align="right" /></TableHead>
             <TableHead className="text-right font-bold"><SortButton field="fee" label="Fee" align="right" /></TableHead>
             <TableHead className="text-right font-bold"><SortButton field="bitstop_fee" label="Bitstop Fee" align="right" /></TableHead>
+            {isAdmin && <TableHead className="w-[60px] font-bold" />}
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={isAdmin ? 10 : 9} className="text-center text-muted-foreground">
                 Loading...
               </TableCell>
             </TableRow>
           ) : rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={isAdmin ? 10 : 9} className="text-center text-muted-foreground">
                 {emptyMessage}
               </TableCell>
             </TableRow>
@@ -252,6 +266,24 @@ export default function TransactionsTable({
                   <TableCell className="text-right font-mono">
                     ${Math.round(row.bitstop_fee).toLocaleString('en-US')}
                   </TableCell>
+                  {isAdmin && (
+                    <TableCell>
+                      {!refundedIds.has(row.id) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Mark this sale as refunded"
+                          onClick={() => setRefundTarget({
+                            id: row.id, atm_id: row.atm_id, date: row.date,
+                            sale: row.sale, fee: row.fee, platform: row.platform,
+                            atm_name: row.atm_name,
+                          })}
+                        >
+                          <Undo2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
                 );
               })}
@@ -282,6 +314,13 @@ export default function TransactionsTable({
           )}
         </TableBody>
       </Table>
+
+      <MarkRefundedDialog
+        target={refundTarget}
+        open={refundTarget !== null}
+        onOpenChange={(o) => { if (!o) setRefundTarget(null); }}
+        onDone={() => setRefundNonce((n) => n + 1)}
+      />
       {nonCompletedCount > 0 && (
         <p className="text-xs text-muted-foreground mt-2">
           {nonCompletedCount.toLocaleString('en-US')} non-completed transaction{nonCompletedCount === 1 ? '' : 's'} shown greyed and tagged — excluded from totals.

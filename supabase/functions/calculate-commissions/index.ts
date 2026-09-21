@@ -6,6 +6,8 @@ import { FINANCIAL_STATUSES } from '../_shared/transaction-status.ts';
 interface CommissionRequest {
   month: string;
   year: number;
+  /** Recalculate even if the month is already marked paid, preserving paid/paid_date/notes. */
+  force?: boolean;
 }
 
 interface ATMData {
@@ -40,7 +42,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { month, year } = (await req.json()) as CommissionRequest;
+    const { month, year, force = false } = (await req.json()) as CommissionRequest;
 
     if (!month || !year) {
       return new Response(
@@ -378,22 +380,81 @@ Deno.serve(async (req) => {
     const monthPadded = month.padStart(2, '0');
     const monthYearString = `${year}-${monthPadded}-01`;
 
-    const commissionsToInsert = Array.from(commissionsByRep.values()).map((data) => ({
-      sales_rep_id: data.sales_rep_id,
-      month_year: monthYearString,
-      total_sales: data.total_sales,
-      total_fees: data.total_fees,
-      bitstop_fees: data.bitstop_fees,
-      rent: data.rent,
-      mgmt_rps: data.mgmt_rps,
-      mgmt_rep: data.mgmt_rep,
-      total_net_profit: data.total_net_profit,
-      commission_amount: data.commission_amount,
-      flat_fee_amount: data.flat_fee_amount,
-      total_commission: data.commission_amount + data.flat_fee_amount,
-      atm_count: data.atm_count,
-      paid: false,
-    }));
+    // PAID-MONTH GUARD
+    //
+    // The upsert below is keyed on (sales_rep_id, month_year), so recalculating
+    // a month REWRITES rows that may already have been paid out. Two ways that
+    // used to destroy settled state silently:
+    //   1. `paid: false` was hardcoded in the payload, so a recalculation
+    //      un-paid a paid month. `paid_date` was NOT in the payload, so
+    //      PostgREST left it populated — the row ended up paid=false with a
+    //      non-null paid_date, a state nothing in the UI can produce.
+    //   2. commission_details for the month are hard-deleted and reinserted,
+    //      losing the detail history behind a payment that already went out.
+    //
+    // This matters far more now that refund overrides exist: excluding a
+    // refunded sale changes total_fees, which changes net profit, which changes
+    // the commission on a month that may already be settled. The agreed policy
+    // is that paid periods are never reopened — corrections flow forward.
+    //
+    // So: refuse by default, and when the caller explicitly forces a
+    // recalculation, carry the existing paid/paid_date/notes through instead of
+    // resetting them.
+    const { data: existingCommissions, error: existingError } = await supabase
+      .from('commissions')
+      .select('id, sales_rep_id, paid, paid_date, notes')
+      .eq('month_year', monthYearString);
+
+    if (existingError) throw existingError;
+
+    const paidRows = (existingCommissions || []).filter((c: any) => c.paid === true);
+
+    if (paidRows.length > 0 && !force) {
+      const names = paidRows
+        .map((c: any) => repMap.get(c.sales_rep_id)?.name || c.sales_rep_id)
+        .join(', ');
+      return new Response(
+        JSON.stringify({
+          error:
+            `${month}/${year} is already marked paid for: ${names}. ` +
+            `Recalculating would rewrite a settled payout. Mark the month unpaid first, ` +
+            `or re-send this request with { "force": true } to recalculate while ` +
+            `preserving the paid flag, paid date and notes.`,
+          code: 'month_already_paid',
+          paidSalesRepIds: paidRows.map((c: any) => c.sales_rep_id),
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 409 },
+      );
+    }
+
+    // Settled state to carry through a forced recalculation, per rep.
+    const existingByRep = new Map(
+      (existingCommissions || []).map((c: any) => [c.sales_rep_id, c]),
+    );
+
+    const commissionsToInsert = Array.from(commissionsByRep.values()).map((data) => {
+      const prior = existingByRep.get(data.sales_rep_id);
+      return {
+        sales_rep_id: data.sales_rep_id,
+        month_year: monthYearString,
+        total_sales: data.total_sales,
+        total_fees: data.total_fees,
+        bitstop_fees: data.bitstop_fees,
+        rent: data.rent,
+        mgmt_rps: data.mgmt_rps,
+        mgmt_rep: data.mgmt_rep,
+        total_net_profit: data.total_net_profit,
+        commission_amount: data.commission_amount,
+        flat_fee_amount: data.flat_fee_amount,
+        total_commission: data.commission_amount + data.flat_fee_amount,
+        atm_count: data.atm_count,
+        // Never reset a settled month. A brand-new row starts unpaid; an
+        // existing one keeps whatever it had.
+        paid: prior?.paid ?? false,
+        paid_date: prior?.paid_date ?? null,
+        notes: prior?.notes ?? null,
+      };
+    });
 
     if (commissionsToInsert.length > 0) {
       const { data: insertedCommissions, error: insertError } = await supabase

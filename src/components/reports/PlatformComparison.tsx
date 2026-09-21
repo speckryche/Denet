@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import {
   Card,
   CardContent,
@@ -221,10 +220,8 @@ export default function PlatformComparison() {
       // ── 2. Fetch transactions ──
       let allTransactions: any[] = [];
       const { count } = await supabase
-        .from('transactions')
+        .from('financial_transactions')
         .select('*', { count: 'exact', head: true })
-        // Financial surface: completed only (status rules in transaction-status.ts).
-        .in('status', FINANCIAL_STATUSES)
         .gte('date', startDate)
         .lte('date', endDate);
 
@@ -234,11 +231,10 @@ export default function PlatformComparison() {
         const from = i * batchSize;
         const to = from + batchSize - 1;
         const { data, error: txError } = await supabase
-          .from('transactions')
+          .from('financial_transactions')
           .select(
             'id, atm_id, atm_name, sale, fee, bitstop_fee, sent, platform, date'
           )
-          .in('status', FINANCIAL_STATUSES)
           .gte('date', startDate)
           .lte('date', endDate)
           .range(from, to);

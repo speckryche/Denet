@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/select";
 import { supabase } from '@/lib/supabase';
 import { findCtrQualifyingGroups } from '@/lib/ctr';
-import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { DateRange } from 'react-day-picker';
 
 export default function Dashboard() {
@@ -116,10 +115,8 @@ export default function Dashboard() {
       };
 
       let countQuery = supabase
-        .from('transactions')
-        .select('*', { count: 'exact', head: true })
-        // Financial surface: completed only (status rules in transaction-status.ts).
-        .in('status', FINANCIAL_STATUSES);
+        .from('financial_transactions')
+        .select('*', { count: 'exact', head: true });
 
       if (selectedPlatform !== 'all') {
         countQuery = countQuery.eq('platform', selectedPlatform);
@@ -154,10 +151,8 @@ export default function Dashboard() {
         const to = from + batchSize - 1;
 
         let query = supabase
-          .from('transactions')
-          .select('sale, fee, bitstop_fee, sent, platform, atm_id, date')
-          // Financial surface: completed only (status rules in transaction-status.ts).
-          .in('status', FINANCIAL_STATUSES);
+          .from('financial_transactions')
+          .select('sale, fee, bitstop_fee, sent, platform, atm_id, date');
 
         if (selectedPlatform !== 'all') {
           query = query.eq('platform', selectedPlatform);

@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { findProfileForTx } from '@/lib/atm-profile';
-import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -190,9 +189,8 @@ export default function ATMMonthlySales() {
       // Get total count (completed only — the sales year list should reflect
       // years with real sales; status rules in transaction-status.ts).
       const { count } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact', head: true })
-        .in('status', FINANCIAL_STATUSES);
+        .from('financial_transactions')
+        .select('*', { count: 'exact', head: true });
 
       // Fetch in batches to get ALL transaction dates
       const batchSize = 1000;
@@ -204,9 +202,8 @@ export default function ATMMonthlySales() {
         const to = from + batchSize - 1;
 
         const { data, error } = await supabase
-          .from('transactions')
+          .from('financial_transactions')
           .select('date')
-          .in('status', FINANCIAL_STATUSES)
           .range(from, to);
 
         if (error) throw error;
@@ -241,9 +238,8 @@ export default function ATMMonthlySales() {
     try {
       // First, get the count
       let countQuery = supabase
-        .from('transactions')
+        .from('financial_transactions')
         .select('*', { count: 'exact', head: true })
-        .in('status', FINANCIAL_STATUSES)
         .gte('date', `${selectedYear}-01-01`)
         .lte('date', `${selectedYear}-12-31`);
 
@@ -264,9 +260,8 @@ export default function ATMMonthlySales() {
         const to = from + batchSize - 1;
 
         let query = supabase
-          .from('transactions')
+          .from('financial_transactions')
           .select('date, sale, platform, atm_id')
-          .in('status', FINANCIAL_STATUSES)
           .gte('date', `${selectedYear}-01-01`)
           .lte('date', `${selectedYear}-12-31`)
           .range(from, to);

@@ -12,8 +12,7 @@ import {
   Upload,
   Wallet,
   Clock,
-  BookOpen,
-} from 'lucide-react';
+  BookOpen, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
@@ -92,6 +91,13 @@ const navItems: NavItem[] = [
     path: '/qbo-entries',
     icon: <BookOpen className="w-5 h-5" />,
     title: 'QBO Entries',
+    adminOnly: true
+  },
+  {
+    name: 'Refunds',
+    path: '/refunds',
+    icon: <Undo2 className="w-5 h-5" />,
+    title: 'Refunds',
     adminOnly: true
   },
   {

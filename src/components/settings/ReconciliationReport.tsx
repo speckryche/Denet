@@ -26,7 +26,6 @@ import {
   type ReconProfile,
   type OrphanReason,
 } from '@/lib/reconciliation';
-import { FINANCIAL_STATUSES } from '@/lib/transaction-status';
 
 type FilterMode = 'actionable' | 'mismatch' | 'before_install' | 'all';
 
@@ -55,10 +54,8 @@ export function ReconciliationReport() {
     // Paginate past the 1000-row PostgREST cap until a short page is returned.
     for (;;) {
       const { data, error: err } = await supabase
-        .from('transactions')
+        .from('financial_transactions')
         .select('id, atm_id, date, platform, sale')
-        // Financial surface: completed only (status rules in transaction-status.ts).
-        .in('status', FINANCIAL_STATUSES)
         .order('id', { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
       if (err) throw err;
