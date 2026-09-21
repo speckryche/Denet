@@ -5,7 +5,7 @@ import { computeSalesJe } from '@/lib/qbo/sales-je';
 import { salesChecks, coinbaseChecks, checkSalesFreshness, hasBlocker } from '@/lib/qbo/checks';
 import { detectDrift, monthStatus } from '@/lib/qbo/snapshot';
 import { fmtAmount } from '@/lib/qbo/money';
-import type { AccountMap, CryptoAsset } from '@/lib/qbo/types';
+import type { AccountMap, CryptoAsset, CoinbaseDetailRow, CoinbaseBalanceRow } from '@/lib/qbo/types';
 
 // Point at a real Coinbase Prime monthly ZIP. The sample is intentionally not
 // committed — it holds account data — so pass your own path:
@@ -102,8 +102,19 @@ await expectThrow('unparseable period in filename', () => parseDetailCsv(detailT
 await expectThrow('mismatched periods between files', () => parseStatementEntries({ 'detail_2026-08-01_2026-08-31.csv': detailText, 'asset_balances_2026-07-01_2026-07-31.csv': balText }), 'different periods');
 
 console.log('\n=== 6. Out-of-month + SELL rows block ===');
-const cbWrongMonth = computeCoinbaseJe({ month: '2026-07', rows: stmt.detail, balances: stmt.balances, overrides: [], assets: ASSETS, accounts: ACCOUNTS });
+// A row INSIDE August's statement but dated in September — the genuine
+// "this upload covers a different period" signal. (Selecting a month whose
+// statement was never uploaded is NOT this: it yields no rows at all, and
+// hasCoinbaseData suppresses the checks entirely. Asserting the old way —
+// month '2026-07' against August's statement — is what let every statement
+// block every other one; see section 10.)
+const strayAug = stmt.detail.map((r, i) => i === 0 ? { ...r, dateCompleted: '2026-09-02T12:00:00.000Z' } : r);
+const cbWrongMonth = computeCoinbaseJe({ month: '2026-08', rows: strayAug, balances: stmt.balances, overrides: [], assets: ASSETS, accounts: ACCOUNTS });
 ok('rows outside the month block', coinbaseChecks(cbWrongMonth).some(c => c.severity === 'BLOCK' && c.message.includes('outside the selected month')));
+const cbMissingStatement = computeCoinbaseJe({ month: '2026-07', rows: stmt.detail, balances: stmt.balances, overrides: [], assets: ASSETS, accounts: ACCOUNTS });
+ok('a month with no statement of its own reports nothing, not a block',
+   cbMissingStatement.outOfMonthRows.length === 0 && cbMissingStatement.buys.length === 0,
+   `${cbMissingStatement.outOfMonthRows.length} out-of-month, ${cbMissingStatement.buys.length} buys`);
 const withSell = stmt.detail.map(r => r.activityDescription.startsWith('BUY') && r.asset === 'USD' ? { ...r, activityDescription: 'SELL BTC/USD - LIMIT' } : r);
 ok('SELL rows block', coinbaseChecks(computeCoinbaseJe({ month: '2026-08', rows: withSell, balances: stmt.balances, overrides: [], assets: ASSETS, accounts: ACCOUNTS })).some(c => c.severity === 'BLOCK' && c.message.includes('SELL')));
 const noBtc = computeCoinbaseJe({ month: '2026-08', rows: stmt.detail, balances: stmt.balances, overrides: [], accounts: ACCOUNTS, assets: ASSETS.filter(a => a.symbol !== 'BTC') });
@@ -168,6 +179,76 @@ ok('month status: entered → drifted', monthStatus({ hasData: true, hasBlockers
 ok('month status: ready / blocked / no data', monthStatus({ hasData: true, hasBlockers: false, snapshotExists: false, drifted: false }) === 'ready'
   && monthStatus({ hasData: true, hasBlockers: true, snapshotExists: false, drifted: false }) === 'blocked'
   && monthStatus({ hasData: false, hasBlockers: false, snapshotExists: false, drifted: false }) === 'no_data');
+
+console.log('\n=== 10. Two statements loaded must not block each other ===');
+// Regression: the out-of-month BLOCK counted rows from EVERY uploaded
+// statement, not just the selected month's. With Feb and Aug both present,
+// February reported August's rows as "dated outside the selected month" and
+// August reported February's — each statement internally clean, each blocked
+// purely by the other's existence.
+//
+// A synthetic February statement, shaped like the real one: period_start /
+// period_end in Feb, rows dated in Feb.
+const febRow = (n: number, asset: string, amount: number, fee: number, desc: string): CoinbaseDetailRow => ({
+  rowHash: `feb-${n}`, periodStart: '2026-02-01', periodEnd: '2026-02-28',
+  dateCompleted: `2026-02-${String(10 + n).padStart(2, '0')}T12:00:00.000Z`,
+  activityId: `feb-act-${n}`, activityType: 'Order',
+  activityDescription: desc, asset, status: 'FILLED',
+  amount, fee, totalBalanceImpact: -(amount + fee),
+  wallet: 'w', walletType: 'trading', walletId: 'wid', portfolio: 'p',
+  portfolioId: 'pid', entity: 'e', sourceFilename: 'detail_2026-02-01_2026-02-28.csv',
+});
+const febRows: CoinbaseDetailRow[] = [
+  febRow(1, 'USD', 1000, 5, 'BUY BTC/USD - LIMIT'),
+  febRow(2, 'BTC', 0.02, 0, 'BUY BTC/USD - LIMIT'),
+];
+const febBalances: CoinbaseBalanceRow[] = [{
+  periodStart: '2026-02-01', periodEnd: '2026-02-28', asset: 'USD',
+  portfolio: 'p', portfolioId: 'pid',
+  startingBalance: 5000, endingBalance: 5000 - 1005,
+  startingBalanceUsd: null, endingBalanceUsd: null,
+  sourceFilename: 'asset_balances_2026-02-01_2026-02-28.csv',
+}];
+
+// BOTH statements in one array, exactly as fetchCoinbaseRowsForMonths returns them.
+const bothRows = [...stmt.detail, ...febRows];
+const bothBalances = [...stmt.balances, ...febBalances];
+
+const augBoth = computeCoinbaseJe({
+  month: '2026-08', rows: bothRows,
+  balances: bothBalances.filter(b => b.periodStart.slice(0, 7) === '2026-08'),
+  overrides: [], assets: ASSETS, accounts: ACCOUNTS,
+});
+const febBoth = computeCoinbaseJe({
+  month: '2026-02', rows: bothRows,
+  balances: bothBalances.filter(b => b.periodStart.slice(0, 7) === '2026-02'),
+  overrides: [], assets: ASSETS, accounts: ACCOUNTS,
+});
+
+ok('August sees no out-of-month rows with Feb also loaded', augBoth.outOfMonthRows.length === 0, `${augBoth.outOfMonthRows.length}`);
+ok('February sees no out-of-month rows with Aug also loaded', febBoth.outOfMonthRows.length === 0, `${febBoth.outOfMonthRows.length}`);
+ok('neither month is blocked by the other', !hasBlocker(coinbaseChecks(augBoth)) && !hasBlocker(coinbaseChecks(febBoth)),
+   `aug=${coinbaseChecks(augBoth).filter(c => c.severity === 'BLOCK').map(c => c.id).join(',') || 'none'} feb=${coinbaseChecks(febBoth).filter(c => c.severity === 'BLOCK').map(c => c.id).join(',') || 'none'}`);
+
+// Each month still computes only its own statement.
+ok('August JE unchanged by February being loaded',
+   augBoth.je.totalDebits === cb.je.totalDebits && augBoth.je.totalCredits === cb.je.totalCredits,
+   `${fmtAmount(augBoth.je.totalCredits)} vs ${fmtAmount(cb.je.totalCredits)}`);
+ok('February JE reflects only February', febBoth.buys.length === 1 && febBoth.je.totalCredits === 1005,
+   `${febBoth.buys.length} buy(s), credit ${fmtAmount(febBoth.je.totalCredits)}`);
+ok("February's USD tie-out is clean", Math.abs(febBoth.usdTieOut.difference) < 0.005, fmtAmount(febBoth.usdTieOut.difference));
+
+// The check must still fire for a genuine offender: a row INSIDE February's
+// statement but dated outside February.
+const strayRow = { ...febRow(9, 'USD', 50, 0, 'BUY BTC/USD - LIMIT'), dateCompleted: '2026-03-02T12:00:00.000Z' };
+const febStray = computeCoinbaseJe({
+  month: '2026-02', rows: [...bothRows, strayRow],
+  balances: bothBalances.filter(b => b.periodStart.slice(0, 7) === '2026-02'),
+  overrides: [], assets: ASSETS, accounts: ACCOUNTS,
+});
+ok('a row inside the statement but dated outside the month still BLOCKS',
+   febStray.outOfMonthRows.length === 1 && hasBlocker(coinbaseChecks(febStray)),
+   `${febStray.outOfMonthRows.length} out-of-month`);
 
 console.log(failures ? `\n${failures} FAILURES` : '\nAll harness checks passed.');
 process.exit(failures ? 1 : 0);

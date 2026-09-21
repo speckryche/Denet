@@ -206,7 +206,11 @@ export default function QboEntries() {
         accounts,
       });
 
-      const hasCoinbaseData = coinbaseRows.some((r) => r.dateCompleted.slice(0, 7) === month);
+      // Scoped by statement period, matching computeCoinbaseJe. Keyed on
+      // dateCompleted this would report "has data" for a month whose statement
+      // was never uploaded, purely because a neighbouring statement happened to
+      // contain a row dated in it — and then render checks for an empty JE.
+      const hasCoinbaseData = coinbaseRows.some((r) => r.periodStart.slice(0, 7) === month);
       const salesCheckList: Check[] = salesChecks({
         ...sales,
         excludedNonCompletedCount: nonCompletedByMonth[month] ?? sales.excludedNonCompletedCount,

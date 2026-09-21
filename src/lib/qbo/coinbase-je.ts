@@ -124,8 +124,30 @@ export function computeCoinbaseJe(input: {
     assets.filter((a) => a.active).map((a) => [a.symbol.toUpperCase(), a]),
   );
 
-  const inMonth = rows.filter((r) => monthOfUtcIso(r.dateCompleted) === month);
-  const outOfMonthRows = rows.filter((r) => monthOfUtcIso(r.dateCompleted) !== month);
+  // Scope to THIS month's statement before anything else.
+  //
+  // `rows` is every Coinbase row loaded for the whole backlog, not one upload:
+  // fetchCoinbaseRowsForMonths pulls a date range spanning every month in view.
+  // Each detail row carries the period_start/period_end of the statement it was
+  // imported from, and that is the only thing that distinguishes one upload
+  // from another.
+  //
+  // Without this filter `outOfMonthRows` below took every row in the range that
+  // was not in the selected month — i.e. the entire contents of every OTHER
+  // statement — and blocked the entry with them. With Feb and Aug both
+  // uploaded, February reported August's 11 rows as "dated outside the selected
+  // month" and August reported February's 9, even though each statement was
+  // internally clean. The two blocked each other purely by coexisting.
+  //
+  // period_start/period_end are NOT NULL (migration 20260921200107), so every
+  // row is attributable to exactly one statement.
+  const statementRows = rows.filter((r) => r.periodStart.slice(0, 7) === month);
+
+  const inMonth = statementRows.filter((r) => monthOfUtcIso(r.dateCompleted) === month);
+  // A genuine out-of-month row: inside this month's own statement, but with a
+  // UTC completion date outside the month. That is the real "the upload covers
+  // a different period than the month selected" signal.
+  const outOfMonthRows = statementRows.filter((r) => monthOfUtcIso(r.dateCompleted) !== month);
 
   const { buys, undescribed } = extractBuys(inMonth, overrides, assets);
   const sellRows = inMonth.filter(isSellRow);
