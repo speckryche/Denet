@@ -12,11 +12,13 @@ import {
   Upload,
   Wallet,
   Clock,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { usePendingCount } from '@/components/pending/pending-count';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavItem {
   name: string;
@@ -25,6 +27,8 @@ interface NavItem {
   title: string;
   // When true, the actionable pending-resolution count renders as a badge.
   showPendingBadge?: boolean;
+  // When true, the item is hidden from non-admins (the page blocks them too).
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -84,6 +88,13 @@ const navItems: NavItem[] = [
     title: 'Liquidity'
   },
   {
+    name: 'QBO Entries',
+    path: '/qbo-entries',
+    icon: <BookOpen className="w-5 h-5" />,
+    title: 'QBO Entries',
+    adminOnly: true
+  },
+  {
     name: 'Settings',
     path: '/settings',
     icon: <Settings className="w-5 h-5" />,
@@ -93,6 +104,7 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const { isCollapsed, setIsCollapsed } = useSidebar();
+  const { role } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   // null while loading or on error — the badge hides rather than showing a
@@ -135,7 +147,9 @@ export function Sidebar() {
 
       {/* Navigation Items */}
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItems
+          .filter((item) => !item.adminOnly || role === 'admin')
+          .map((item) => {
           const active = isActive(item.path);
           const badgeCount =
             item.showPendingBadge && pendingCount !== null && pendingCount > 0
