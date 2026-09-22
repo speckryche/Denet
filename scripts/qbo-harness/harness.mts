@@ -3,7 +3,7 @@ import { parseCoinbaseZip, parseStatementEntries, parseDetailCsv, CoinbaseParseE
 import { computeCoinbaseJe } from '@/lib/qbo/coinbase-je';
 import { computeSalesJe } from '@/lib/qbo/sales-je';
 import { salesChecks, coinbaseChecks, checkSalesFreshness, hasBlocker } from '@/lib/qbo/checks';
-import { detectDrift, monthStatus } from '@/lib/qbo/snapshot';
+import { detectDrift, monthStatus, monthStatusLabel } from '@/lib/qbo/snapshot';
 import { fmtAmount, fmtQuantity } from '@/lib/qbo/money';
 import type { AccountMap, CryptoAsset, CoinbaseDetailRow, CoinbaseBalanceRow } from '@/lib/qbo/types';
 
@@ -175,10 +175,42 @@ const drift = detectDrift(snap, afterStatusChange.je);
 ok('late status change shows as drift', drift.drifted && drift.diffs.length > 0);
 for (const d of drift.diffs) console.log(`   ${d.kind.padEnd(8)} ${d.account.padEnd(24)} DR ${fmtAmount(d.snapshotDebit)} → ${fmtAmount(d.currentDebit)}   CR ${fmtAmount(d.snapshotCredit)} → ${fmtAmount(d.currentCredit)}`);
 ok('machine cash delta is +300', drift.diffs.find(d => d.account === 'BTC Machine Cash')?.debitDelta === 300);
-ok('month status: entered → drifted', monthStatus({ hasData: true, hasBlockers: false, snapshotExists: true, drifted: true }) === 'drifted');
-ok('month status: ready / blocked / no data', monthStatus({ hasData: true, hasBlockers: false, snapshotExists: false, drifted: false }) === 'ready'
-  && monthStatus({ hasData: true, hasBlockers: true, snapshotExists: false, drifted: false }) === 'blocked'
-  && monthStatus({ hasData: false, hasBlockers: false, snapshotExists: false, drifted: false }) === 'no_data');
+const ms = (over: Partial<Parameters<typeof monthStatus>[0]> = {}) => monthStatus({
+  hasData: true, hasBlockers: false, drifted: false,
+  requiredJes: ['sales', 'coinbase'], markedJes: [], ...over,
+});
+ok('month status: entered → drifted', ms({ markedJes: ['sales', 'coinbase'], drifted: true }) === 'drifted');
+ok('month status: ready / blocked / no data',
+  ms() === 'ready'
+  && ms({ hasBlockers: true }) === 'blocked'
+  && ms({ hasData: false }) === 'no_data');
+
+// Entered means DONE — every required entry marked, not just one.
+ok('both required JEs marked → entered', ms({ markedJes: ['sales', 'coinbase'] }) === 'entered');
+ok('only Sales marked, Coinbase required → partial (was wrongly "entered")',
+   ms({ markedJes: ['sales'] }) === 'partial', ms({ markedJes: ['sales'] }));
+ok('only Coinbase marked → partial', ms({ markedJes: ['coinbase'] }) === 'partial');
+ok('partial label reads "1 of 2 entered"',
+   monthStatusLabel('partial', { marked: 1, required: 2 }) === '1 of 2 entered',
+   monthStatusLabel('partial', { marked: 1, required: 2 }));
+
+// A month with no Coinbase buys needs the Sales JE alone — it must not sit at
+// "1 of 2" forever waiting for an entry it will never have.
+ok('no buys: Sales alone → entered', ms({ requiredJes: ['sales'], markedJes: ['sales'] }) === 'entered');
+ok('no buys: nothing marked → ready', ms({ requiredJes: ['sales'] }) === 'ready');
+ok('no buys: label is plain "Entered"',
+   monthStatusLabel(ms({ requiredJes: ['sales'], markedJes: ['sales'] }), { marked: 1, required: 1 }) === 'Entered');
+
+// Drift outranks completeness in both directions.
+ok('drift outranks partial', ms({ markedJes: ['sales'], drifted: true }) === 'drifted');
+ok('drift outranks entered', ms({ markedJes: ['sales', 'coinbase'], drifted: true }) === 'drifted');
+// ...but an unmarked month cannot drift, so blockers still win there.
+ok('nothing marked → blockers still decide', ms({ hasBlockers: true, markedJes: [] }) === 'blocked');
+
+// A Coinbase snapshot left over from before the buys were removed should not
+// hold the month open: it is marked, nothing else is required, so it is done.
+ok('marked JE that is no longer required still reads entered',
+   ms({ requiredJes: ['sales'], markedJes: ['sales', 'coinbase'] }) === 'entered');
 
 console.log('\n=== 10. Two statements loaded must not block each other ===');
 // Regression: the out-of-month BLOCK counted rows from EVERY uploaded

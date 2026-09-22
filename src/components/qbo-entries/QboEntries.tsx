@@ -42,6 +42,7 @@ import {
   detectDrift,
   monthStatus,
   MONTH_STATUS_LABEL,
+  monthStatusLabel,
   type MonthStatus,
 } from '@/lib/qbo/snapshot';
 import {
@@ -95,6 +96,7 @@ const STATUS_STYLES: Record<MonthStatus, string> = {
   no_data: 'bg-white/5 text-muted-foreground border-white/10',
   ready: 'bg-green-500/15 text-green-400 border-green-500/30',
   blocked: 'bg-red-500/15 text-red-400 border-red-500/30',
+  partial: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
   entered: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
   drifted: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
 };
@@ -251,12 +253,30 @@ export default function QboEntries() {
         (salesSnap ? detectDrift(salesSnap, sales.je).drifted : false) ||
         (coinbaseSnap ? detectDrift(coinbaseSnap, coinbase.je).drifted : false);
 
-      return monthStatus({
+      // The Sales JE is always required once the month has any data. The
+      // Coinbase JE is required only when the month actually has buys — a month
+      // with no Coinbase activity is complete with Sales alone.
+      const requiredJes: JeType[] = [];
+      if (hasSalesData || hasCoinbaseData) requiredJes.push('sales');
+      if (coinbase.buys.length > 0) requiredJes.push('coinbase');
+
+      const markedJes: JeType[] = [];
+      if (salesSnap) markedJes.push('sales');
+      if (coinbaseSnap) markedJes.push('coinbase');
+
+      const status = monthStatus({
         hasData: hasSalesData || hasCoinbaseData,
         hasBlockers: hasBlocker([...salesCheckList, ...coinbaseCheckList]),
-        snapshotExists: Boolean(salesSnap || coinbaseSnap),
         drifted,
+        requiredJes,
+        markedJes,
       });
+
+      return {
+        status,
+        marked: markedJes.filter((j) => requiredJes.includes(j)).length,
+        required: requiredJes.length,
+      };
     },
     [computeMonth, snapshotFor],
   );
@@ -365,36 +385,62 @@ export default function QboEntries() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {entered && (
+              {/* Once an entry is marked, "Mark as entered" is a lie — the work is
+                  done. The two things still meaningful are undoing it and
+                  re-snapshotting the current numbers, so show exactly those. */}
+              {entered ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => unmark(jeType, title)}
+                    disabled={isSaving}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Un-mark
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={drifted ? 'default' : 'outline'}
+                    onClick={() => markEntered(je, title)}
+                    disabled={blocked || isSaving || je.lines.length === 0}
+                    title={
+                      blocked
+                        ? 'Resolve the blocking checks first'
+                        : drifted
+                          ? 'Re-snapshot the current numbers, clearing the drift'
+                          : 'Re-snapshot the current numbers'
+                    }
+                  >
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Re-mark
+                  </Button>
+                </>
+              ) : (
                 <Button
-                  variant="outline"
                   size="sm"
-                  onClick={() => unmark(jeType, title)}
-                  disabled={isSaving}
+                  onClick={() => markEntered(je, title)}
+                  disabled={blocked || isSaving || je.lines.length === 0}
+                  title={
+                    blocked
+                      ? 'Resolve the blocking checks first'
+                      : je.lines.length === 0
+                        ? 'Nothing to enter for this month'
+                        : undefined
+                  }
                 >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Un-mark
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                  )}
+                  Mark as entered in QBO
                 </Button>
               )}
-              <Button
-                size="sm"
-                onClick={() => markEntered(je, title)}
-                disabled={blocked || isSaving || je.lines.length === 0}
-                title={
-                  blocked
-                    ? 'Resolve the blocking checks first'
-                    : je.lines.length === 0
-                      ? 'Nothing to enter for this month'
-                      : undefined
-                }
-              >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                )}
-                {entered && drifted ? 'Re-mark as entered' : 'Mark as entered in QBO'}
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -457,7 +503,7 @@ export default function QboEntries() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {months.map((month) => {
-                  const status = statusFor(month);
+                  const { status, marked, required } = statusFor(month);
                   const active = month === selectedMonth;
                   return (
                     <button
@@ -469,7 +515,7 @@ export default function QboEntries() {
                       }`}
                     >
                       <div className="text-sm font-medium text-foreground">{monthText(month)}</div>
-                      <div className="text-xs">{MONTH_STATUS_LABEL[status]}</div>
+                      <div className="text-xs">{monthStatusLabel(status, { marked, required })}</div>
                     </button>
                   );
                 })}
