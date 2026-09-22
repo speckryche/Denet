@@ -41,3 +41,15 @@ export const parseDecimal = (raw: string | number | null | undefined): number =>
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+
+// Crypto quantity: up to 8 decimals, trailing zeros trimmed ("0.23", "12.5").
+// Built from toFixed(8) rather than toString() because small amounts stringify
+// in exponential notation (1e-7), which is unreadable in a table. Quantities
+// are display-only, so this never feeds a JE amount.
+export const fmtQuantity = (value: number | null | undefined): string => {
+  if (value == null || !Number.isFinite(value)) return '—';
+  const s = value.toFixed(8);
+  if (!s.includes('.')) return s;
+  const trimmed = s.replace(/0+$/, '').replace(/\.$/, '');
+  return trimmed === '-0' ? '0' : trimmed;
+};

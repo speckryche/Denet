@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { fmtAmount } from '@/lib/qbo/money';
+import { fmtAmount, fmtQuantity } from '@/lib/qbo/money';
 import type { CoinbaseBuy, Treatment } from '@/lib/qbo/types';
 
 export function CoinbaseBuysTable({
@@ -43,6 +43,18 @@ export function CoinbaseBuysTable({
   const totalAmount = buys.reduce((s, b) => s + b.amount, 0);
   const totalFee = buys.reduce((s, b) => s + b.fee, 0);
 
+  // Quantity totals are per coin: adding BTC to SOL would be a meaningless
+  // number, so the footer shows "0.76 BTC · 12.5 SOL" rather than one sum.
+  const qtyByCoin = new Map<string, number>();
+  for (const b of buys) {
+    if (b.quantity == null) continue;
+    qtyByCoin.set(b.coin, (qtyByCoin.get(b.coin) ?? 0) + b.quantity);
+  }
+  const quantityTotals = [...qtyByCoin.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([coin, qty]) => `${fmtQuantity(qty)} ${coin}`)
+    .join(' · ');
+
   return (
     <div className="rounded-md border border-white/10 overflow-x-auto">
       <Table>
@@ -50,6 +62,7 @@ export function CoinbaseBuysTable({
           <TableRow className="border-white/10 hover:bg-transparent">
             <TableHead className="font-bold text-foreground w-[120px]">Date</TableHead>
             <TableHead className="font-bold text-foreground w-[80px]">Coin</TableHead>
+            <TableHead className="font-bold text-foreground text-right w-[140px]">Quantity</TableHead>
             <TableHead className="font-bold text-foreground text-right w-[140px]">USD amount</TableHead>
             <TableHead className="font-bold text-foreground text-right w-[110px]">Fee</TableHead>
             <TableHead className="font-bold text-foreground w-[90px]">Status</TableHead>
@@ -63,6 +76,7 @@ export function CoinbaseBuysTable({
               <TableRow key={key} className="border-white/5">
                 <TableCell className="font-mono text-sm">{buy.dateCompleted.slice(0, 10)}</TableCell>
                 <TableCell className="font-semibold">{buy.coin}</TableCell>
+                <TableCell className="text-right font-mono">{fmtQuantity(buy.quantity)}</TableCell>
                 <TableCell className="text-right font-mono">{fmtAmount(buy.amount)}</TableCell>
                 <TableCell className="text-right font-mono">{fmtAmount(buy.fee)}</TableCell>
                 <TableCell>
@@ -106,6 +120,9 @@ export function CoinbaseBuysTable({
           })}
           <TableRow className="border-t-2 border-white/20 font-bold hover:bg-transparent">
             <TableCell colSpan={2}>{buys.length} buys</TableCell>
+            <TableCell className="text-right font-mono text-xs whitespace-nowrap">
+              {quantityTotals || '—'}
+            </TableCell>
             <TableCell className="text-right font-mono">{fmtAmount(totalAmount)}</TableCell>
             <TableCell className="text-right font-mono">{fmtAmount(totalFee)}</TableCell>
             <TableCell colSpan={2} />

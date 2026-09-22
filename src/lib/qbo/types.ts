@@ -138,6 +138,10 @@ export interface CoinbaseBuy {
   dateCompleted: string;
   amount: number; // USD spent
   fee: number; // USD fee
+  // Coin received, from the coin-side row sharing this activity_id. Display
+  // only — no JE line, check or snapshot reads it. null when the statement has
+  // no matching coin-side row.
+  quantity: number | null;
   totalBalanceImpact: number; // negative
   status: string;
   treatment: Treatment;

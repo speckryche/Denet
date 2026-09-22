@@ -58,6 +58,16 @@ export function extractBuys(
     overrides.map((o) => [`${o.activity_id}|${o.asset_symbol.toUpperCase()}`, o.treatment]),
   );
 
+  // Coin-side rows, keyed by the activity_id they share with their USD row.
+  // A trade is two rows under one ID: the USD side carries the dollars, the
+  // coin side carries the quantity. Keyed by id AND asset so a multi-leg id
+  // could never attribute one coin's quantity to another.
+  const coinSideByKey = new Map<string, CoinbaseDetailRow>();
+  for (const r of rows) {
+    if (isUsdSide(r)) continue;
+    coinSideByKey.set(`${r.activityId}|${r.asset.toUpperCase()}`, r);
+  }
+
   const buys: CoinbaseBuy[] = [];
   const undescribed: CoinbaseDetailRow[] = [];
 
@@ -78,6 +88,7 @@ export function extractBuys(
       fee: r.fee,
       totalBalanceImpact: r.totalBalanceImpact,
       status: r.status,
+      quantity: coinSideByKey.get(`${r.activityId}|${coin}`)?.amount ?? null,
       treatment: override ?? fallback,
       treatmentIsOverride: override != null,
     });

@@ -4,7 +4,7 @@ import { computeCoinbaseJe } from '@/lib/qbo/coinbase-je';
 import { computeSalesJe } from '@/lib/qbo/sales-je';
 import { salesChecks, coinbaseChecks, checkSalesFreshness, hasBlocker } from '@/lib/qbo/checks';
 import { detectDrift, monthStatus } from '@/lib/qbo/snapshot';
-import { fmtAmount } from '@/lib/qbo/money';
+import { fmtAmount, fmtQuantity } from '@/lib/qbo/money';
 import type { AccountMap, CryptoAsset, CoinbaseDetailRow, CoinbaseBalanceRow } from '@/lib/qbo/types';
 
 // Point at a real Coinbase Prime monthly ZIP. The sample is intentionally not
@@ -249,6 +249,30 @@ const febStray = computeCoinbaseJe({
 ok('a row inside the statement but dated outside the month still BLOCKS',
    febStray.outOfMonthRows.length === 1 && hasBlocker(coinbaseChecks(febStray)),
    `${febStray.outOfMonthRows.length} out-of-month`);
+
+console.log('\n=== 11. Buy quantity (display only) ===');
+// Quantity comes from the COIN-side row sharing the activity_id, never the USD
+// row — mixing them up would print dollars in a coin column.
+const qtyBuys = cb.buys;
+ok('every buy resolved a quantity', qtyBuys.every(b => b.quantity != null),
+   `${qtyBuys.filter(b => b.quantity == null).length} unresolved`);
+ok('quantity is the coin amount, not the USD amount',
+   qtyBuys.every(b => b.quantity !== b.amount),
+   qtyBuys.map(b => `${fmtQuantity(b.quantity)} ${b.coin} for ${fmtAmount(b.amount)}`).slice(0, 2).join(' | '));
+for (const b of qtyBuys.slice(0, 3)) {
+  const coinSide = stmt.detail.find(r => r.activityId === b.activityId && r.asset.toUpperCase() === b.coin);
+  ok(`quantity matches the ${b.coin} coin-side row for ${b.activityId}`, b.quantity === coinSide?.amount,
+     `${b.quantity} vs ${coinSide?.amount}`);
+}
+// JE math must be untouched by the addition.
+ok('JE totals unchanged by adding quantity', cb.je.totalCredits === 65814.95, fmtAmount(cb.je.totalCredits));
+
+ok('fmtQuantity trims trailing zeros', fmtQuantity(12.5) === '12.5', fmtQuantity(12.5));
+ok('fmtQuantity keeps 8 dp', fmtQuantity(0.00000023) === '0.00000023', fmtQuantity(0.00000023));
+ok('fmtQuantity avoids exponential notation', !fmtQuantity(0.0000001).includes('e'), fmtQuantity(0.0000001));
+ok('fmtQuantity renders a whole number cleanly', fmtQuantity(3) === '3', fmtQuantity(3));
+ok('fmtQuantity handles null', fmtQuantity(null) === '—', fmtQuantity(null));
+ok('fmtQuantity never returns -0', fmtQuantity(-0) === '0', fmtQuantity(-0));
 
 console.log(failures ? `\n${failures} FAILURES` : '\nAll harness checks passed.');
 process.exit(failures ? 1 : 0);
