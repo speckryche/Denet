@@ -380,3 +380,44 @@ export async function qboFetch(
   }
   return text ? JSON.parse(text) : null;
 }
+
+// ---------------------------------------------------------------------------
+// Sandbox fence
+//
+// Guards the two functions that DESTROY things — deleting journal entries in
+// QuickBooks, and clearing test snapshots. Both checks must pass:
+//
+//   1. QBO_ENV === 'sandbox'   what we believe we are pointed at
+//   2. realm === the sandbox realm   what we are ACTUALLY connected to
+//
+// Either alone is insufficient. A stale secret paired with a production
+// connection would satisfy (1) while pointing at the real books; (2) is the
+// check that catches it. Journal entries deleted in QuickBooks cannot be
+// recovered from here.
+// ---------------------------------------------------------------------------
+
+export const SANDBOX_REALM_ID = '9341457959689478';
+
+export class NotSandboxError extends Error {
+  constructor(message: string, readonly code: string) {
+    super(message);
+    this.name = 'NotSandboxError';
+  }
+}
+
+export function assertSandbox(realmId: string | null | undefined, companyName?: string | null): void {
+  const env = (Deno.env.get('QBO_ENV') ?? '').toLowerCase();
+  if (env !== 'sandbox') {
+    throw new NotSandboxError(
+      `Refusing: QBO_ENV is '${env || 'unset'}', not 'sandbox'. This action only ever runs against the sandbox company.`,
+      'not_sandbox_env',
+    );
+  }
+  if (realmId !== SANDBOX_REALM_ID) {
+    throw new NotSandboxError(
+      `Refusing: connected to realm ${realmId ?? 'none'}${companyName ? ` (${companyName})` : ''}, ` +
+        `which is not the sandbox realm ${SANDBOX_REALM_ID}.`,
+      'not_sandbox_realm',
+    );
+  }
+}

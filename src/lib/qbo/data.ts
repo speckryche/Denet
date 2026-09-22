@@ -41,6 +41,11 @@ export interface AccountMapRow {
   key: string;
   account_name: string;
   qbo_account_id: string | null;
+  qbo_realm_id?: string | null;
+  /** Entity stamped on lines hitting this account (the Coinbase vendor). */
+  qbo_entity_type?: 'Vendor' | 'Customer' | 'Employee' | null;
+  qbo_entity_id?: string | null;
+  qbo_entity_name?: string | null;
 }
 
 export interface CryptoAssetRow extends CryptoAsset {
@@ -52,7 +57,11 @@ export interface CryptoAssetRow extends CryptoAsset {
 export async function fetchAccountRows(): Promise<AccountMapRow[]> {
   const { data, error } = await supabase
     .from('qbo_account_map')
-    .select('key, account_name, qbo_account_id');
+    // The entity columns are part of this row's job: the Coinbase vendor is
+    // stamped on whichever line hits the exchange account. Omitting them here
+    // silently dropped the EntityRef from posted Coinbase entries — the post
+    // still succeeded, just without the vendor, which nothing surfaced.
+    .select('key, account_name, qbo_account_id, qbo_realm_id, qbo_entity_type, qbo_entity_id, qbo_entity_name');
   if (error) throw error;
   return (data || []) as AccountMapRow[];
 }
@@ -324,12 +333,15 @@ export interface SnapshotRow {
   entered_by: string | null;
   entered_at: string;
   qbo_txn_id: string | null;
+  post_state?: string | null;
+  post_error?: string | null;
+  doc_number?: string | null;
 }
 
 export async function fetchSnapshots(): Promise<SnapshotRow[]> {
   const { data, error } = await supabase
     .from('qbo_je_snapshots')
-    .select('id, month, je_type, je_date, lines, total_debits, total_credits, entered_by, entered_at, qbo_txn_id')
+    .select('id, month, je_type, je_date, lines, total_debits, total_credits, entered_by, entered_at, qbo_txn_id, post_state, post_error, doc_number')
     .order('month', { ascending: false });
   if (error) throw error;
   return (data || []).map((r: any) => ({
@@ -340,20 +352,31 @@ export async function fetchSnapshots(): Promise<SnapshotRow[]> {
   })) as SnapshotRow[];
 }
 
+/**
+ * "Mark as entered in QBO" — a human keyed this month in by hand.
+ *
+ * Routed through an RPC rather than a direct upsert so the row is stamped
+ * post_state = 'manual'. That state is deliberately NOT claimable by the
+ * posting flow: a hand-entered month already exists in QuickBooks, and it
+ * carries whatever DocNumber the person typed, so a later "Post to QBO" could
+ * neither be prevented by our DocNumber pre-flight check nor detected
+ * afterwards — it would simply create a second journal entry for a month
+ * already entered. The previous plain upsert left these rows at the default
+ * 'idle', which the claim predicate accepted.
+ *
+ * The RPC also refuses to relabel a row that was posted through the API, so
+ * re-marking a posted entry cannot make it claimable again.
+ */
 export async function saveSnapshot(je: Je, enteredBy: string | null): Promise<void> {
-  const { error } = await supabase.from('qbo_je_snapshots').upsert(
-    {
-      month: je.month,
-      je_type: je.type,
-      je_date: je.date,
-      lines: je.lines,
-      total_debits: je.totalDebits,
-      total_credits: je.totalCredits,
-      entered_by: enteredBy,
-      entered_at: new Date().toISOString(),
-    },
-    { onConflict: 'month,je_type' },
-  );
+  const { error } = await supabase.rpc('qbo_mark_entered_manually', {
+    p_month: je.month,
+    p_je_type: je.type,
+    p_je_date: je.date,
+    p_lines: je.lines,
+    p_total_debits: je.totalDebits,
+    p_total_credits: je.totalCredits,
+    p_entered_by: enteredBy,
+  });
   if (error) throw error;
 }
 

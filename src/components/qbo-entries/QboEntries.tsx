@@ -13,7 +13,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Card,
   CardContent,
@@ -28,10 +28,14 @@ import {
   Lock,
   RefreshCw,
   RotateCcw,
+  Upload,
+  AlertCircle,
 } from 'lucide-react';
 
 import { computeSalesJe } from '@/lib/qbo/sales-je';
 import { computeCoinbaseJe } from '@/lib/qbo/coinbase-je';
+import { buildJournalEntryPayload } from '@/lib/qbo/je-payload';
+import { supabase } from '@/lib/supabase';
 import {
   checkSalesFreshness,
   coinbaseChecks,
@@ -39,7 +43,10 @@ import {
   salesChecks,
 } from '@/lib/qbo/checks';
 import {
+  countsAsEntered,
   detectDrift,
+  needsAttention,
+  postFailed,
   monthStatus,
   MONTH_STATUS_LABEL,
   monthStatusLabel,
@@ -67,6 +74,8 @@ import {
   saveBuyTreatment,
   saveSnapshot,
   toAccountMap,
+  type AccountMapRow,
+  type CryptoAssetRow,
   type SnapshotRow,
 } from '@/lib/qbo/data';
 import type {
@@ -99,6 +108,7 @@ const STATUS_STYLES: Record<MonthStatus, string> = {
   partial: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
   entered: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
   drifted: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  attention: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
 };
 
 export default function QboEntries() {
@@ -115,6 +125,11 @@ export default function QboEntries() {
   const [profiles, setProfiles] = useState<SalesProfileLike[]>([]);
   const [assets, setAssets] = useState<CryptoAsset[]>([]);
   const [accounts, setAccounts] = useState(toAccountMap([]));
+  // toAccountMap keeps only names; posting needs the QBO Account IDs, so the
+  // raw rows are kept alongside it.
+  const [accountRowsRaw, setAccountRowsRaw] = useState<AccountMapRow[]>([]);
+  const [assetRowsRaw, setAssetRowsRaw] = useState<CryptoAssetRow[]>([]);
+  const [postResult, setPostResult] = useState<Record<string, string>>({});
   const [coinbaseRows, setCoinbaseRows] = useState<CoinbaseDetailRow[]>([]);
   const [balances, setBalances] = useState<CoinbaseBalanceRow[]>([]);
   const [overrides, setOverrides] = useState<BuyTreatmentOverride[]>([]);
@@ -157,6 +172,8 @@ export default function QboEntries() {
       setProfiles(profileRows);
       setAssets(assetRows);
       setAccounts(toAccountMap(accountRows));
+      setAccountRowsRaw(accountRows);
+      setAssetRowsRaw(assetRows);
       setCoinbaseRows(coinbase.detail);
       setBalances(coinbase.balances);
       setOverrides(treatmentRows);
@@ -249,9 +266,13 @@ export default function QboEntries() {
         computeMonth(month);
       const salesSnap = snapshotFor(month, 'sales');
       const coinbaseSnap = snapshotFor(month, 'coinbase');
+      // Drift is only meaningful against a snapshot that actually represents
+      // something in QuickBooks. A 'posting'/'unknown'/'failed' row holds what
+      // we were ABOUT to send, so comparing against it would report drift
+      // against our own unsent draft.
       const drifted =
-        (salesSnap ? detectDrift(salesSnap, sales.je).drifted : false) ||
-        (coinbaseSnap ? detectDrift(coinbaseSnap, coinbase.je).drifted : false);
+        (countsAsEntered(salesSnap) ? detectDrift(salesSnap!, sales.je).drifted : false) ||
+        (countsAsEntered(coinbaseSnap) ? detectDrift(coinbaseSnap!, coinbase.je).drifted : false);
 
       // The Sales JE is always required once the month has any data. The
       // Coinbase JE is required only when the month actually has buys — a month
@@ -261,8 +282,14 @@ export default function QboEntries() {
       if (coinbase.buys.length > 0) requiredJes.push('coinbase');
 
       const markedJes: JeType[] = [];
-      if (salesSnap) markedJes.push('sales');
-      if (coinbaseSnap) markedJes.push('coinbase');
+      if (countsAsEntered(salesSnap)) markedJes.push('sales');
+      if (countsAsEntered(coinbaseSnap)) markedJes.push('coinbase');
+
+      const attentionJes: JeType[] = [];
+      if (needsAttention(salesSnap)) attentionJes.push('sales');
+      if (needsAttention(coinbaseSnap)) attentionJes.push('coinbase');
+      const unknownCount =
+        (salesSnap?.post_state === 'unknown' ? 1 : 0) + (coinbaseSnap?.post_state === 'unknown' ? 1 : 0);
 
       const status = monthStatus({
         hasData: hasSalesData || hasCoinbaseData,
@@ -270,12 +297,15 @@ export default function QboEntries() {
         drifted,
         requiredJes,
         markedJes,
+        attentionJes,
       });
 
       return {
         status,
         marked: markedJes.filter((j) => requiredJes.includes(j)).length,
         required: requiredJes.length,
+        posting: attentionJes.length - unknownCount,
+        unknown: unknownCount,
       };
     },
     [computeMonth, snapshotFor],
@@ -304,6 +334,77 @@ export default function QboEntries() {
     } catch (err) {
       console.error('Failed to save treatment', err);
       setError(err instanceof Error ? err.message : 'Failed to save the treatment');
+    }
+  };
+
+  // Name -> QBO Account Id, for the month's JE lines. Built from the same rows
+  // Settings syncs, so an account the sync has not resolved simply has no entry
+  // here and buildJournalEntryPayload reports it per line.
+  const accountIdByName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of accountRowsRaw) if (r.qbo_account_id) m.set(r.account_name, r.qbo_account_id);
+    for (const a of assetRowsRaw) {
+      if (a.qbo_inventory_account_id) m.set(a.inventory_account_name, a.qbo_inventory_account_id);
+      if (a.qbo_investment_account_id) m.set(a.investment_account_name, a.qbo_investment_account_id);
+    }
+    return m;
+  }, [accountRowsRaw, assetRowsRaw]);
+
+  // The Coinbase vendor rides on whichever line hits the exchange account.
+  const entityByAccountName = useMemo(() => {
+    const m = new Map<string, { type: 'Vendor'; id: string; name?: string | null }>();
+    const row = accountRowsRaw.find((r) => r.key === 'exchange_account');
+    if (row?.qbo_entity_id) {
+      m.set(row.account_name, {
+        type: (row.qbo_entity_type ?? 'Vendor') as 'Vendor',
+        id: row.qbo_entity_id,
+        name: row.qbo_entity_name ?? 'Coinbase',
+      });
+    }
+    return m;
+  }, [accountRowsRaw]);
+
+  const postToQbo = async (je: Je, label: string) => {
+    const built = buildJournalEntryPayload({ je, accountIdByName, entityByAccountName });
+    if (!built.payload) {
+      setError(
+        `Cannot post ${label}: no QuickBooks account mapped for ${built.missingAccounts.join(', ')}. ` +
+          `Map it in Settings → QuickBooks connection, then Sync from QBO.`,
+      );
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    try {
+      const res = await supabase.functions.invoke('qbo-post-je', {
+        body: {
+          month: je.month, jeType: je.type, payload: built.payload,
+          snapshot: {
+            jeDate: je.date, lines: je.lines,
+            totalDebits: je.totalDebits, totalCredits: je.totalCredits,
+          },
+        },
+      });
+      if (res.error) {
+        let body: any = null;
+        try { body = await (res.error as any)?.context?.json?.(); } catch { /* not JSON */ }
+        throw new Error(body?.error || res.error.message || 'Post failed');
+      }
+      const d = res.data as any;
+      setPostResult((prev) => ({ ...prev, [`${je.month}:${je.type}`]: d.txnId }));
+      setNotice(
+        d.adopted
+          ? `${label} was already in QuickBooks (txn ${d.txnId}); recorded it here. No new entry was created.`
+          : `${label} posted to QuickBooks as transaction ${d.txnId} (${d.docNumber}).`,
+      );
+      setSnapshots(await fetchSnapshots());
+      setTimeout(() => setNotice(null), 8000);
+    } catch (e) {
+      console.error('[qbo-post] failed', e);
+      setError(e instanceof Error ? e.message : 'Post failed');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -369,7 +470,11 @@ export default function QboEntries() {
     extra?: React.ReactNode,
   ) => {
     const blocked = hasBlocker(checks);
-    const entered = Boolean(snapshot);
+    // Only 'manual'/'posted' mean the entry exists in QuickBooks. A row in
+    // 'posting'/'unknown'/'failed' is a record of an ATTEMPT, not an entry.
+    const entered = countsAsEntered(snapshot);
+    const attention = needsAttention(snapshot);
+    const failed = postFailed(snapshot);
     const drifted = Boolean(drift?.drifted);
 
     return (
@@ -385,6 +490,26 @@ export default function QboEntries() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              {/* Post to QBO sits first: it is the path that should be taken,
+                  with "Mark as entered" kept as the manual fallback. Hidden
+                  once an entry has a QBO transaction id, since posting again
+                  would duplicate it. */}
+              {!snapshot?.qbo_txn_id && (
+                <Button
+                  size="sm"
+                  onClick={() => postToQbo(je, title)}
+                  disabled={blocked || isSaving || je.lines.length === 0}
+                  title={blocked ? 'Resolve the blocking checks first' : 'Create this journal entry in QuickBooks'}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                  Post to QBO
+                </Button>
+              )}
+              {snapshot?.qbo_txn_id && (
+                <span className="text-xs text-muted-foreground font-mono">
+                  QBO txn {snapshot.qbo_txn_id}
+                </span>
+              )}
               {/* Once an entry is marked, "Mark as entered" is a lie — the work is
                   done. The two things still meaningful are undoing it and
                   re-snapshotting the current numbers, so show exactly those. */}
@@ -445,6 +570,34 @@ export default function QboEntries() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {attention && (
+            <Alert className={snapshot?.post_state === 'unknown'
+              ? 'bg-orange-500/10 border-orange-500/40 text-orange-300'
+              : 'bg-blue-500/10 border-blue-500/30 text-blue-300'}>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>
+                {snapshot?.post_state === 'unknown' ? 'Check QuickBooks' : 'Posting…'}
+              </AlertTitle>
+              <AlertDescription>
+                {snapshot?.post_state === 'unknown'
+                  ? `We sent this entry but never got a confirmation, so it may or may not exist in QuickBooks. ` +
+                    `Search for DocNumber ${snapshot?.doc_number ?? '—'} there. Pressing Post again will look it up first ` +
+                    `and adopt it if it is present — it will not create a second entry.`
+                  : 'A post is in flight. This clears on its own once it completes.'}
+                {snapshot?.post_error ? ` Last error: ${snapshot.post_error}` : ''}
+              </AlertDescription>
+            </Alert>
+          )}
+          {failed && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>QuickBooks rejected this entry</AlertTitle>
+              <AlertDescription>
+                Nothing was created, so it is safe to fix and post again.
+                {snapshot?.post_error ? ` ${snapshot.post_error}` : ''}
+              </AlertDescription>
+            </Alert>
+          )}
           {drift && <DriftBanner drift={drift} jeLabel={title} enteredAt={snapshot?.entered_at} />}
           {extra}
           <ChecksPanel checks={checks} />
@@ -503,7 +656,7 @@ export default function QboEntries() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {months.map((month) => {
-                  const { status, marked, required } = statusFor(month);
+                  const { status, marked, required, posting, unknown } = statusFor(month);
                   const active = month === selectedMonth;
                   return (
                     <button
@@ -515,7 +668,7 @@ export default function QboEntries() {
                       }`}
                     >
                       <div className="text-sm font-medium text-foreground">{monthText(month)}</div>
-                      <div className="text-xs">{monthStatusLabel(status, { marked, required })}</div>
+                      <div className="text-xs">{monthStatusLabel(status, { marked, required, posting, unknown })}</div>
                     </button>
                   );
                 })}

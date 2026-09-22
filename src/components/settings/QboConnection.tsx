@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertCircle, CheckCircle2, Link2, RefreshCw, Unlink, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Link2, RefreshCw, Unlink, Loader2, Sprout } from 'lucide-react';
 import { fetchAccountRows, fetchCryptoAssets, ACCOUNT_LABELS, type AccountMapRow, type CryptoAssetRow } from '@/lib/qbo/data';
 import {
   matchAccounts, unresolvedTargets,
@@ -72,6 +72,7 @@ export default function QboConnection() {
   const [rows, setRows] = useState<AccountMapRow[]>([]);
   const [assets, setAssets] = useState<CryptoAssetRow[]>([]);
   const [syncRealm, setSyncRealm] = useState<string | null>(null);
+  const [vendor, setVendor] = useState<{ Id: string; DisplayName: string } | null>(null);
   const [manual, setManual] = useState<Record<string, string>>({});
 
   const loadStatus = useCallback(async () => {
@@ -132,6 +133,33 @@ export default function QboConnection() {
     }
   };
 
+  // Sandbox only — the button is not rendered otherwise, and the function
+  // refuses on both QBO_ENV and the connected realm regardless.
+  const seed = async () => {
+    if (!window.confirm(
+      'Create our chart of accounts in the sandbox company?\n\n' +
+      'This writes to QuickBooks. It only ever runs against the sandbox realm, and it skips accounts that already exist.',
+    )) return;
+    setBusy('seed'); setError(null); setNotice(null);
+    try {
+      const r = await invoke('qbo-seed-sandbox');
+      const parts = [
+        `${r.created.length} created`,
+        `${r.skipped.length} already present`,
+        r.failed.length ? `${r.failed.length} failed` : null,
+        r.vendor ? `vendor ${r.vendorCreated ? 'created' : 'found'}` : 'vendor missing',
+      ].filter(Boolean);
+      setNotice(`Sandbox seed: ${parts.join(' · ')}.`);
+      if (r.failed.length) {
+        setError(`Some accounts failed: ${r.failed.map((f: any) => `${f.acctNum} ${f.name} (${f.error})`).join('; ')}`);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Seed failed');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const sync = async () => {
     setBusy('sync'); setError(null); setNotice(null);
     try {
@@ -141,6 +169,7 @@ export default function QboConnection() {
       setRows(mapRows);
       setAssets(assetRows);
       setSyncRealm(data.realmId ?? null);
+      setVendor(data.vendor ?? null);
 
       const targets: MappingTarget[] = [
         ...mapRows.map((r) => ({
@@ -191,7 +220,24 @@ export default function QboConnection() {
         }
       }
 
-      setNotice(`Saved ${pairs.length} account ID${pairs.length === 1 ? '' : 's'}. Account names were not modified.`);
+      // The Coinbase vendor rides on the exchange-account row: the vendor is a
+      // property of the posting, not of the accounting computation, and is
+      // fully derivable from which account a line hits — so it lives beside
+      // that account rather than inside JeLine.
+      if (vendor) {
+        const { error: ve } = await supabase.from('qbo_account_map')
+          .update({
+            qbo_entity_type: 'Vendor', qbo_entity_id: vendor.Id,
+            qbo_entity_name: vendor.DisplayName, updated_at: now,
+          })
+          .eq('key', 'exchange_account');
+        if (ve) throw ve;
+      }
+
+      setNotice(
+        `Saved ${pairs.length} account ID${pairs.length === 1 ? '' : 's'}` +
+        `${vendor ? ` and the ${vendor.DisplayName} vendor` : ''}. Account names were not modified.`,
+      );
       setManual({});
       await sync();
     } catch (e) {
@@ -223,6 +269,12 @@ export default function QboConnection() {
           <div className="flex items-center gap-2">
             {status?.connected && (
               <>
+                {status?.environment === 'sandbox' && (
+                  <Button variant="outline" size="sm" onClick={seed} disabled={busy !== null}>
+                    {busy === 'seed' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sprout className="w-4 h-4 mr-2" />}
+                    Seed sandbox chart
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={sync} disabled={busy !== null}>
                   {busy === 'sync' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                   Sync from QBO
@@ -304,7 +356,7 @@ export default function QboConnection() {
                 {match.matched.length} matched · {match.ambiguous.length} ambiguous · {match.unmatched.length} unmatched
                 {' — '}account names are never modified.
               </p>
-              <Button size="sm" onClick={applyMatches} disabled={busy !== null || toWrite === 0}>
+              <Button size="sm" onClick={applyMatches} disabled={busy !== null || (toWrite === 0 && !vendor)}>
                 {busy === 'apply' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Save {toWrite} ID{toWrite === 1 ? '' : 's'}
               </Button>
