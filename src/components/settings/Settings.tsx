@@ -5,6 +5,7 @@ import { ReconciliationReport } from './ReconciliationReport';
 import { PnLReconciliation } from './PnLReconciliation';
 import { PeopleManagement } from './PeopleManagement';
 import { UserManagement } from './UserManagement';
+import QboConnection from './QboConnection';
 import { QboSettings } from './QboSettings';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -21,6 +22,7 @@ export default function Settings() {
         <PnLReconciliation />
         <PeopleManagement />
         <TickerMappings />
+        <QboConnection />
         <QboSettings />
       </main>
     </div>

@@ -5,6 +5,7 @@ import { computeSalesJe } from '@/lib/qbo/sales-je';
 import { salesChecks, coinbaseChecks, checkSalesFreshness, hasBlocker } from '@/lib/qbo/checks';
 import { detectDrift, monthStatus, monthStatusLabel } from '@/lib/qbo/snapshot';
 import { fmtAmount, fmtQuantity } from '@/lib/qbo/money';
+import { matchAccounts, accountNumber, nameWithoutNumber, unresolvedTargets, type QboAccount, type MappingTarget } from '@/lib/qbo/account-match';
 import type { AccountMap, CryptoAsset, CoinbaseDetailRow, CoinbaseBalanceRow } from '@/lib/qbo/types';
 
 // Point at a real Coinbase Prime monthly ZIP. The sample is intentionally not
@@ -305,6 +306,90 @@ ok('fmtQuantity avoids exponential notation', !fmtQuantity(0.0000001).includes('
 ok('fmtQuantity renders a whole number cleanly', fmtQuantity(3) === '3', fmtQuantity(3));
 ok('fmtQuantity handles null', fmtQuantity(null) === '—', fmtQuantity(null));
 ok('fmtQuantity never returns -0', fmtQuantity(-0) === '0', fmtQuantity(-0));
+
+console.log('\n=== 12. QBO account matching ===');
+// The live stored names, verbatim. Note SOL's inventory account has NO number.
+const TARGETS: MappingTarget[] = [
+  { ref: 'machine_cash',     label: 'Machine cash',     accountName: '1005 BTC Machine Cash', currentId: null },
+  { ref: 'transaction_fees', label: 'Transaction fees', accountName: '4061 Transaction Fees:Fees - Denet BTMs', currentId: null },
+  { ref: 'bitstop_fees',     label: 'Bitstop fees',     accountName: '5015 Bitstop Fees', currentId: null },
+  { ref: 'exchange_account', label: 'Exchange account', accountName: '1010 Exchange Account - Coinbase', currentId: null },
+  { ref: 'exchange_fees',    label: 'Exchange fees',    accountName: '6040 Exchange Fees', currentId: null },
+  { ref: 'BTC:inv',          label: 'BTC — inventory',  accountName: '1100 Bitcoin S/T Holdings', currentId: null },
+  { ref: 'BTC:invest',       label: 'BTC — investment', accountName: '1605 Long-term Investments:Bitcoin (BTC)', currentId: null },
+  { ref: 'SOL:inv',          label: 'SOL — inventory',  accountName: 'Inventory - Solana', currentId: null },
+  { ref: 'SOL:invest',       label: 'SOL — investment', accountName: '1610 Long-term Investments:Solana (SOL)', currentId: null },
+];
+const acct = (Id: string, AcctNum: string | undefined, Name: string, FullyQualifiedName?: string, extra: Partial<QboAccount> = {}): QboAccount =>
+  ({ Id, AcctNum, Name, FullyQualifiedName: FullyQualifiedName ?? Name, Active: true, ...extra });
+
+const QBO: QboAccount[] = [
+  acct('101', '1005', 'BTC Machine Cash'),
+  acct('102', '4061', 'Fees - Denet BTMs', 'Transaction Fees:Fees - Denet BTMs'),
+  acct('103', '5015', 'Bitstop Fees'),
+  acct('104', '1010', 'Exchange Account - Coinbase'),
+  acct('105', '6040', 'Exchange Fees'),
+  acct('106', '1100', 'Bitcoin S/T Holdings'),
+  acct('107', '1605', 'Bitcoin (BTC)', 'Long-term Investments:Bitcoin (BTC)'),
+  acct('108', undefined, 'Inventory - Solana'),          // no AcctNum, like ours
+  acct('109', '1610', 'Solana (SOL)', 'Long-term Investments:Solana (SOL)'),
+];
+
+const r = matchAccounts(TARGETS, QBO);
+ok('all 9 live accounts matched', r.matched.length === 9, `${r.matched.length} matched, ${r.unmatched.length} unmatched, ${r.ambiguous.length} ambiguous`);
+ok('nothing unresolved', unresolvedTargets(r).length === 0);
+const by = (ref: string) => r.matched.find(m => m.target.ref === ref);
+ok('numbered name matches on AcctNum', by('machine_cash')?.account.Id === '101' && by('machine_cash')?.method === 'acct_num');
+ok('Parent:Child name matches', by('transaction_fees')?.account.Id === '102');
+ok('name with (TICKER) matches', by('SOL:invest')?.account.Id === '109');
+// The point is that a name with no account number still resolves at all —
+// tier 1 cannot fire for it. It lands on fully_qualified_name because QBO
+// reports FQN === Name for a top-level account, which is a stronger match than
+// the name tier, so accept either.
+ok('UNNUMBERED name still matches',
+   by('SOL:inv')?.account.Id === '108'
+   && ['fully_qualified_name', 'name'].includes(by('SOL:inv')?.method ?? ''),
+   `${by('SOL:inv')?.method}`);
+// ...and it must not fall through to tier 1 on some other account's number.
+ok('unnumbered name never matches via AcctNum', by('SOL:inv')?.method !== 'acct_num');
+
+// Helpers
+ok('accountNumber reads the leading number', accountNumber('4061 Transaction Fees:Fees - Denet BTMs') === '4061');
+ok('accountNumber is null when absent', accountNumber('Inventory - Solana') === null);
+ok('nameWithoutNumber strips it', nameWithoutNumber('1005 BTC Machine Cash') === 'BTC Machine Cash');
+ok('nameWithoutNumber is a no-op without one', nameWithoutNumber('Inventory - Solana') === 'Inventory - Solana');
+
+// Ambiguity must never be guessed.
+const dupes = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '1100 Bitcoin S/T Holdings', currentId: null }],
+  [acct('201', '1100', 'Bitcoin S/T Holdings'), acct('202', '1100', 'Bitcoin S/T Holdings (old)')],
+);
+ok('two accounts on the same AcctNum → ambiguous, not guessed',
+   dupes.ambiguous.length === 1 && dupes.matched.length === 0 && dupes.ambiguous[0].candidates.length === 2);
+
+// Inactive accounts are excluded rather than matched-then-failed at the API.
+const inactive = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '9999 Closed Account', currentId: null }],
+  [acct('301', '9999', 'Closed Account', undefined, { Active: false })],
+);
+ok('inactive QBO account is not matched', inactive.unmatched.length === 1 && inactive.matched.length === 0);
+
+// Normalisation: spacing around ':' and casing differ between systems.
+const spaced = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '4061 Transaction Fees:Fees - Denet BTMs', currentId: null }],
+  [acct('401', undefined, 'Fees - Denet BTMs', 'transaction fees : fees - denet btms')],
+);
+ok('spacing/case differences around ":" still match', spaced.matched.length === 1 && spaced.matched[0].method === 'fully_qualified_name');
+
+// An already-correct Id is reported as unchanged so a sync writes nothing.
+const same = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '1005 BTC Machine Cash', currentId: '101' }], QBO);
+ok('already-correct Id reports unchanged', same.matched[0]?.unchanged === true);
+
+// A truly missing account is unmatched, not silently dropped.
+const missing = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '7777 Not In QBO', currentId: null }], QBO);
+ok('missing account is unmatched', missing.unmatched.length === 1 && missing.unmatched[0].ref === 'x');
 
 console.log(failures ? `\n${failures} FAILURES` : '\nAll harness checks passed.');
 process.exit(failures ? 1 : 0);
