@@ -560,6 +560,7 @@ export default function QboEntries() {
                 {current.hasCoinbaseData ? (
                   <CoinbaseBuysTable
                     buys={current.coinbase.buys}
+                    assets={assets}
                     readOnly={isSaving}
                     onChangeTreatment={handleTreatmentChange}
                   />
