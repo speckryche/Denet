@@ -14,6 +14,7 @@ import PendingResolution from "./components/pending/PendingResolution";
 import Liquidity from "./components/liquidity/Liquidity";
 import Refunds from "./components/refunds/Refunds";
 import QboEntries from "./components/qbo-entries/QboEntries";
+import { Eula, Privacy } from "./components/legal/LegalPages";
 import { Layout } from "./components/layout/Layout";
 import { Toaster } from "./components/ui/toaster";
 
@@ -40,6 +41,8 @@ function App() {
     <Suspense fallback={<p>Loading...</p>}>
       <>
         <Routes>
+          <Route path="/eula" element={<Eula />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route
             path="/"
             element={
