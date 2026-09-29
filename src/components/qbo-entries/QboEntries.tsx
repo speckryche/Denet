@@ -47,6 +47,7 @@ import {
   detectDrift,
   needsAttention,
   postFailed,
+  postButtonFor,
   monthStatus,
   MONTH_STATUS_LABEL,
   monthStatusLabel,
@@ -476,6 +477,7 @@ export default function QboEntries() {
     const attention = needsAttention(snapshot);
     const failed = postFailed(snapshot);
     const drifted = Boolean(drift?.drifted);
+    const postButton = postButtonFor(snapshot);
 
     return (
       <Card className="bg-card/30 border-white/10">
@@ -491,18 +493,24 @@ export default function QboEntries() {
             </div>
             <div className="flex items-center gap-2">
               {/* Post to QBO sits first: it is the path that should be taken,
-                  with "Mark as entered" kept as the manual fallback. Hidden
-                  once an entry has a QBO transaction id, since posting again
-                  would duplicate it. */}
-              {!snapshot?.qbo_txn_id && (
+                  with "Mark as entered" kept as the manual fallback. Shown only
+                  when the JE is genuinely postable — see postButtonFor(). A
+                  'manual' JE is already in QBO, so it gets Un-mark/Re-mark only. */}
+              {postButton && (
                 <Button
                   size="sm"
                   onClick={() => postToQbo(je, title)}
                   disabled={blocked || isSaving || je.lines.length === 0}
-                  title={blocked ? 'Resolve the blocking checks first' : 'Create this journal entry in QuickBooks'}
+                  title={
+                    blocked
+                      ? 'Resolve the blocking checks first'
+                      : postButton.label === 'Check QBO & retry'
+                        ? 'Look in QuickBooks for this entry first; post only if it is not there'
+                        : 'Create this journal entry in QuickBooks'
+                  }
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                  Post to QBO
+                  {postButton.label}
                 </Button>
               )}
               {snapshot?.qbo_txn_id && (

@@ -3,7 +3,7 @@ import { parseCoinbaseZip, parseStatementEntries, parseDetailCsv, CoinbaseParseE
 import { computeCoinbaseJe } from '@/lib/qbo/coinbase-je';
 import { computeSalesJe } from '@/lib/qbo/sales-je';
 import { salesChecks, coinbaseChecks, checkSalesFreshness, hasBlocker } from '@/lib/qbo/checks';
-import { detectDrift, monthStatus, monthStatusLabel, countsAsEntered, needsAttention, postFailed } from '@/lib/qbo/snapshot';
+import { detectDrift, monthStatus, monthStatusLabel, countsAsEntered, needsAttention, postFailed, postButtonFor } from '@/lib/qbo/snapshot';
 import { fmtAmount, fmtQuantity, round2 } from '@/lib/qbo/money';
 import { planPost, entryCorroborates, debitTotalOf, type ExistingEntry } from '@/lib/qbo/post-plan';
 import { buildJournalEntryPayload, buildDocNumber, DOC_NUMBER_MAX } from '@/lib/qbo/je-payload';
@@ -589,6 +589,28 @@ ok('unknown wins when both are present',
 // A failed post leaves the month needing work, not entered.
 ok('a failed post leaves the month unentered',
    ms2({ markedJes: [], attentionJes: [] }) === 'ready');
+
+console.log('\n=== 16. Post button only on a genuinely postable JE ===');
+const btn = (s: Parameters<typeof postButtonFor>[0]) => postButtonFor(s)?.label ?? null;
+ok('no snapshot → Post to QBO', btn(null) === 'Post to QBO');
+ok("'idle' → Post to QBO", btn({ post_state: 'idle', qbo_txn_id: null }) === 'Post to QBO');
+ok("'failed' → Post to QBO", btn({ post_state: 'failed', qbo_txn_id: null }) === 'Post to QBO');
+ok("'unknown' → Check QBO & retry", btn({ post_state: 'unknown', qbo_txn_id: null }) === 'Check QBO & retry');
+ok("'manual' → no post button (the March 2026 Sales bug)", btn({ post_state: 'manual', qbo_txn_id: null }) === null);
+ok("'posted' → no post button", btn({ post_state: 'posted', qbo_txn_id: '147' }) === null);
+ok("'posted' without a txn id → still no post button", btn({ post_state: 'posted', qbo_txn_id: null }) === null);
+ok("'posting' → no post button", btn({ post_state: 'posting', qbo_txn_id: null }) === null);
+ok('pre-API row with no post_state reads as manual → no post button', btn({ qbo_txn_id: null }) === null);
+ok('a txn id suppresses the button even on an idle row', btn({ post_state: 'idle', qbo_txn_id: '9' }) === null);
+// A 'manual' JE shows Un-mark/Re-mark, which the page keys off countsAsEntered.
+ok("'manual' counts as entered (gets Un-mark/Re-mark)", countsAsEntered({ post_state: 'manual' }));
+// The button and the server plan must agree: every state with no button is one
+// planPost refuses, and every state with a button is one it would act on.
+for (const st of ['idle', 'failed', 'unknown', 'manual', 'posted', 'posting'] as const) {
+  const shown = btn({ post_state: st, qbo_txn_id: null }) !== null;
+  const refused = planPost({ postState: st, qboTxnId: null, docNumber: 'DEN-2026-03-SALES' }).action === 'refuse';
+  ok(`'${st}': button ${shown ? 'shown' : 'hidden'} matches planPost ${refused ? 'refusing' : 'acting'}`, shown === !refused);
+}
 
 console.log(failures ? `\n${failures} FAILURES` : '\nAll harness checks passed.');
 process.exit(failures ? 1 : 0);
