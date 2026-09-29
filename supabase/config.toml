@@ -1,0 +1,23 @@
+# Per-function Edge Function configuration.
+#
+# This is the repo's first config.toml. It exists for one reason: the OAuth
+# callback below must accept a request that has NO Authorization header at all.
+#
+# Intuit redirects the operator's browser to qbo-oauth-callback after they
+# approve the connection. That is a plain top-level navigation from
+# appcenter.intuit.com — no Supabase session travels with it. With the platform
+# default verify_jwt = true, the gateway rejects it before our code runs and the
+# connection can never complete.
+#
+# Turning the JWT check off does NOT make the endpoint unauthenticated. It is
+# authenticated by the one-time `state` row minted in qbo-oauth-start: the state
+# must exist, be unexpired, be unused, and carry a return_url that was
+# allowlisted at mint time. An attacker hitting this URL without a valid state
+# gets nothing.
+#
+# Every other qbo-* function keeps verify_jwt = true AND additionally verifies
+# the caller is an admin, because the gateway check alone is satisfied by the
+# anon key that ships in the client bundle.
+
+[functions.qbo-oauth-callback]
+verify_jwt = false

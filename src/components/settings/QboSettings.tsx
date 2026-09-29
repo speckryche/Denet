@@ -52,7 +52,10 @@ const emptyAsset = (): CryptoAssetRow => ({
 
 export function QboSettings() {
   const { role } = useAuth();
-  const isReadOnly = role === 'standard';
+  // `role !== 'admin'` rather than `role === 'standard'`: a user with no role at
+  // all was previously treated as an editor, which is the wrong default for a
+  // screen that decides where money lands in the general ledger.
+  const isReadOnly = role !== 'admin';
 
   const [accounts, setAccounts] = useState<AccountMapRow[]>([]);
   const [assets, setAssets] = useState<CryptoAssetRow[]>([]);
@@ -183,13 +186,12 @@ export function QboSettings() {
 
   return (
     <SettingsGuard>
-      <div
-        className={
-          isReadOnly
-            ? '[&_input]:read-only [&_button]:pointer-events-none [&_button]:opacity-50'
-            : ''
-        }
-      >
+      {/* A disabled <fieldset> disables every descendant control natively —
+          inputs, selects and buttons, keyboard included. The previous CSS
+          approach did not hold: `[&_input]:read-only` is a Tailwind variant
+          used as a class name and applied nothing, so inputs stayed editable,
+          and `pointer-events-none` only blocks the mouse. */}
+      <fieldset disabled={isReadOnly} className={isReadOnly ? 'opacity-70' : ''}>
         <Card className="bg-card/30 border-white/10">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -389,7 +391,7 @@ export function QboSettings() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </fieldset>
     </SettingsGuard>
   );
 }

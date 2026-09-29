@@ -3,8 +3,11 @@ import { parseCoinbaseZip, parseStatementEntries, parseDetailCsv, CoinbaseParseE
 import { computeCoinbaseJe } from '@/lib/qbo/coinbase-je';
 import { computeSalesJe } from '@/lib/qbo/sales-je';
 import { salesChecks, coinbaseChecks, checkSalesFreshness, hasBlocker } from '@/lib/qbo/checks';
-import { detectDrift, monthStatus, monthStatusLabel } from '@/lib/qbo/snapshot';
-import { fmtAmount, fmtQuantity } from '@/lib/qbo/money';
+import { detectDrift, monthStatus, monthStatusLabel, countsAsEntered, needsAttention, postFailed } from '@/lib/qbo/snapshot';
+import { fmtAmount, fmtQuantity, round2 } from '@/lib/qbo/money';
+import { planPost, entryCorroborates, debitTotalOf, type ExistingEntry } from '@/lib/qbo/post-plan';
+import { buildJournalEntryPayload, buildDocNumber, DOC_NUMBER_MAX } from '@/lib/qbo/je-payload';
+import { matchAccounts, accountNumber, nameWithoutNumber, unresolvedTargets, type QboAccount, type MappingTarget } from '@/lib/qbo/account-match';
 import type { AccountMap, CryptoAsset, CoinbaseDetailRow, CoinbaseBalanceRow } from '@/lib/qbo/types';
 
 // Point at a real Coinbase Prime monthly ZIP. The sample is intentionally not
@@ -305,6 +308,287 @@ ok('fmtQuantity avoids exponential notation', !fmtQuantity(0.0000001).includes('
 ok('fmtQuantity renders a whole number cleanly', fmtQuantity(3) === '3', fmtQuantity(3));
 ok('fmtQuantity handles null', fmtQuantity(null) === '—', fmtQuantity(null));
 ok('fmtQuantity never returns -0', fmtQuantity(-0) === '0', fmtQuantity(-0));
+
+console.log('\n=== 12. QBO account matching ===');
+// The live stored names, verbatim. Note SOL's inventory account has NO number.
+const TARGETS: MappingTarget[] = [
+  { ref: 'machine_cash',     label: 'Machine cash',     accountName: '1005 BTC Machine Cash', currentId: null },
+  { ref: 'transaction_fees', label: 'Transaction fees', accountName: '4061 Transaction Fees:Fees - Denet BTMs', currentId: null },
+  { ref: 'bitstop_fees',     label: 'Bitstop fees',     accountName: '5015 Bitstop Fees', currentId: null },
+  { ref: 'exchange_account', label: 'Exchange account', accountName: '1010 Exchange Account - Coinbase', currentId: null },
+  { ref: 'exchange_fees',    label: 'Exchange fees',    accountName: '6040 Exchange Fees', currentId: null },
+  { ref: 'BTC:inv',          label: 'BTC — inventory',  accountName: '1100 Bitcoin S/T Holdings', currentId: null },
+  { ref: 'BTC:invest',       label: 'BTC — investment', accountName: '1605 Long-term Investments:Bitcoin (BTC)', currentId: null },
+  { ref: 'SOL:inv',          label: 'SOL — inventory',  accountName: 'Inventory - Solana', currentId: null },
+  { ref: 'SOL:invest',       label: 'SOL — investment', accountName: '1610 Long-term Investments:Solana (SOL)', currentId: null },
+];
+const acct = (Id: string, AcctNum: string | undefined, Name: string, FullyQualifiedName?: string, extra: Partial<QboAccount> = {}): QboAccount =>
+  ({ Id, AcctNum, Name, FullyQualifiedName: FullyQualifiedName ?? Name, Active: true, ...extra });
+
+const QBO: QboAccount[] = [
+  acct('101', '1005', 'BTC Machine Cash'),
+  acct('102', '4061', 'Fees - Denet BTMs', 'Transaction Fees:Fees - Denet BTMs'),
+  acct('103', '5015', 'Bitstop Fees'),
+  acct('104', '1010', 'Exchange Account - Coinbase'),
+  acct('105', '6040', 'Exchange Fees'),
+  acct('106', '1100', 'Bitcoin S/T Holdings'),
+  acct('107', '1605', 'Bitcoin (BTC)', 'Long-term Investments:Bitcoin (BTC)'),
+  acct('108', undefined, 'Inventory - Solana'),          // no AcctNum, like ours
+  acct('109', '1610', 'Solana (SOL)', 'Long-term Investments:Solana (SOL)'),
+];
+
+const r = matchAccounts(TARGETS, QBO);
+ok('all 9 live accounts matched', r.matched.length === 9, `${r.matched.length} matched, ${r.unmatched.length} unmatched, ${r.ambiguous.length} ambiguous`);
+ok('nothing unresolved', unresolvedTargets(r).length === 0);
+const by = (ref: string) => r.matched.find(m => m.target.ref === ref);
+ok('numbered name matches on AcctNum', by('machine_cash')?.account.Id === '101' && by('machine_cash')?.method === 'acct_num');
+ok('Parent:Child name matches', by('transaction_fees')?.account.Id === '102');
+ok('name with (TICKER) matches', by('SOL:invest')?.account.Id === '109');
+// The point is that a name with no account number still resolves at all —
+// tier 1 cannot fire for it. It lands on fully_qualified_name because QBO
+// reports FQN === Name for a top-level account, which is a stronger match than
+// the name tier, so accept either.
+ok('UNNUMBERED name still matches',
+   by('SOL:inv')?.account.Id === '108'
+   && ['fully_qualified_name', 'name'].includes(by('SOL:inv')?.method ?? ''),
+   `${by('SOL:inv')?.method}`);
+// ...and it must not fall through to tier 1 on some other account's number.
+ok('unnumbered name never matches via AcctNum', by('SOL:inv')?.method !== 'acct_num');
+
+// Helpers
+ok('accountNumber reads the leading number', accountNumber('4061 Transaction Fees:Fees - Denet BTMs') === '4061');
+ok('accountNumber is null when absent', accountNumber('Inventory - Solana') === null);
+ok('nameWithoutNumber strips it', nameWithoutNumber('1005 BTC Machine Cash') === 'BTC Machine Cash');
+ok('nameWithoutNumber is a no-op without one', nameWithoutNumber('Inventory - Solana') === 'Inventory - Solana');
+
+// Ambiguity must never be guessed.
+const dupes = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '1100 Bitcoin S/T Holdings', currentId: null }],
+  [acct('201', '1100', 'Bitcoin S/T Holdings'), acct('202', '1100', 'Bitcoin S/T Holdings (old)')],
+);
+ok('two accounts on the same AcctNum → ambiguous, not guessed',
+   dupes.ambiguous.length === 1 && dupes.matched.length === 0 && dupes.ambiguous[0].candidates.length === 2);
+
+// Inactive accounts are excluded rather than matched-then-failed at the API.
+const inactive = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '9999 Closed Account', currentId: null }],
+  [acct('301', '9999', 'Closed Account', undefined, { Active: false })],
+);
+ok('inactive QBO account is not matched', inactive.unmatched.length === 1 && inactive.matched.length === 0);
+
+// Normalisation: spacing around ':' and casing differ between systems.
+const spaced = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '4061 Transaction Fees:Fees - Denet BTMs', currentId: null }],
+  [acct('401', undefined, 'Fees - Denet BTMs', 'transaction fees : fees - denet btms')],
+);
+ok('spacing/case differences around ":" still match', spaced.matched.length === 1 && spaced.matched[0].method === 'fully_qualified_name');
+
+// An already-correct Id is reported as unchanged so a sync writes nothing.
+const same = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '1005 BTC Machine Cash', currentId: '101' }], QBO);
+ok('already-correct Id reports unchanged', same.matched[0]?.unchanged === true);
+
+// A truly missing account is unmatched, not silently dropped.
+const missing = matchAccounts(
+  [{ ref: 'x', label: 'x', accountName: '7777 Not In QBO', currentId: null }], QBO);
+ok('missing account is unmatched', missing.unmatched.length === 1 && missing.unmatched[0].ref === 'x');
+
+console.log('\n=== 13. JournalEntry payload ===');
+// Keyed by the names THIS harness's fixtures use (unnumbered — see ACCOUNTS /
+// ASSETS at the top). The mapper looks names up verbatim and is indifferent to
+// whether they carry an account number; section 12 covers the live numbered
+// names against the matcher.
+const IDS = new Map<string, string>([
+  ['BTC Machine Cash', '101'],
+  ['Transaction Fees', '102'],
+  ['Bitstop Fees', '103'],
+  ['Exchange Account - Coinbase', '104'],
+  ['Exchange Fees', '105'],
+  ['Inventory - Bitcoin', '106'],
+  ['Long-term Investments:Bitcoin', '107'],
+]);
+// The real August Coinbase JE, straight from the computation above.
+const cbPayload = buildJournalEntryPayload({
+  je: cb.je,
+  accountIdByName: IDS,
+  entityByAccountName: new Map([['Exchange Account - Coinbase', { type: 'Vendor' as const, id: '55', name: 'Coinbase' }]]),
+});
+ok('August Coinbase JE builds', cbPayload.payload !== null, cbPayload.missingAccounts.join(',') || 'no missing');
+ok('DocNumber is DEN-2026-08-CB', cbPayload.docNumber === 'DEN-2026-08-CB', cbPayload.docNumber);
+ok('DocNumber fits the QBO limit', cbPayload.docNumber.length <= DOC_NUMBER_MAX, `${cbPayload.docNumber.length} chars`);
+ok('sales DocNumber is DEN-2026-08-SALES', buildDocNumber('2026-08', 'sales') === 'DEN-2026-08-SALES');
+ok('TxnDate is the month end', cbPayload.payload?.TxnDate === '2026-08-31', `${cbPayload.payload?.TxnDate}`);
+
+// Amounts are positive; PostingType carries the sign.
+const pl = cbPayload.payload!;
+ok('every Amount is positive', pl.Line.every(l => l.Amount > 0));
+ok('every line is a JournalEntryLineDetail', pl.Line.every(l => l.DetailType === 'JournalEntryLineDetail'));
+const pDeb = round2(pl.Line.filter(l => l.JournalEntryLineDetail.PostingType === 'Debit').reduce((s, l) => s + l.Amount, 0));
+const pCred = round2(pl.Line.filter(l => l.JournalEntryLineDetail.PostingType === 'Credit').reduce((s, l) => s + l.Amount, 0));
+ok('payload balances', pDeb === pCred, `${fmtAmount(pDeb)} / ${fmtAmount(pCred)}`);
+ok('payload matches the computed JE to the cent',
+   pCred === cb.je.totalCredits && pDeb === cb.je.totalDebits,
+   `${fmtAmount(pCred)} vs ${fmtAmount(cb.je.totalCredits)}`);
+
+// EntityRef lands on the exchange-account line and nowhere else.
+const withEntity = pl.Line.filter(l => l.JournalEntryLineDetail.Entity);
+ok('exactly one line carries an EntityRef', withEntity.length === 1, `${withEntity.length}`);
+ok('EntityRef is the Coinbase vendor on the exchange account',
+   withEntity[0]?.JournalEntryLineDetail.AccountRef.value === '104'
+   && withEntity[0]?.JournalEntryLineDetail.Entity?.EntityRef.value === '55'
+   && withEntity[0]?.JournalEntryLineDetail.Entity?.Type === 'Vendor');
+
+// THE POINT OF THE PER-LINE RULE: an unmapped account that this JE never uses
+// must not block it. SOL inventory is absent from IDS entirely.
+ok('an unmapped, unused account does not block the post',
+   cbPayload.missingAccounts.length === 0,
+   'SOL inventory is unmapped and irrelevant to this JE');
+
+// ...but an unmapped account this JE DOES use blocks, and says which.
+const short = new Map(IDS); short.delete('Exchange Fees');
+const blocked = buildJournalEntryPayload({ je: cb.je, accountIdByName: short });
+ok('an unmapped account that IS used blocks the post',
+   blocked.payload === null && blocked.missingAccounts.includes('Exchange Fees'),
+   blocked.missingAccounts.join(','));
+
+// Sales JE, using the synthetic one built in section 7.
+const salesPayload = buildJournalEntryPayload({
+  je: sales.je,
+  accountIdByName: new Map([
+    ['BTC Machine Cash', '101'], ['Transaction Fees', '102'],
+    ['Bitstop Fees', '103'], ['Inventory - Bitcoin', '106'],
+  ]),
+});
+ok('sales JE builds and balances',
+   salesPayload.payload !== null
+   && round2(salesPayload.payload!.Line.filter(l => l.JournalEntryLineDetail.PostingType === 'Debit').reduce((s, l) => s + l.Amount, 0))
+      === round2(salesPayload.payload!.Line.filter(l => l.JournalEntryLineDetail.PostingType === 'Credit').reduce((s, l) => s + l.Amount, 0)),
+   salesPayload.missingAccounts.join(',') || 'ok');
+ok('no EntityRef on the sales JE', salesPayload.payload!.Line.every(l => !l.JournalEntryLineDetail.Entity));
+
+// The same account appearing twice with different descriptions stays two lines
+// — the sales JE credits inventory for both dispensed crypto and operator fee.
+const invLines = salesPayload.payload!.Line.filter(l => l.JournalEntryLineDetail.AccountRef.value === '106');
+ok('repeated account keeps separate lines with distinct descriptions',
+   invLines.length === 2 && invLines[0].Description !== invLines[1].Description,
+   `${invLines.length} lines`);
+
+console.log('\n=== 14. Post plan: never post the same month twice ===');
+const DN = 'DEN-2026-08-SALES';
+const found: ExistingEntry = { Id: '999', SyncToken: '0', DocNumber: DN, TotalAmt: 69670.20, TxnDate: '2026-08-31' };
+
+// The bug this exists to prevent: the three 2026-01/02/03 snapshots were keyed
+// into QuickBooks by hand and carry no qbo_txn_id, so the first version of
+// qbo_claim_post would have happily posted them again.
+const manual = planPost({ postState: 'manual', qboTxnId: null, docNumber: DN });
+ok('a manually-entered month is refused', manual.action === 'refuse' && (manual as any).code === 'entered_manually', manual.action);
+ok('the refusal explains there is no DocNumber to search on',
+   (manual as any).reason?.includes('DocNumber'), (manual as any).reason?.slice(0, 60));
+
+ok('an already-posted entry is refused',
+   planPost({ postState: 'posted', qboTxnId: '123', docNumber: DN }).action === 'refuse');
+ok('an id present with any state is refused',
+   planPost({ postState: 'idle', qboTxnId: '123', docNumber: DN }).action === 'refuse');
+ok('an in-flight post is refused',
+   planPost({ postState: 'posting', qboTxnId: null, docNumber: DN }).action === 'refuse');
+
+// BOTH BRANCHES OF 'unknown' — a POST whose outcome we never confirmed.
+const mustCheck = planPost({ postState: 'unknown', qboTxnId: null, docNumber: DN });
+ok("'unknown' demands a QuickBooks check before anything else",
+   mustCheck.action === 'check_qbo_first' && (mustCheck as any).docNumber === DN, mustCheck.action);
+
+const unknownFound = planPost({ postState: 'unknown', qboTxnId: null, docNumber: DN, existing: found });
+ok("'unknown' + entry FOUND in QBO → adopt it, do not post",
+   unknownFound.action === 'adopt' && (unknownFound as any).entry.Id === '999', unknownFound.action);
+
+const unknownAbsent = planPost({ postState: 'unknown', qboTxnId: null, docNumber: DN, existing: null });
+ok("'unknown' + entry ABSENT in QBO → post it",
+   unknownAbsent.action === 'recover_post', unknownAbsent.action);
+
+// The happy path, and the case where a prior attempt silently succeeded.
+ok('a fresh entry posts', planPost({ postState: 'idle', qboTxnId: null, docNumber: DN, existing: null }).action === 'post');
+ok('a failed entry retries', planPost({ postState: 'failed', qboTxnId: null, docNumber: DN, existing: null }).action === 'post');
+ok('a fresh entry that IS already in QBO is adopted, not duplicated',
+   planPost({ postState: 'idle', qboTxnId: null, docNumber: DN, existing: found }).action === 'adopt');
+
+// DocNumber is not unique in QuickBooks, so a name match alone is not proof.
+//
+// And TotalAmt cannot be the corroborating amount: QuickBooks reports 0 for it
+// on journal entries. Verified against the real posted sandbox entry, txn 145,
+// which came back TotalAmt: 0 while balancing at 69,670.20. So the debit lines
+// are summed instead.
+const realShape: ExistingEntry = {
+  Id: '145', SyncToken: '0', DocNumber: DN, TotalAmt: 0, TxnDate: '2026-08-31',
+  Line: [
+    { Amount: 66636.00, JournalEntryLineDetail: { PostingType: 'Debit' } },
+    { Amount: 15764.30, JournalEntryLineDetail: { PostingType: 'Credit' } },
+    { Amount: 50871.70, JournalEntryLineDetail: { PostingType: 'Credit' } },
+    { Amount: 3034.20,  JournalEntryLineDetail: { PostingType: 'Debit' } },
+    { Amount: 3034.20,  JournalEntryLineDetail: { PostingType: 'Credit' } },
+  ],
+};
+ok('debit total is summed from the lines, not TotalAmt',
+   debitTotalOf(realShape) === 69670.20, `${debitTotalOf(realShape)}`);
+ok('corroboration accepts the real entry despite TotalAmt being 0',
+   entryCorroborates(realShape, { totalAmount: 69670.20, txnDate: '2026-08-31' }));
+ok('corroboration rejects a wrong amount',
+   !entryCorroborates(realShape, { totalAmount: 1.00, txnDate: '2026-08-31' }));
+ok('corroboration rejects a wrong date',
+   !entryCorroborates(realShape, { totalAmount: 69670.20, txnDate: '2026-07-31' }));
+ok('corroboration tolerates sub-cent float noise',
+   entryCorroborates(realShape, { totalAmount: 69670.2000001, txnDate: '2026-08-31' }));
+// A summary query returns no lines. Date alone must not be enough to adopt
+// someone else's entry.
+ok('an entry with no lines is NOT corroborated on date alone',
+   !entryCorroborates({ Id: '9', SyncToken: '0', TxnDate: '2026-08-31' }, { totalAmount: 69670.20, txnDate: '2026-08-31' }));
+ok('debitTotalOf reports null when there are no lines',
+   debitTotalOf({ Id: '9', SyncToken: '0' }) === null);
+
+console.log('\n=== 15. A snapshot row is not proof the month is in QuickBooks ===');
+// qbo_claim_post now CREATES the snapshot before the POST — it is the
+// write-ahead record. So a row can exist for a month that is mid-flight, whose
+// outcome was never confirmed, or that QuickBooks rejected. Only 'manual' and
+// 'posted' mean the entry actually exists over there.
+const snapState = (post_state: string) => ({ post_state });
+ok("'manual' counts as entered", countsAsEntered(snapState('manual')));
+ok("'posted' counts as entered", countsAsEntered(snapState('posted')));
+ok("'posting' does NOT count as entered", !countsAsEntered(snapState('posting')));
+ok("'unknown' does NOT count as entered", !countsAsEntered(snapState('unknown')));
+ok("'failed' does NOT count as entered", !countsAsEntered(snapState('failed')));
+ok("'idle' does NOT count as entered", !countsAsEntered(snapState('idle')));
+ok('a missing snapshot is not entered', !countsAsEntered(null));
+// Rows written before post_state existed have no value; they were all manual.
+ok('a legacy row with no post_state is treated as manual', countsAsEntered({} as any));
+
+ok("'posting' needs attention", needsAttention(snapState('posting')));
+ok("'unknown' needs attention", needsAttention(snapState('unknown')));
+ok("'posted' does not need attention", !needsAttention(snapState('posted')));
+ok("'failed' is reported as failed, not attention", postFailed(snapState('failed')) && !needsAttention(snapState('failed')));
+
+// Month status: attention outranks everything, including drift.
+const ms2 = (over: Partial<Parameters<typeof monthStatus>[0]> = {}) => monthStatus({
+  hasData: true, hasBlockers: false, drifted: false,
+  requiredJes: ['sales', 'coinbase'], markedJes: [], ...over,
+});
+ok('a JE mid-post shows as attention', ms2({ attentionJes: ['sales'] }) === 'attention');
+ok('attention outranks drift',
+   ms2({ markedJes: ['sales', 'coinbase'], drifted: true, attentionJes: ['coinbase'] }) === 'attention');
+ok('attention outranks a fully entered month',
+   ms2({ markedJes: ['sales', 'coinbase'], attentionJes: ['sales'] }) === 'attention');
+ok('no attention JEs behaves exactly as before',
+   ms2({ markedJes: ['sales', 'coinbase'], attentionJes: [] }) === 'entered');
+
+// The label must distinguish "wait" from "go and look".
+ok("'unknown' reads as Check QBO",
+   monthStatusLabel('attention', { marked: 0, required: 2, posting: 0, unknown: 1 }) === 'Check QBO');
+ok("'posting' reads as Posting…",
+   monthStatusLabel('attention', { marked: 0, required: 2, posting: 1, unknown: 0 }) === 'Posting…');
+ok('unknown wins when both are present',
+   monthStatusLabel('attention', { marked: 0, required: 2, posting: 1, unknown: 1 }) === 'Check QBO');
+
+// A failed post leaves the month needing work, not entered.
+ok('a failed post leaves the month unentered',
+   ms2({ markedJes: [], attentionJes: [] }) === 'ready');
 
 console.log(failures ? `\n${failures} FAILURES` : '\nAll harness checks passed.');
 process.exit(failures ? 1 : 0);

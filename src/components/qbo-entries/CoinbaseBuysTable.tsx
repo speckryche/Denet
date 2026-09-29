@@ -28,17 +28,11 @@ import {
 import { Package, TrendingUp } from 'lucide-react';
 import { fmtAmount, fmtQuantity } from '@/lib/qbo/money';
 import type { CoinbaseBuy, CryptoAsset, Treatment } from '@/lib/qbo/types';
-
-// Account names are stored with the number leading, e.g.
-// "1100 Bitcoin S/T Holdings" or "1605 Long-term Investments:Bitcoin (BTC)".
-// Not every account is numbered though — Solana's inventory account is plain
-// "Inventory - Solana" — so this returns null rather than guessing, and the
-// hint is simply omitted for those.
-const accountNumber = (accountName: string | undefined): string | null => {
-  if (!accountName) return null;
-  const m = accountName.trim().match(/^(\d[\d.\-]*)\b/);
-  return m ? m[1] : null;
-};
+// Single definition, shared with the QBO account matcher. Account names are
+// stored with the number leading ("1100 Bitcoin S/T Holdings"), but not always
+// — Solana's inventory account is plain "Inventory - Solana" — so this returns
+// null rather than guessing and the hint is omitted for those.
+import { accountNumber } from '@/lib/qbo/account-match';
 
 // THEMING NOTE. `dark:` variants do nothing in this app: tailwind.config sets
 // darkMode:["class"], but nothing ever puts `dark` on <html>, and index.css
