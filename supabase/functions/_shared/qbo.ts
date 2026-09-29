@@ -39,6 +39,7 @@ export const apiBase = (env: QboEnv): string =>
 // not of the authorization server.
 export const AUTHORIZE_URL = 'https://appcenter.intuit.com/connect/oauth2';
 export const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
+export const REVOKE_URL = 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke';
 export const ACCOUNTING_SCOPE = 'com.intuit.quickbooks.accounting';
 
 // ---------------------------------------------------------------------------
@@ -224,12 +225,14 @@ export async function getAccessToken(
   return await performRefresh(supabase, row, lease);
 }
 
+const clientBasicAuth = (): string =>
+  btoa(`${Deno.env.get('QBO_CLIENT_ID')!}:${Deno.env.get('QBO_CLIENT_SECRET')!}`);
+
 async function callTokenEndpoint(refreshToken: string): Promise<Response> {
-  const basic = btoa(`${Deno.env.get('QBO_CLIENT_ID')!}:${Deno.env.get('QBO_CLIENT_SECRET')!}`);
   return await fetch(TOKEN_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${basic}`,
+      Authorization: `Basic ${clientBasicAuth()}`,
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json',
     },
@@ -419,5 +422,33 @@ export function assertSandbox(realmId: string | null | undefined, companyName?: 
         `which is not the sandbox realm ${SANDBOX_REALM_ID}.`,
       'not_sandbox_realm',
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Revoke
+//
+// Revoking the refresh token ends the whole grant at Intuit (the access token
+// dies with it). Never throws: the caller decides what a failure means, and
+// qbo-disconnect deletes the local tokens either way.
+// ---------------------------------------------------------------------------
+
+export async function revokeGrant(refreshToken: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+  try {
+    const res = await fetch(REVOKE_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${clientBasicAuth()}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ token: refreshToken }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (res.ok) return { ok: true };
+    const detail = (await res.text().catch(() => '')).slice(0, 300);
+    return { ok: false, reason: `Intuit returned ${res.status}${detail ? `: ${detail}` : ''}` };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
   }
 }

@@ -118,13 +118,20 @@ export default function QboConnection() {
 
   const disconnect = async () => {
     if (!window.confirm(
-      'Forget the stored QuickBooks tokens?\n\nThis does not revoke access at Intuit and does not remove anything already posted to QuickBooks.',
+      'Disconnect QuickBooks?\n\nThis revokes the dashboard\'s access at Intuit and forgets the stored tokens. It does not remove anything already posted to QuickBooks.',
     )) return;
-    setBusy('disconnect'); setError(null);
+    setBusy('disconnect'); setError(null); setNotice(null);
     try {
-      await invoke('qbo-disconnect');
+      const r = await invoke('qbo-disconnect');
       setMatch(null); setAccounts([]);
-      setNotice('QuickBooks disconnected.');
+      if (r.revokeError) {
+        setError(
+          `QuickBooks disconnected here, but revoking access at Intuit failed: ${r.revokeError}. ` +
+          'To be sure access is gone, disconnect the app from the QuickBooks company\'s Apps settings.',
+        );
+      } else {
+        setNotice(r.revoked ? 'QuickBooks disconnected and access revoked at Intuit.' : 'QuickBooks disconnected.');
+      }
       await loadStatus();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not disconnect');
