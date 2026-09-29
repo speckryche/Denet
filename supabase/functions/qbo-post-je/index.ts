@@ -41,13 +41,23 @@ const round2 = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
 const docNumberFor = (month: string, jeType: string) =>
   `DEN-${month}-${jeType === 'sales' ? 'SALES' : 'CB'}`;
 
+/** The fields of a queried JournalEntry this function reads. */
+interface QboJournalEntry {
+  Id: string;
+  SyncToken: string;
+  DocNumber?: string;
+  TotalAmt?: number;
+  TxnDate?: string;
+  Line?: Array<{ Amount?: number; JournalEntryLineDetail?: { PostingType?: 'Debit' | 'Credit' } }>;
+}
+
 /** Find a JournalEntry by DocNumber. Returns null when absent. */
 async function findByDocNumber(supabase: any, docNumber: string) {
   const res = (await qboFetch(supabase, '/query', {
     searchParams: {
       query: `SELECT * FROM JournalEntry WHERE DocNumber = '${docNumber.replace(/'/g, "''")}'`,
     },
-  })) as { QueryResponse?: { JournalEntry?: Array<{ Id: string; SyncToken: string; DocNumber?: string; TotalAmt?: number; TxnDate?: string }> } };
+  })) as { QueryResponse?: { JournalEntry?: Array<QboJournalEntry> } };
   return res?.QueryResponse?.JournalEntry?.[0] ?? null;
 }
 
@@ -126,8 +136,8 @@ Deno.serve(async (req) => {
         // we refuse rather than adopt on date alone.
         const debitSum = Array.isArray(found.Line)
           ? round2(found.Line
-              .filter((l: any) => l?.JournalEntryLineDetail?.PostingType === 'Debit')
-              .reduce((acc: number, l: any) => acc + Number(l?.Amount ?? 0), 0))
+              .filter((l) => l?.JournalEntryLineDetail?.PostingType === 'Debit')
+              .reduce((acc, l) => acc + Number(l?.Amount ?? 0), 0))
           : null;
         const dateOk = !found.TxnDate || found.TxnDate === txnDate;
         const amtOk = debitSum != null && Math.abs(debitSum - expectedTotal) <= 0.005;
