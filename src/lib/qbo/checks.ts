@@ -42,7 +42,7 @@ export function checkSalesFreshness(month: string, input: FreshnessInput): Check
 
 export function salesChecks(result: SalesJeResult): Check[] {
   const checks: Check[] = [];
-  const { je, totals, excludedNonCompletedCount, unknownSymbols, unattributedTxCount } = result;
+  const { je, totals, excludedNonCompletedCount, excludedRefundedCount, unknownSymbols, unattributedTxCount } = result;
 
   if (!nearlyEqual(je.totalDebits, je.totalCredits)) {
     checks.push({
@@ -85,8 +85,17 @@ export function salesChecks(result: SalesJeResult): Check[] {
     checks.push({
       id: 'sales_excluded_non_completed',
       severity: 'INFO',
-      message: `${excludedNonCompletedCount} non-completed sales row${excludedNonCompletedCount === 1 ? '' : 's'} excluded.`,
+      message: `${excludedNonCompletedCount} non-completed sale${excludedNonCompletedCount === 1 ? '' : 's'} excluded.`,
       detail: 'Only completed transactions are included, matching every financial report in the app.',
+    });
+  }
+
+  if (excludedRefundedCount > 0) {
+    checks.push({
+      id: 'sales_excluded_refunded',
+      severity: 'INFO',
+      message: `${excludedRefundedCount} refunded sale${excludedRefundedCount === 1 ? '' : 's'} excluded.`,
+      detail: 'These completed sales carry a refund override (see Refunds), so they are left out of the entry.',
     });
   }
 

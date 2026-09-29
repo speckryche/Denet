@@ -33,6 +33,8 @@ import type {
   JeLine,
   SalesProfileLike,
   SalesTxLike,
+  ExcludedSalesRow,
+  SalesExclusionReason,
 } from './types';
 
 export interface SalesCoinGroup {
@@ -49,8 +51,11 @@ export interface SalesJeResult {
   je: Je;
   groups: SalesCoinGroup[];
   includedTxCount: number;
-  // Non-completed rows in the month (any platform attribution) — the INFO check.
+  // Rows left out of the JE, counted for the INFO checks. Scoped exactly like
+  // the JE itself: in the month, and on a Denet machine by profile window. A
+  // Bitstop-platform refund is outside the JE and must not show up here.
   excludedNonCompletedCount: number;
+  excludedRefundedCount: number;
   // Completed Denet rows whose coin has no active crypto_assets row.
   unknownSymbols: string[];
   // Completed rows that matched no atm_profiles window, so they could not be
@@ -77,8 +82,14 @@ export function computeSalesJe(input: {
   profiles: SalesProfileLike[];
   assets: CryptoAsset[];
   accounts: AccountMap;
+  /**
+   * Rows the completed-only fetch cannot see (non-completed, or removed by a
+   * refund override), from fetchExcludedSalesRows(). Optional: any
+   * non-completed row in `transactions` is counted as well, once per id.
+   */
+  excluded?: ExcludedSalesRow[];
 }): SalesJeResult {
-  const { month, transactions, profiles, assets, accounts } = input;
+  const { month, transactions, profiles, assets, accounts, excluded = [] } = input;
 
   const assetBySymbol = new Map(
     assets.filter((a) => a.active).map((a) => [a.symbol.toUpperCase(), a]),
@@ -89,12 +100,30 @@ export function computeSalesJe(input: {
   const groups = new Map<string, SalesCoinGroup>();
   let includedTxCount = 0;
   let excludedNonCompletedCount = 0;
+  let excludedRefundedCount = 0;
   let unattributedTxCount = 0;
   const unknownSymbols = new Set<string>();
 
+  // Same scope as the JE: a row counts only if it would have been a Denet sale.
+  // Rows that match no profile are skipped here — they are not provably in
+  // scope, and the completed ones among them already raise sales_unattributed.
+  const isDenetInMonth = (row: { atm_id: string | null; date: string | null }): boolean => {
+    if (!row.atm_id || !row.date || monthOfTxDate(row.date) !== month) return false;
+    const profile = findProfileForTx(profiles, row.atm_id, parseLocalDate(row.date));
+    return (profile?.platform || '').toLowerCase() === 'denet';
+  };
+  const excludedSeen = new Set<string>();
+  const countExcluded = (row: { id: string; atm_id: string | null; date: string | null }, reason: SalesExclusionReason) => {
+    if (excludedSeen.has(row.id) || !isDenetInMonth(row)) return;
+    excludedSeen.add(row.id);
+    if (reason === 'refunded') excludedRefundedCount += 1;
+    else excludedNonCompletedCount += 1;
+  };
+  for (const row of excluded) countExcluded(row, row.reason);
+
   for (const tx of inMonth) {
     if (!countsFinancial(tx.status)) {
-      excludedNonCompletedCount += 1;
+      countExcluded(tx, 'non_completed');
       continue;
     }
     if (!tx.atm_id || !tx.date) {
@@ -189,6 +218,7 @@ export function computeSalesJe(input: {
     groups: ordered,
     includedTxCount,
     excludedNonCompletedCount,
+    excludedRefundedCount,
     unknownSymbols: [...unknownSymbols],
     unattributedTxCount,
     totals,

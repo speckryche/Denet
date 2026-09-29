@@ -11,6 +11,7 @@ import type {
   CoinbaseDetailRow,
   CoinbaseStatement,
   CryptoAsset,
+  ExcludedSalesRow,
   Je,
   JeLine,
   JeType,
@@ -109,35 +110,55 @@ export async function fetchTransactionsForRange(
   return all;
 }
 
-// Rows excluded from the financial surface, counted (not listed) for the INFO
-// check, so a count query is enough and keeps the payload small.
+// Rows excluded from the financial surface, with the reason, for the Sales JE's
+// INFO checks. Listed rather than counted: the JE scopes them by ATM profile
+// window (Denet only), which a database count cannot do, and a refund reads
+// differently from a non-completed sale.
 //
-// Derived as (all rows in range) − (financial rows in range) rather than by
-// inverting the status filter. Exclusion is no longer a property of `status`
-// alone: a refund override removes a transaction that is still stored as
-// 'completed'. Inverting the status list would count the non-completed rows and
-// silently miss every refunded one, so the INFO check would under-report
-// exactly the exclusions a human most needs to know about. Subtracting the view
-// from the base table tracks whatever `financial_transactions` decides, for
-// free, including any future rule.
-export async function countNonCompletedInRange(
+// Mirrors the two rules in the financial_transactions view:
+//   status <> 'completed'             → non_completed
+//   a transaction_refunds row exists  → refunded (completed rows only; a
+//                                       non-completed row is already excluded)
+// If the view gains a rule, add it here too.
+const ID_CHUNK = 200; // keeps .in() URLs under PostgREST's length limit
+
+export async function fetchExcludedSalesRows(
   fromDate: string,
   toDate: string,
-): Promise<number> {
-  const inRange = (q: any) =>
-    q.gte('date', fromDate).lte('date', `${toDate} 23:59:59`);
+): Promise<ExcludedSalesRow[]> {
+  const rows: ExcludedSalesRow[] = [];
 
-  const { count: totalCount, error: totalError } = await inRange(
-    supabase.from('transactions').select('id', { count: 'exact', head: true }),
-  );
-  if (totalError) throw totalError;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('id, atm_id, date')
+      .gte('date', fromDate)
+      .lte('date', `${toDate} 23:59:59`)
+      .or('status.is.null,status.neq.completed')
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    for (const r of data || []) rows.push({ id: r.id, atm_id: r.atm_id, date: r.date, reason: 'non_completed' });
+    if (!data || data.length < PAGE) break;
+  }
 
-  const { count: financialCount, error: financialError } = await inRange(
-    supabase.from('financial_transactions').select('id', { count: 'exact', head: true }),
-  );
-  if (financialError) throw financialError;
+  const { data: refunds, error: refundsError } = await supabase
+    .from('transaction_refunds')
+    .select('transaction_id');
+  if (refundsError) throw refundsError;
+  const refundIds = [...new Set((refunds || []).map((r: { transaction_id: string }) => r.transaction_id))];
+  for (let i = 0; i < refundIds.length; i += ID_CHUNK) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('id, atm_id, date')
+      .in('id', refundIds.slice(i, i + ID_CHUNK))
+      .eq('status', 'completed')
+      .gte('date', fromDate)
+      .lte('date', `${toDate} 23:59:59`);
+    if (error) throw error;
+    for (const r of data || []) rows.push({ id: r.id, atm_id: r.atm_id, date: r.date, reason: 'refunded' });
+  }
 
-  return Math.max(0, (totalCount || 0) - (financialCount || 0));
+  return rows;
 }
 
 export async function fetchProfiles(): Promise<SalesProfileLike[]> {

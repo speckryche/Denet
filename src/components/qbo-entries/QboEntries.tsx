@@ -62,7 +62,7 @@ import {
   monthsBetween,
 } from '@/lib/qbo/period';
 import {
-  countNonCompletedInRange,
+  fetchExcludedSalesRows,
   deleteSnapshot,
   fetchAccountRows,
   fetchBuyTreatments,
@@ -86,6 +86,7 @@ import type {
   CoinbaseBuy,
   CoinbaseDetailRow,
   CryptoAsset,
+  ExcludedSalesRow,
   Je,
   JeType,
   SalesProfileLike,
@@ -136,7 +137,7 @@ export default function QboEntries() {
   const [overrides, setOverrides] = useState<BuyTreatmentOverride[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [latestDenetUploadAt, setLatestDenetUploadAt] = useState<string | null>(null);
-  const [nonCompletedByMonth, setNonCompletedByMonth] = useState<Record<string, number>>({});
+  const [excludedByMonth, setExcludedByMonth] = useState<Record<string, ExcludedSalesRow[]>>({});
 
   const months = useMemo(
     () => monthsBetween(FIRST_MONTH, currentMonth()).reverse(),
@@ -192,16 +193,17 @@ export default function QboEntries() {
     if (isAdmin) loadAll();
   }, [isAdmin, loadAll]);
 
-  // The INFO check counts excluded rows, which the completed-only fetch above
-  // cannot see, so it is counted per month on demand.
+  // The INFO checks need the excluded rows, which the completed-only fetch
+  // above cannot see, so they are fetched per month on demand. computeSalesJe
+  // scopes them to Denet machines, like the JE itself.
   useEffect(() => {
     if (!isAdmin || !isValidMonth(selectedMonth)) return;
     let cancelled = false;
-    countNonCompletedInRange(monthStartDate(selectedMonth), monthEndDate(selectedMonth))
-      .then((count) => {
-        if (!cancelled) setNonCompletedByMonth((prev) => ({ ...prev, [selectedMonth]: count }));
+    fetchExcludedSalesRows(monthStartDate(selectedMonth), monthEndDate(selectedMonth))
+      .then((rows) => {
+        if (!cancelled) setExcludedByMonth((prev) => ({ ...prev, [selectedMonth]: rows }));
       })
-      .catch((err) => console.error('QBO Entries: non-completed count failed', err));
+      .catch((err) => console.error('QBO Entries: excluded rows fetch failed', err));
     return () => {
       cancelled = true;
     };
@@ -216,7 +218,9 @@ export default function QboEntries() {
   // Both entries plus their checks, for any month.
   const computeMonth = useCallback(
     (month: string) => {
-      const sales = computeSalesJe({ month, transactions, profiles, assets, accounts });
+      const sales = computeSalesJe({
+        month, transactions, profiles, assets, accounts, excluded: excludedByMonth[month],
+      });
       const coinbase = computeCoinbaseJe({
         month,
         rows: coinbaseRows,
@@ -231,10 +235,7 @@ export default function QboEntries() {
       // was never uploaded, purely because a neighbouring statement happened to
       // contain a row dated in it — and then render checks for an empty JE.
       const hasCoinbaseData = coinbaseRows.some((r) => r.periodStart.slice(0, 7) === month);
-      const salesCheckList: Check[] = salesChecks({
-        ...sales,
-        excludedNonCompletedCount: nonCompletedByMonth[month] ?? sales.excludedNonCompletedCount,
-      });
+      const salesCheckList: Check[] = salesChecks(sales);
       const freshness = checkSalesFreshness(month, { latestDenetUploadAt });
       if (freshness) salesCheckList.unshift(freshness);
       const coinbaseCheckList = hasCoinbaseData ? coinbaseChecks(coinbase) : [];
@@ -257,7 +258,7 @@ export default function QboEntries() {
       balances,
       overrides,
       latestDenetUploadAt,
-      nonCompletedByMonth,
+      excludedByMonth,
     ],
   );
 

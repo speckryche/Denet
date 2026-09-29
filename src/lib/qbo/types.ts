@@ -57,6 +57,19 @@ export interface SalesTxLike {
   bitstop_fee: number | null;
 }
 
+// A transaction left out of the financial surface, and why. `non_completed`
+// is a status other than 'completed'; `refunded` is a completed transaction
+// removed by a refund override (transaction_refunds). Status wins when both
+// apply, since the row would be excluded without the override.
+export type SalesExclusionReason = 'non_completed' | 'refunded';
+
+export interface ExcludedSalesRow {
+  id: string;
+  atm_id: string | null;
+  date: string | null;
+  reason: SalesExclusionReason;
+}
+
 // atm_profiles row, as needed for date-window platform attribution.
 export interface SalesProfileLike {
   id: string;

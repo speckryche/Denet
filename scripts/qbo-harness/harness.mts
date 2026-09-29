@@ -612,5 +612,64 @@ for (const st of ['idle', 'failed', 'unknown', 'manual', 'posted', 'posting'] as
   ok(`'${st}': button ${shown ? 'shown' : 'hidden'} matches planPost ${refused ? 'refusing' : 'acting'}`, shown === !refused);
 }
 
+console.log('\n=== 17. Sales INFO lines are scoped to the Denet JE, and split by reason ===');
+// ATM 4002 as it really is: Denet until 2025-06-16, Bitstop from 2025-06-17.
+const profiles4002 = [
+  ...profiles,
+  { id: 'p4d', atm_id: '4002', platform: 'denet', installed_date: '2025-03-20', removed_date: '2025-06-16' },
+  { id: 'p4b', atm_id: '4002', platform: 'bitstop', installed_date: '2025-06-17', removed_date: null },
+];
+const infoOf = (r: ReturnType<typeof computeSalesJe>) => salesChecks(r).filter(c => c.severity === 'INFO').map(c => c.message);
+const febSale = tx('s1', '100', '2026-02-10 10:00:00', 1000, 250, 750, 45);
+
+// February 2026 as reported: the only exclusion is a Bitstop-platform refund.
+const bitstopRefundOnly = computeSalesJe({
+  month: '2026-02', profiles: profiles4002, assets: ASSETS, accounts: ACCOUNTS, transactions: [febSale],
+  excluded: [{ id: 'dd56', atm_id: '4002', date: '2026-02-18 23:04:22', reason: 'refunded' }],
+});
+ok('only a Bitstop refund → no INFO at all on the Denet sales JE', infoOf(bitstopRefundOnly).length === 0,
+   JSON.stringify(infoOf(bitstopRefundOnly)));
+ok('…and it is not counted as either reason',
+   bitstopRefundOnly.excludedRefundedCount === 0 && bitstopRefundOnly.excludedNonCompletedCount === 0);
+
+// A Bitstop non-completed row is out of scope too.
+const bitstopNonCompleted = computeSalesJe({
+  month: '2026-02', profiles: profiles4002, assets: ASSETS, accounts: ACCOUNTS, transactions: [febSale],
+  excluded: [{ id: 'x1', atm_id: '200', date: '2026-02-11 09:00:00', reason: 'non_completed' }],
+});
+ok('a Bitstop non-completed row → no INFO', infoOf(bitstopNonCompleted).length === 0);
+
+// Both kinds on Denet machines, plus Bitstop noise that must not leak in.
+const both = computeSalesJe({
+  month: '2026-02', profiles: profiles4002, assets: ASSETS, accounts: ACCOUNTS,
+  transactions: [febSale, tx('n2', '100', '2026-02-12 10:00:00', 100, 25, 75, 4.5, 'expired')],
+  excluded: [
+    { id: 'n1', atm_id: '100', date: '2026-02-05 09:00:00', reason: 'non_completed' },
+    { id: 'n2', atm_id: '100', date: '2026-02-12 10:00:00', reason: 'non_completed' }, // also in transactions → once
+    { id: 'r1', atm_id: '100', date: '2026-02-20 09:00:00', reason: 'refunded' },
+    { id: 'dd56', atm_id: '4002', date: '2026-02-18 23:04:22', reason: 'refunded' },   // Bitstop → out
+    { id: 'n9', atm_id: '100', date: '2026-03-01 09:00:00', reason: 'non_completed' }, // other month → out
+  ],
+});
+const bothInfo = infoOf(both);
+ok('both reasons → two separate INFO lines', bothInfo.length === 2, JSON.stringify(bothInfo));
+ok('non-completed line reads "2 non-completed sales excluded."', bothInfo.includes('2 non-completed sales excluded.'));
+ok('refund line reads "1 refunded sale excluded."', bothInfo.includes('1 refunded sale excluded.'));
+ok('the JE itself is unchanged by exclusions', both.includedTxCount === 1 && both.totals.sale === 1000);
+
+// Same ATM, earlier month, while it was a Denet machine: now in scope.
+const denetEra4002 = computeSalesJe({
+  month: '2025-05', profiles: profiles4002, assets: ASSETS, accounts: ACCOUNTS, transactions: [],
+  excluded: [{ id: 'old', atm_id: '4002', date: '2025-05-10 12:00:00', reason: 'refunded' }],
+});
+ok('ATM 4002 refund inside its Denet window → counted as refunded', infoOf(denetEra4002).includes('1 refunded sale excluded.'));
+
+// A row with no matching profile is not provably in scope, so it is not counted.
+const noProfile = computeSalesJe({
+  month: '2026-02', profiles: profiles4002, assets: ASSETS, accounts: ACCOUNTS, transactions: [febSale],
+  excluded: [{ id: 'z', atm_id: '999', date: '2026-02-03 09:00:00', reason: 'non_completed' }],
+});
+ok('an excluded row matching no profile → no INFO', infoOf(noProfile).length === 0);
+
 console.log(failures ? `\n${failures} FAILURES` : '\nAll harness checks passed.');
 process.exit(failures ? 1 : 0);
