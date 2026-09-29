@@ -9,7 +9,7 @@
 // Responses are redirects, not JSON — a human is looking at this, not code.
 
 import { corsHeaders } from '../_shared/utils.ts';
-import { TOKEN_URL, apiBase, qboEnv, serviceClient } from '../_shared/qbo.ts';
+import { TOKEN_URL, apiBase, intuitTidOf, qboEnv, serviceClient } from '../_shared/qbo.ts';
 
 const redirect = (to: string): Response =>
   new Response(null, { status: 302, headers: { ...corsHeaders, Location: to } });
@@ -71,8 +71,9 @@ Deno.serve(async (req) => {
     });
 
     const text = await res.text();
+    console.log(`QBO token exchange ${res.status} intuit_tid=${intuitTidOf(res) ?? 'none'}`);
     if (!res.ok) {
-      console.error('Token exchange failed:', res.status, text.slice(0, 500));
+      console.error('Token exchange failed:', res.status, `intuit_tid=${intuitTidOf(res) ?? 'none'}`, text.slice(0, 500));
       return fail(returnUrl, `token_exchange_failed_${res.status}`);
     }
 
@@ -94,6 +95,7 @@ Deno.serve(async (req) => {
         `${apiBase(env)}/v3/company/${realmId}/companyinfo/${realmId}?minorversion=75`,
         { headers: { Authorization: `Bearer ${body.access_token}`, Accept: 'application/json' } },
       );
+      console.log(`QBO GET /companyinfo ${infoRes.status} intuit_tid=${intuitTidOf(infoRes) ?? 'none'}`);
       if (infoRes.ok) {
         const info = await infoRes.json();
         companyName = info?.CompanyInfo?.CompanyName ?? null;

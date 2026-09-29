@@ -42,6 +42,13 @@ export const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bea
 export const REVOKE_URL = 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke';
 export const ACCOUNTING_SCOPE = 'com.intuit.quickbooks.accounting';
 
+/**
+ * Intuit's per-request transaction id. Intuit support asks for it on any
+ * ticket, so it is logged for every Intuit response and carried into stored
+ * errors. Absent on network failures, where there was no response.
+ */
+export const intuitTidOf = (res: Response): string | null => res.headers.get('intuit_tid');
+
 // ---------------------------------------------------------------------------
 // Return-URL allowlist
 //
@@ -266,6 +273,7 @@ async function performRefresh(
   }
 
   let text = await res.text();
+  console.log(`QBO token refresh ${res.status} intuit_tid=${intuitTidOf(res) ?? 'none'}`);
 
   // invalid_grant with a recently-rotated previous token means we probably
   // crashed mid-rotation. One retry with that token turns the classic bricking
@@ -276,6 +284,7 @@ async function performRefresh(
       try {
         const retry = await callTokenEndpoint(lease.previous_refresh_token);
         const retryText = await retry.text();
+        console.log(`QBO token refresh (previous token) ${retry.status} intuit_tid=${intuitTidOf(retry) ?? 'none'}`);
         if (retry.ok) {
           res = retry;
           text = retryText;
@@ -290,7 +299,7 @@ async function performRefresh(
     const terminal = res.status === 400 || res.status === 401;
     await supabase.rpc('qbo_fail_refresh', {
       p_lease_id: lease.lease_id,
-      p_error: `Token refresh failed (${res.status}): ${text.slice(0, 300)}`,
+      p_error: `Token refresh failed (${res.status}, intuit_tid ${intuitTidOf(res) ?? 'none'}): ${text.slice(0, 300)}`,
       p_terminal: terminal,
     });
     throw new NotConnectedError(
@@ -360,6 +369,19 @@ export async function qboFetch(
   path: string,
   init: RequestInit & { searchParams?: Record<string, string> } = {},
 ): Promise<unknown> {
+  return (await qboFetchWithTid(supabase, path, init)).data;
+}
+
+/**
+ * qboFetch that also returns the response's intuit_tid, for callers that store
+ * a result and need the tid even when the call itself succeeded. Errors thrown
+ * here already carry the tid in their message.
+ */
+export async function qboFetchWithTid(
+  supabase: SupabaseClient,
+  path: string,
+  init: RequestInit & { searchParams?: Record<string, string> } = {},
+): Promise<{ data: unknown; intuitTid: string | null }> {
   const { token, connection } = await getAccessToken(supabase);
   const url = new URL(`${apiBase(connection.environment)}/v3/company/${connection.realm_id}${path}`);
   url.searchParams.set('minorversion', MINOR_VERSION);
@@ -376,12 +398,20 @@ export async function qboFetch(
   });
 
   const text = await res.text();
+  const intuitTid = intuitTidOf(res);
+  const tidLabel = `intuit_tid ${intuitTid ?? 'none'}`;
+  console.log(`QBO ${init.method ?? 'GET'} ${path} ${res.status} intuit_tid=${intuitTid ?? 'none'}`);
   if (!res.ok) {
     // Intuit's error bodies are deeply nested and inconsistent; the raw text is
-    // more useful to a human than a half-parsed shape.
-    throw new Error(`QuickBooks API ${res.status} on ${path}: ${text.slice(0, 500)}`);
+    // more useful to a human than a half-parsed shape. The tid goes BEFORE the
+    // body so truncating a long body (post_error is cut at 500) never loses it.
+    throw new Error(`QuickBooks API ${res.status} on ${path} (${tidLabel}): ${text.slice(0, 500)}`);
   }
-  return text ? JSON.parse(text) : null;
+  try {
+    return { data: text ? JSON.parse(text) : null, intuitTid };
+  } catch {
+    throw new Error(`QuickBooks API ${res.status} on ${path} (${tidLabel}) returned unparseable JSON: ${text.slice(0, 200)}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -445,9 +475,11 @@ export async function revokeGrant(refreshToken: string): Promise<{ ok: true } | 
       body: JSON.stringify({ token: refreshToken }),
       signal: AbortSignal.timeout(20_000),
     });
+    const tid = intuitTidOf(res) ?? 'none';
+    console.log(`QBO revoke ${res.status} intuit_tid=${tid}`);
     if (res.ok) return { ok: true };
     const detail = (await res.text().catch(() => '')).slice(0, 300);
-    return { ok: false, reason: `Intuit returned ${res.status}${detail ? `: ${detail}` : ''}` };
+    return { ok: false, reason: `Intuit returned ${res.status} (intuit_tid ${tid})${detail ? `: ${detail}` : ''}` };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) };
   }

@@ -21,7 +21,7 @@
 
 import { corsHeaders } from '../_shared/utils.ts';
 import {
-  AuthError, NotConnectedError, json, qboFetch, requireAdmin, serviceClient,
+  AuthError, NotConnectedError, json, qboFetch, qboFetchWithTid, requireAdmin, serviceClient,
 } from '../_shared/qbo.ts';
 
 interface SnapshotRow {
@@ -189,21 +189,22 @@ Deno.serve(async (req) => {
     // --- 4. POST -----------------------------------------------------------
     let created: any = null;
     try {
-      const res = (await qboFetch(supabase, '/journalentry', {
+      const { data, intuitTid } = await qboFetchWithTid(supabase, '/journalentry', {
         method: 'POST',
         body: JSON.stringify({ ...payload, DocNumber: claim.doc_number }),
         // Intuit deduplicates a retried POST carrying the same requestid. The id
         // was persisted at claim time, so a retry of THIS attempt reuses it.
         searchParams: { requestid: claim.request_id },
-      })) as { JournalEntry?: any };
-      created = res?.JournalEntry ?? null;
-      if (!created?.Id) throw new Error('QuickBooks returned no JournalEntry Id.');
+      });
+      created = (data as { JournalEntry?: any } | null)?.JournalEntry ?? null;
+      if (!created?.Id) throw new Error(`QuickBooks returned no JournalEntry Id (intuit_tid ${intuitTid ?? 'none'}).`);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       // A business fault means QBO rejected it — nothing was created, so this is
       // safely retryable. Anything else (timeout, 5xx, unparseable) leaves the
       // outcome genuinely unknown and must go to a human.
       const rejected = /QuickBooks API 4\d\d/.test(message);
+      console.error(`qbo-post-je ${claim.doc_number} ${rejected ? 'rejected' : 'outcome unknown'}: ${message}`);
       await supabase.rpc('qbo_fail_post', {
         p_lease_id: claim.lease_id,
         p_error: message.slice(0, 500),
