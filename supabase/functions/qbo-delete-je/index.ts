@@ -12,7 +12,7 @@
 import { corsHeaders } from '../_shared/utils.ts';
 import {
   AuthError, NotConnectedError, NotSandboxError,
-  assertSandbox, json, qboFetch, requireAdmin, serviceClient,
+  assertSandbox, assertSandboxEnv, json, qboFetch, requireAdmin, serviceClient,
 } from '../_shared/qbo.ts';
 
 Deno.serve(async (req) => {
@@ -21,6 +21,9 @@ Deno.serve(async (req) => {
   const supabase = serviceClient();
   try {
     const admin = await requireAdmin(req, supabase);
+    // Env fence first, before the body or the connection is even looked at.
+    assertSandboxEnv();
+
     const { txnId, syncToken, alsoRemoveSnapshot } = (await req.json()) as {
       txnId: string; syncToken?: string; alsoRemoveSnapshot?: { month: string; jeType: string };
     };

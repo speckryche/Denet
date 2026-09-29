@@ -18,7 +18,7 @@
 import { corsHeaders } from '../_shared/utils.ts';
 import {
   AuthError, NotConnectedError, NotSandboxError,
-  SANDBOX_REALM_ID, assertSandbox, json, requireAdmin, serviceClient,
+  SANDBOX_REALM_ID, assertSandbox, assertSandboxEnv, json, requireAdmin, serviceClient,
 } from '../_shared/qbo.ts';
 
 // Deliberately excludes 'manual' and 'posting'. 'posting' is left alone because
@@ -31,6 +31,9 @@ Deno.serve(async (req) => {
   const supabase = serviceClient();
   try {
     const admin = await requireAdmin(req, supabase);
+    // Env fence first, before the connection is even looked at.
+    assertSandboxEnv();
+
     const { dryRun } = (await req.json().catch(() => ({}))) as { dryRun?: boolean };
 
     const { data: connData, error: connError } = await supabase.rpc('qbo_get_connection');

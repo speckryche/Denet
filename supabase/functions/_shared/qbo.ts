@@ -438,7 +438,12 @@ export class NotSandboxError extends Error {
   }
 }
 
-export function assertSandbox(realmId: string | null | undefined, companyName?: string | null): void {
+/**
+ * Check (1) alone. Destructive functions call this first, before they read the
+ * connection, so production refuses on QBO_ENV whether or not anything is
+ * connected — and the refusal can be verified before real books are.
+ */
+export function assertSandboxEnv(): void {
   const env = (Deno.env.get('QBO_ENV') ?? '').toLowerCase();
   if (env !== 'sandbox') {
     throw new NotSandboxError(
@@ -446,6 +451,10 @@ export function assertSandbox(realmId: string | null | undefined, companyName?: 
       'not_sandbox_env',
     );
   }
+}
+
+export function assertSandbox(realmId: string | null | undefined, companyName?: string | null): void {
+  assertSandboxEnv();
   if (realmId !== SANDBOX_REALM_ID) {
     throw new NotSandboxError(
       `Refusing: connected to realm ${realmId ?? 'none'}${companyName ? ` (${companyName})` : ''}, ` +
