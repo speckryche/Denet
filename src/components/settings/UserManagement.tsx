@@ -216,7 +216,7 @@ export function UserManagement() {
             <div className="flex items-start gap-2">
               <Shield className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
               <div>
-                <strong className="text-blue-400">Standard:</strong> Full use of Home, CSV Uploads, Pending
+                <strong className="text-blue-400">Standard:</strong> Full use of Home, CSV Uploads (no deleting uploads), Pending
                 Resolution, Commissions, Cash Management and Liquidity. Everything else is view-only, and
                 QBO Entries and Refunds are hidden.
               </div>
