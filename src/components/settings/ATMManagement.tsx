@@ -66,7 +66,7 @@ interface ATMProfile {
 
 export function ATMManagement() {
   const { role } = useAuth();
-  const isReadOnly = role === 'standard';
+  const isReadOnly = role !== 'admin';
   const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
   const [profiles, setProfiles] = useState<ATMProfile[]>([]);
   const [originalProfiles, setOriginalProfiles] = useState<ATMProfile[]>([]);
@@ -569,7 +569,7 @@ export function ATMManagement() {
 
   return (
     <SettingsGuard>
-    <div className={isReadOnly ? '[&_input]:read-only [&_select]:pointer-events-none [&_textarea]:read-only' : ''}>
+    <div>
     <Card>
       <CardHeader>
         <CardTitle>ATM & Sales Rep Management</CardTitle>
@@ -699,7 +699,7 @@ export function ATMManagement() {
                             value={rep.name}
                             onChange={(e) => handleRepFieldChange(rep.id, 'name', e.target.value)}
                             className="bg-card border-white/10"
-                            readOnly={isReadOnly}
+                            disabled={isReadOnly}
                           />
                         </TableCell>
                         <TableCell>
@@ -709,7 +709,7 @@ export function ATMManagement() {
                             onChange={(e) => handleRepFieldChange(rep.id, 'email', e.target.value)}
                             placeholder="email@example.com"
                             className="bg-card border-white/10"
-                            readOnly={isReadOnly}
+                            disabled={isReadOnly}
                           />
                         </TableCell>
                         <TableCell>
@@ -719,7 +719,7 @@ export function ATMManagement() {
                             value={rep.commission_percentage}
                             onChange={(e) => handleRepFieldChange(rep.id, 'commission_percentage', parseFloat(e.target.value) || 0)}
                             className="bg-card border-white/10"
-                            readOnly={isReadOnly}
+                            disabled={isReadOnly}
                           />
                         </TableCell>
                         <TableCell>
@@ -729,7 +729,7 @@ export function ATMManagement() {
                             value={rep.flat_monthly_fee}
                             onChange={(e) => handleRepFieldChange(rep.id, 'flat_monthly_fee', parseFloat(e.target.value) || 0)}
                             className="bg-card border-white/10"
-                            readOnly={isReadOnly}
+                            disabled={isReadOnly}
                           />
                         </TableCell>
                         <TableCell>
@@ -749,6 +749,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Button
+                            disabled={isReadOnly}
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteRep(rep.id)}
@@ -872,6 +873,7 @@ export function ATMManagement() {
                         <TableCell className="font-mono text-sm">{profile.atm_id}</TableCell>
                         <TableCell>
                           <Input
+                            disabled={isReadOnly}
                             value={profile.location_name || ''}
                             onChange={(e) => handleATMFieldChange(profile.id, 'location_name', e.target.value)}
                             placeholder="Location name"
@@ -880,6 +882,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={isReadOnly}
                             value={profile.city || ''}
                             onChange={(e) => handleATMFieldChange(profile.id, 'city', e.target.value)}
                             placeholder="City"
@@ -888,6 +891,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={isReadOnly}
                             value={profile.state || ''}
                             onChange={(e) => handleATMFieldChange(profile.id, 'state', e.target.value)}
                             placeholder="ST"
@@ -898,6 +902,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Select
+                            disabled={isReadOnly}
                             value={profile.platform || 'none'}
                             onValueChange={(value) => handleATMFieldChange(profile.id, 'platform', value === 'none' ? null : value)}
                           >
@@ -913,6 +918,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Select
+                            disabled={isReadOnly}
                             value={profile.sales_rep_id || 'none'}
                             onValueChange={(value) => handleATMFieldChange(profile.id, 'sales_rep_id', value === 'none' ? null : value)}
                           >
@@ -931,6 +937,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={isReadOnly}
                             type="number"
                             step="0.01"
                             value={profile.monthly_rent}
@@ -941,6 +948,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={isReadOnly}
                             type="number"
                             step="0.01"
                             value={profile.cash_management_rps}
@@ -951,6 +959,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={isReadOnly}
                             type="number"
                             step="0.01"
                             value={profile.cash_management_rep}
@@ -961,6 +970,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Select
+                            disabled={isReadOnly}
                             value={profile.rent_payment_method || 'none'}
                             onValueChange={(value) => handleATMFieldChange(profile.id, 'rent_payment_method', value === 'none' ? null : value)}
                           >
@@ -980,6 +990,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={isReadOnly}
                             type="date"
                             value={profile.installed_date || ''}
                             onChange={(e) => handleATMFieldChange(profile.id, 'installed_date', e.target.value || null)}
@@ -988,6 +999,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={isReadOnly}
                             type="date"
                             value={profile.removed_date || ''}
                             onChange={(e) => handleATMFieldChange(profile.id, 'removed_date', e.target.value || null)}
@@ -996,6 +1008,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Select
+                            disabled={isReadOnly}
                             value={profile.active === null ? 'active' : (profile.active ? 'active' : 'inactive')}
                             onValueChange={(value) => handleATMFieldChange(profile.id, 'active', value === 'active')}
                           >
@@ -1012,6 +1025,7 @@ export function ATMManagement() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={isReadOnly}
                             value={profile.notes || ''}
                             onChange={(e) => handleATMFieldChange(profile.id, 'notes', e.target.value || null)}
                             placeholder="Notes"
@@ -1096,6 +1110,7 @@ export function ATMManagement() {
                             <TableCell className="font-mono text-sm">{profile.atm_id}</TableCell>
                             <TableCell>
                               <Input
+                                disabled={isReadOnly}
                                 value={profile.location_name || ''}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'location_name', e.target.value)}
                                 placeholder="Location name"
@@ -1104,6 +1119,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Input
+                                disabled={isReadOnly}
                                 value={profile.city || ''}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'city', e.target.value)}
                                 placeholder="City"
@@ -1112,6 +1128,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Input
+                                disabled={isReadOnly}
                                 value={profile.state || ''}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'state', e.target.value)}
                                 placeholder="ST"
@@ -1122,6 +1139,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Select
+                                disabled={isReadOnly}
                                 value={profile.platform || 'none'}
                                 onValueChange={(value) => handleATMFieldChange(profile.id, 'platform', value === 'none' ? null : value)}
                               >
@@ -1137,6 +1155,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Select
+                                disabled={isReadOnly}
                                 value={profile.sales_rep_id || 'none'}
                                 onValueChange={(value) => handleATMFieldChange(profile.id, 'sales_rep_id', value === 'none' ? null : value)}
                               >
@@ -1155,6 +1174,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Input
+                                disabled={isReadOnly}
                                 type="number"
                                 step="0.01"
                                 value={profile.monthly_rent}
@@ -1165,6 +1185,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Input
+                                disabled={isReadOnly}
                                 type="number"
                                 step="0.01"
                                 value={profile.cash_management_rps}
@@ -1175,6 +1196,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Input
+                                disabled={isReadOnly}
                                 type="number"
                                 step="0.01"
                                 value={profile.cash_management_rep}
@@ -1185,6 +1207,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Select
+                                disabled={isReadOnly}
                                 value={profile.rent_payment_method || 'none'}
                                 onValueChange={(value) => handleATMFieldChange(profile.id, 'rent_payment_method', value === 'none' ? null : value)}
                               >
@@ -1204,6 +1227,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Input
+                                disabled={isReadOnly}
                                 type="date"
                                 value={profile.installed_date || ''}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'installed_date', e.target.value || null)}
@@ -1212,6 +1236,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Input
+                                disabled={isReadOnly}
                                 type="date"
                                 value={profile.removed_date || ''}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'removed_date', e.target.value || null)}
@@ -1220,6 +1245,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Select
+                                disabled={isReadOnly}
                                 value={profile.active === null ? 'active' : (profile.active ? 'active' : 'inactive')}
                                 onValueChange={(value) => handleATMFieldChange(profile.id, 'active', value === 'active')}
                               >
@@ -1236,6 +1262,7 @@ export function ATMManagement() {
                             </TableCell>
                             <TableCell>
                               <Input
+                                disabled={isReadOnly}
                                 value={profile.notes || ''}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'notes', e.target.value || null)}
                                 placeholder="Notes"

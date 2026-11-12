@@ -12,7 +12,7 @@ export function SettingsGuard({ children }: SettingsGuardProps) {
 
   return (
     <div className="space-y-4">
-      {role === 'standard' && (
+      {role !== 'admin' && (
         <Alert className="bg-blue-500/10 border-blue-500/20">
           <Lock className="h-4 w-4 text-blue-400" />
           <AlertDescription className="text-blue-300">

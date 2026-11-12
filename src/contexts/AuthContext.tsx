@@ -13,25 +13,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Role source of truth: app_metadata, falling back to user_metadata.
+// Role source of truth: app_metadata only.
 //
 // user_metadata is writable by the user it describes — supabase-js exposes
-// `auth.updateUser({ data: { role: 'admin' } })` — so it can never be trusted
-// for authorization. Supabase's linter flags depending on it at ERROR level.
-// app_metadata is writable only through the admin API. Migration
-// 20260922010000 copies the role across; edge functions read app_metadata only.
+// `auth.updateUser({ data: { role: 'admin' } })` — so it is never read here.
+// app_metadata is writable only through the admin API (the admin-users Edge
+// Function). The database enforces the same rule via public.is_admin(); this
+// value only decides what the UI shows.
 //
-// The fallback is transitional: a session minted before that migration still
-// carries the role in user_metadata, and dropping the fallback now would lock
-// those users out until they re-authenticated. Remove it once every session has
-// turned over. Note the UI may lag the server by one token refresh — the server
-// sees app_metadata immediately, which is the safe direction.
+// A signed-in user with a missing or unknown role is 'standard' — least
+// privilege. null means signed out.
 const roleOf = (session: Session | null): 'admin' | 'standard' | null => {
   const user = session?.user;
-  const appRole = (user?.app_metadata as Record<string, unknown> | undefined)?.role;
-  if (appRole === 'admin' || appRole === 'standard') return appRole;
-  const userRole = user?.user_metadata?.role;
-  return userRole === 'admin' || userRole === 'standard' ? userRole : null;
+  if (!user) return null;
+  const appRole = (user.app_metadata as Record<string, unknown> | undefined)?.role;
+  return appRole === 'admin' ? 'admin' : 'standard';
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

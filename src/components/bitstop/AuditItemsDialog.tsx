@@ -5,6 +5,7 @@
 // the report.
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
@@ -58,6 +59,8 @@ export default function AuditItemsDialog({ monthRow, open, onOpenChange, onChang
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  // bitstop_audit_items writes are admin-only (RLS); others can view decisions.
+  const isAdmin = useAuth().role === 'admin';
 
   const load = async () => {
     if (!monthRow) return;
@@ -159,7 +162,7 @@ export default function AuditItemsDialog({ monthRow, open, onOpenChange, onChang
                     <Select
                       value={i.status}
                       onValueChange={(v) => patch(i, { status: v as AuditStatus })}
-                      disabled={savingId === i.id}
+                      disabled={!isAdmin || savingId === i.id}
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -177,7 +180,7 @@ export default function AuditItemsDialog({ monthRow, open, onOpenChange, onChang
                         const v = e.target.value.trim() || null;
                         if (v !== (i.note ?? null)) patch(i, { note: v });
                       }}
-                      disabled={savingId === i.id}
+                      disabled={!isAdmin || savingId === i.id}
                     />
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{i.resolved_date ?? '—'}</TableCell>

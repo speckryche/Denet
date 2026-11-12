@@ -8,8 +8,11 @@ import { UserManagement } from './UserManagement';
 import QboConnection from './QboConnection';
 import { QboSettings } from './QboSettings';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Settings() {
+  // Bulk Platform Conversion has no read-only mode; it is an admin tool.
+  const isAdmin = useAuth().role === 'admin';
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">
       <PageHeader title="Settings" />
@@ -17,7 +20,7 @@ export default function Settings() {
       <main className="max-w-[95%] mx-auto px-6 py-8 space-y-8">
         <UserManagement />
         <ATMManagement />
-        <BulkPlatformConversion />
+        {isAdmin && <BulkPlatformConversion />}
         <ReconciliationReport />
         <PnLReconciliation />
         <PeopleManagement />

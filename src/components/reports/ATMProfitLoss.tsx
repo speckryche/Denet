@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   calculateExpenseMonths,
   profilesForWindow,
@@ -73,6 +74,9 @@ interface ATMPLData {
 }
 
 export default function ATMProfitLoss() {
+  const { role } = useAuth();
+  // bitstop_fee_overrides writes are admin-only (RLS); others see the fee read-only.
+  const isAdmin = role === 'admin';
   // Default: previous complete month
   const today = new Date();
   const currentMonth = today.getMonth() + 1; // 1-12
@@ -1379,7 +1383,7 @@ export default function ATMProfitLoss() {
                         )}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {row.platform?.toLowerCase() === 'bitstop' && isSingleMonth ? (
+                        {row.platform?.toLowerCase() === 'bitstop' && isSingleMonth && isAdmin ? (
                           editingCell === String(idx) ? (
                             <div className="flex items-center gap-1 justify-end">
                               <span className="text-muted-foreground">$</span>
