@@ -24,7 +24,7 @@ interface TickerMapping {
 
 export function TickerMappings() {
   const { role } = useAuth();
-  const isReadOnly = role === 'standard';
+  const isReadOnly = role !== 'admin';
   const [mappings, setMappings] = useState<TickerMapping[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -175,7 +175,7 @@ export function TickerMappings() {
 
   return (
     <SettingsGuard>
-    <div className={isReadOnly ? '[&_input]:read-only [&_select]:pointer-events-none [&_textarea]:read-only' : ''}>
+    <div>
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -258,6 +258,7 @@ export function TickerMappings() {
                         onChange={(e) => handleDisplayValueChange(mapping.id, e.target.value)}
                         placeholder={mapping.original_value}
                         className="max-w-xs bg-card border-white/10"
+                        disabled={isReadOnly}
                       />
                     </TableCell>
                   </TableRow>

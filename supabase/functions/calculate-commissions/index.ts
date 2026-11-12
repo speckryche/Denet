@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/utils.ts';
+import { AuthError, requireUser } from '../_shared/auth.ts';
 // Deno mirror of src/lib/transaction-status.ts (kept in lockstep — see that file).
 import { FINANCIAL_STATUSES } from '../_shared/transaction-status.ts';
 
@@ -42,6 +43,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // This function writes commissions with the service role, bypassing RLS,
+    // and the gateway's verify_jwt accepts the public anon key. Require a real
+    // signed-in user. Not admin: standard users run Commissions too.
+    await requireUser(req, supabase);
+
     const { month, year, force = false } = (await req.json()) as CommissionRequest;
 
     if (!month || !year) {
@@ -53,11 +64,6 @@ Deno.serve(async (req) => {
         }
       );
     }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const startDate = new Date(year, parseInt(month) - 1, 1);
     const endDate = new Date(year, parseInt(month), 0);
@@ -531,6 +537,12 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error) {
+    if (error instanceof AuthError) {
+      return new Response(JSON.stringify({ error: error.message, code: error.code }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: error.status,
+      });
+    }
     console.error('Error calculating commissions:', error);
     return new Response(
       JSON.stringify({

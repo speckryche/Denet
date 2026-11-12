@@ -1,14 +1,93 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, ShieldAlert, Info, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Shield, ShieldAlert, Info, Loader2, RefreshCw } from 'lucide-react';
+
+type Role = 'admin' | 'standard';
+
+interface ManagedUser {
+  id: string;
+  email: string | null;
+  role: Role;
+  lastSignInAt: string | null;
+  createdAt: string;
+}
+
+// The role lives in auth.users app_metadata, which only the admin API can
+// write, so every read and write goes through the admin-users Edge Function.
+// FunctionsHttpError's own message is generic; the useful text is in the body.
+const callAdminUsers = async (body: Record<string, unknown>): Promise<any> => {
+  const res = await supabase.functions.invoke('admin-users', { body });
+  if (res.error) {
+    let parsed: any = null;
+    try {
+      parsed = await (res.error as any)?.context?.json?.();
+    } catch {
+      /* body was not JSON */
+    }
+    throw new Error(parsed?.error || res.error.message || 'admin-users failed');
+  }
+  return res.data;
+};
 
 export function UserManagement() {
   const { user, role } = useAuth();
+  const isAdmin = role === 'admin';
 
-  // Only admins can access this page
-  if (role !== 'admin') {
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await callAdminUsers({ action: 'list' });
+      setUsers(data.users ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) load();
+  }, [isAdmin]);
+
+  const changeRole = async (target: ManagedUser, next: Role) => {
+    if (next === target.role) return;
+    setSavingId(target.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const data = await callAdminUsers({ action: 'set-role', userId: target.id, role: next });
+      setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, role: data.user.role } : u)));
+      setNotice(
+        `${target.email ?? 'User'} is now ${next === 'admin' ? 'an Admin' : 'Standard'}. ` +
+          'The change applies when they sign out and back in (or within about an hour).',
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to change role');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  if (!isAdmin) {
     return (
       <Card>
         <CardHeader>
@@ -33,27 +112,92 @@ export function UserManagement() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>User Management</CardTitle>
-            <CardDescription>
-              Manage user roles and permissions
-            </CardDescription>
+            <CardDescription>Manage user roles and permissions</CardDescription>
           </div>
+          <Button size="sm" variant="outline" onClick={load} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Current User Info */}
-        <div className="p-4 rounded-md bg-green-500/10 border border-green-500/20">
-          <div className="flex items-center gap-3">
-            <User className="w-5 h-5 text-green-400" />
-            <div>
-              <h4 className="text-sm font-semibold text-green-400">Currently Logged In</h4>
-              <p className="text-sm text-green-300 mt-1">
-                <strong>{user?.email}</strong> - <span className="inline-flex items-center gap-1">
-                  <Shield className="w-3 h-3" />
-                  Admin
-                </span>
-              </p>
-            </div>
-          </div>
+        {error && (
+          <Alert className="bg-red-500/10 border-red-500/20 text-red-500">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        {notice && (
+          <Alert className="bg-green-500/10 border-green-500/20 text-green-400">
+            <AlertDescription>{notice}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="rounded-md border border-white/10">
+          <Table>
+            <TableHeader className="bg-white/5">
+              <TableRow className="border-white/10">
+                <TableHead>Email</TableHead>
+                <TableHead>Last sign-in</TableHead>
+                <TableHead className="w-[180px]">Role</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading && users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    <Loader2 className="inline w-4 h-4 mr-2 animate-spin" />
+                    Loading users…
+                  </TableCell>
+                </TableRow>
+              ) : users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    No users found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users.map((u) => {
+                  const isSelf = u.id === user?.id;
+                  return (
+                    <TableRow key={u.id} className="border-white/5">
+                      <TableCell className="font-medium">
+                        {u.email ?? u.id}
+                        {isSelf && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString() : 'Never'}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={u.role}
+                          onValueChange={(v) => changeRole(u, v as Role)}
+                          // Changing your own role is refused server-side too: it is the
+                          // only way to leave the app without an admin.
+                          disabled={isSelf || savingId === u.id}
+                        >
+                          <SelectTrigger
+                            className="bg-card border-white/10"
+                            title={isSelf ? 'You cannot change your own role' : undefined}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="standard">Standard</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="p-4 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-sm text-yellow-200">
+          <strong>Role changes need a fresh sign-in.</strong> The user must sign out and back in for a
+          new role to apply. Until then their session keeps its old permissions for up to an hour.
         </div>
 
         {/* Role Permissions Info */}
@@ -66,73 +210,23 @@ export function UserManagement() {
             <div className="flex items-start gap-2">
               <Shield className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
               <div>
-                <strong className="text-yellow-400">Admin:</strong> Full access to all features including Settings modifications
+                <strong className="text-yellow-400">Admin:</strong> Full access to every page and setting.
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Shield className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
               <div>
-                <strong className="text-blue-400">Standard:</strong> Can view all features but cannot modify anything in Settings
+                <strong className="text-blue-400">Standard:</strong> Full use of Home, CSV Uploads, Pending
+                Resolution, Commissions, Cash Management and Liquidity. Everything else is view-only, and
+                QBO Entries and Refunds are hidden.
               </div>
             </div>
           </div>
         </div>
 
-        {/* Instructions for Adding/Managing Users */}
-        <div className="p-4 rounded-md bg-purple-500/10 border border-purple-500/20">
-          <h4 className="text-sm font-semibold text-purple-400 mb-3">How to Add & Manage Users</h4>
-          <div className="text-sm text-purple-300 space-y-3">
-            <div>
-              <strong className="text-purple-200">Step 1: Add a New User in Supabase</strong>
-              <ol className="list-decimal list-inside ml-2 mt-1 space-y-1 text-purple-300/90">
-                <li>Go to Supabase Dashboard → <strong>Authentication</strong> → <strong>Users</strong></li>
-                <li>Click <strong>"Invite User"</strong> or <strong>"Add User"</strong></li>
-                <li>Enter their email address</li>
-                <li>Click <strong>"Send Invite"</strong> or <strong>"Create User"</strong></li>
-              </ol>
-            </div>
-
-            <div>
-              <strong className="text-purple-200">Step 2: Assign Role Using SQL Editor</strong>
-              <ol className="list-decimal list-inside ml-2 mt-1 space-y-1 text-purple-300/90">
-                <li>Go to Supabase Dashboard → <strong>SQL Editor</strong></li>
-                <li>Click <strong>"New Query"</strong></li>
-                <li>Paste one of the commands below</li>
-                <li>Click <strong>"Run"</strong></li>
-              </ol>
-            </div>
-
-            <div className="bg-black/30 p-3 rounded-md font-mono text-xs space-y-2">
-              <div>
-                <div className="text-yellow-400 mb-1">-- To make a user an Admin:</div>
-                <div className="text-green-400 whitespace-pre-wrap">
-                  {`UPDATE auth.users
-SET raw_user_meta_data = raw_user_meta_data || '{"role": "admin"}'::jsonb
-WHERE email = 'user@example.com';`}
-                </div>
-              </div>
-              <div>
-                <div className="text-yellow-400 mb-1">-- To make a user Standard:</div>
-                <div className="text-blue-400 whitespace-pre-wrap">
-                  {`UPDATE auth.users
-SET raw_user_meta_data = raw_user_meta_data || '{"role": "standard"}'::jsonb
-WHERE email = 'user@example.com';`}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-yellow-500/10 border border-yellow-500/20 p-2 rounded text-yellow-200 text-xs">
-              <strong>Note:</strong> Replace 'user@example.com' with the actual user's email address
-            </div>
-          </div>
-        </div>
-
-        {/* Current System Status */}
-        <div className="p-4 rounded-md bg-green-500/10 border border-green-500/20">
-          <h4 className="text-sm font-semibold text-green-400 mb-2">✅ Role System Active</h4>
-          <p className="text-sm text-green-300">
-            The role-based access control system is now active. All Settings pages are protected and will show as "View Only" for Standard users.
-          </p>
+        <div className="p-4 rounded-md bg-purple-500/10 border border-purple-500/20 text-sm text-purple-300">
+          <strong className="text-purple-200">Adding a user:</strong> invite them from Supabase Dashboard →
+          Authentication → Users. New users start as Standard; promote them here.
         </div>
       </CardContent>
     </Card>

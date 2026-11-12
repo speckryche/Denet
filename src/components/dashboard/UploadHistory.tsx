@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trash2, FileText, Calendar, Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import {
   Table,
@@ -39,6 +40,9 @@ export function UploadHistory({ onUploadDeleted }: UploadHistoryProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
+  // Deleting an upload cascades to its transactions (FK ON DELETE CASCADE,
+  // which bypasses RLS), so uploads DELETE is admin-only.
+  const isAdmin = useAuth().role === 'admin';
 
   const fetchUploads = async () => {
     try {
@@ -103,7 +107,9 @@ export function UploadHistory({ onUploadDeleted }: UploadHistoryProps) {
         <DialogHeader>
           <DialogTitle>Upload History</DialogTitle>
           <DialogDescription>
-            View and manage your CSV uploads. Deleting an upload will remove all imported transactions from that file.
+            {isAdmin
+              ? 'View and manage your CSV uploads. Deleting an upload will remove all imported transactions from that file.'
+              : 'View your CSV uploads.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -124,7 +130,7 @@ export function UploadHistory({ onUploadDeleted }: UploadHistoryProps) {
                   <TableHead>Filename</TableHead>
                   <TableHead>Platform</TableHead>
                   <TableHead className="text-right">Records</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -143,21 +149,23 @@ export function UploadHistory({ onUploadDeleted }: UploadHistoryProps) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">{upload.record_count}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(upload.id)}
-                        disabled={isDeleting === upload.id}
-                      >
-                        {isDeleting === upload.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDelete(upload.id)}
+                          disabled={isDeleting === upload.id}
+                        >
+                          {isDeleting === upload.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

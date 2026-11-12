@@ -372,6 +372,7 @@ export default function BitstopCommissions() {
                                   <TableRow key={record.id} className="border-white/5">
                         <TableCell>
                           <Select
+                            disabled={!isAdmin}
                             value={record.month}
                             onValueChange={(value) => handleFieldChange(record.id, 'month', value)}
                           >
@@ -387,6 +388,7 @@ export default function BitstopCommissions() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={!isAdmin}
                             type="number"
                             value={record.year}
                             onChange={(e) => handleFieldChange(record.id, 'year', parseInt(e.target.value) || 2025)}
@@ -395,6 +397,7 @@ export default function BitstopCommissions() {
                         </TableCell>
                         <TableCell>
                           <Select
+                            disabled={!isAdmin}
                             value={record.received_report ? 'yes' : 'no'}
                             onValueChange={(value) => handleFieldChange(record.id, 'received_report', value === 'yes')}
                           >
@@ -411,6 +414,7 @@ export default function BitstopCommissions() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={!isAdmin}
                             type="text"
                             value={record.total_sales > 0 ? `$${Math.round(record.total_sales).toLocaleString('en-US')}` : ''}
                             onChange={(e) => {
@@ -423,6 +427,7 @@ export default function BitstopCommissions() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={!isAdmin}
                             type="text"
                             value={record.commission_amount > 0 ? `$${Math.round(record.commission_amount).toLocaleString('en-US')}` : ''}
                             onChange={(e) => {
@@ -441,6 +446,7 @@ export default function BitstopCommissions() {
                         </TableCell>
                         <TableCell>
                           <Select
+                            disabled={!isAdmin}
                             value={record.paid ? 'yes' : 'no'}
                             onValueChange={(value) => handleFieldChange(record.id, 'paid', value === 'yes')}
                           >
@@ -457,6 +463,7 @@ export default function BitstopCommissions() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={!isAdmin}
                             type="date"
                             value={record.date_paid || ''}
                             onChange={(e) => handleFieldChange(record.id, 'date_paid', e.target.value || null)}
@@ -465,6 +472,7 @@ export default function BitstopCommissions() {
                         </TableCell>
                         <TableCell>
                           <Input
+                            disabled={!isAdmin}
                             type="number"
                             step="0.01"
                             value={record.amount_received ?? ''}
@@ -507,6 +515,7 @@ export default function BitstopCommissions() {
                         </TableCell>
                         <TableCell>
                           <Textarea
+                            disabled={!isAdmin}
                             value={record.notes || ''}
                             onChange={(e) => handleFieldChange(record.id, 'notes', e.target.value || null)}
                             placeholder="Notes..."
@@ -565,14 +574,19 @@ export default function BitstopCommissions() {
                 <p><strong>Schedule:</strong> Commission report by 10th of month, payment by 15th</p>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={handleAddRecord}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Month
-                </Button>
-                <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                  <Save className="w-4 h-4 mr-2" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
+                {/* bitstop_commissions writes are admin-only (RLS). */}
+                {isAdmin && (
+                  <>
+                    <Button size="sm" onClick={handleAddRecord}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Month
+                    </Button>
+                    <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                      <Save className="w-4 h-4 mr-2" />
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 

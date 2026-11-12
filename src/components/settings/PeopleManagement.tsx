@@ -34,7 +34,7 @@ interface Person {
 
 export function PeopleManagement() {
   const { role } = useAuth();
-  const isReadOnly = role === 'standard';
+  const isReadOnly = role !== 'admin';
   const [people, setPeople] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -163,7 +163,9 @@ export function PeopleManagement() {
 
   return (
     <SettingsGuard>
-    <div className={isReadOnly ? '[&_input]:read-only [&_button]:pointer-events-none [&_button]:opacity-50' : ''}>
+    {/* A disabled fieldset natively disables every input and button inside it,
+        including the Add Person dialog trigger and each row's actions. */}
+    <fieldset disabled={isReadOnly} className="m-0 min-w-0 border-0 p-0">
     <Card className="bg-card/30 border-white/10">
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -314,7 +316,7 @@ export function PeopleManagement() {
         </div>
       </CardContent>
     </Card>
-    </div>
+    </fieldset>
     </SettingsGuard>
   );
 }

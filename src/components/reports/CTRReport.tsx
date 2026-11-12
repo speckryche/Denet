@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn, getPacificDateString } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,9 @@ const addOneDay = (isoDate: string): string => {
 };
 
 export default function CTRReport() {
+  const { role } = useAuth();
+  // ctr_filings writes are admin-only (RLS); standard users get a read-only report.
+  const isAdmin = role === 'admin';
   const [items, setItems] = useState<CTRItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showFiled, setShowFiled] = useState(false);
@@ -154,8 +158,9 @@ export default function CTRReport() {
       setAtmProfiles((profilesData || []) as AtmProfileRow[]);
 
       // Sync-on-view: insert any newly qualifying days from the rolling 3-month window
-      // that aren't yet in ctr_filings.
-      await syncCurrentWindow();
+      // that aren't yet in ctr_filings. Admin-only: RLS rejects the insert for
+      // standard users, so new days appear once an admin opens this report.
+      if (isAdmin) await syncCurrentWindow();
 
       // Authoritative read from ctr_filings
       const { data: filings, error } = await supabase
@@ -606,7 +611,7 @@ export default function CTRReport() {
                   <TableHead>Filed Date</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead>Won't File Reason</TableHead>
-                  {viewMode === 'aggregate' && (
+                  {viewMode === 'aggregate' && isAdmin && (
                     <TableHead className="text-right">Actions</TableHead>
                   )}
                 </TableRow>
@@ -678,7 +683,7 @@ export default function CTRReport() {
                         <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
                           {item.wont_file_reason || '—'}
                         </TableCell>
-                        {viewMode === 'aggregate' && (
+                        {viewMode === 'aggregate' && isAdmin && (
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-2">
                               <Button
@@ -702,7 +707,7 @@ export default function CTRReport() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow>
-                          <TableCell colSpan={viewMode === 'aggregate' ? 12 : 11} className="p-0">
+                          <TableCell colSpan={viewMode === 'aggregate' && isAdmin ? 12 : 11} className="p-0">
                             <div className="bg-white/[0.02] border-t border-b border-white/[0.06] px-8 py-3">
                               {isExpansionLoading ? (
                                 <div className="text-xs text-muted-foreground py-2 flex items-center gap-2">
