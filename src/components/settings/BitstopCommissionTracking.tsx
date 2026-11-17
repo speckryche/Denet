@@ -255,7 +255,7 @@ export function BitstopCommissionTracking() {
   }
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <CardTitle>Bitstop Commission Tracking</CardTitle>
         <CardDescription>
@@ -264,7 +264,7 @@ export function BitstopCommissionTracking() {
       </CardHeader>
       <CardContent>
         {/* Default Commission Rate */}
-        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+        <div className="flex flex-wrap items-center gap-3 mb-6 pb-4 border-b border-white/10">
           <span className="text-sm font-medium text-muted-foreground">Default Commission Rate:</span>
           <div className="flex items-center gap-1.5">
             <Input
@@ -299,11 +299,11 @@ export function BitstopCommissionTracking() {
           </Alert>
         )}
 
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <div className="text-sm text-muted-foreground">
             <p><strong>Schedule:</strong> Commission report by 10th of month, payment by 15th</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={handleAddRecord}>
               <Plus className="w-4 h-4 mr-2" />
               Add Month
@@ -320,20 +320,21 @@ export function BitstopCommissionTracking() {
             <p>No commission records yet. Click "Add Month" to get started.</p>
           </div>
         ) : (
-          <div className="rounded-md border border-white/10 overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-white/5">
-                <TableRow className="border-white/10">
-                  <TableHead className="min-w-[100px]">Month</TableHead>
-                  <TableHead className="min-w-[80px]">Year</TableHead>
-                  <TableHead className="min-w-[140px]">Received Comm Report</TableHead>
-                  <TableHead className="min-w-[120px]">Total Sales</TableHead>
-                  <TableHead className="min-w-[120px]">Commissions</TableHead>
-                  <TableHead className="min-w-[100px]">Comm %</TableHead>
-                  <TableHead className="min-w-[100px]">Paid</TableHead>
-                  <TableHead className="min-w-[120px]">Date Paid</TableHead>
-                  <TableHead className="min-w-[200px]">Notes</TableHead>
-                  <TableHead className="min-w-[80px]">Actions</TableHead>
+          <div className="rounded-md border border-white/10 min-w-0">
+            {/* overflow-visible so the focused notes textarea can overlay rows */}
+            <Table className="table-fixed" containerClassName="overflow-visible max-lg:overflow-x-auto">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[11%]">Month</TableHead>
+                  <TableHead className="w-[8%]">Year</TableHead>
+                  <TableHead className="w-[11%] whitespace-normal leading-tight">Received Comm Report</TableHead>
+                  <TableHead className="w-[12%]">Total Sales</TableHead>
+                  <TableHead className="w-[12%]">Commissions</TableHead>
+                  <TableHead className="w-[8%]">Comm %</TableHead>
+                  <TableHead className="w-[9%]">Paid</TableHead>
+                  <TableHead className="w-[12%]">Date Paid</TableHead>
+                  <TableHead className="w-[13%]">Notes</TableHead>
+                  <TableHead className="w-[4%]" title="Actions"><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -344,7 +345,7 @@ export function BitstopCommissionTracking() {
                         value={record.month}
                         onValueChange={(value) => handleFieldChange(record.id, 'month', value)}
                       >
-                        <SelectTrigger className="bg-card border-white/10">
+                        <SelectTrigger className="dark:bg-card dark:border-white/10">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -359,7 +360,7 @@ export function BitstopCommissionTracking() {
                         type="number"
                         value={record.year}
                         onChange={(e) => handleFieldChange(record.id, 'year', parseInt(e.target.value) || 2025)}
-                        className="bg-card border-white/10"
+                        className="dark:bg-card dark:border-white/10"
                       />
                     </TableCell>
                     <TableCell>
@@ -367,7 +368,7 @@ export function BitstopCommissionTracking() {
                         value={record.received_report ? 'yes' : 'no'}
                         onValueChange={(value) => handleFieldChange(record.id, 'received_report', value === 'yes')}
                       >
-                        <SelectTrigger className={`bg-card border-white/10 ${
+                        <SelectTrigger className={`dark:bg-card dark:border-white/10 ${
                           record.received_report ? 'text-green-400 font-semibold' : 'text-red-400 font-semibold'
                         }`}>
                           <SelectValue />
@@ -385,7 +386,7 @@ export function BitstopCommissionTracking() {
                         value={record.total_sales || ''}
                         onChange={(e) => handleFieldChange(record.id, 'total_sales', parseFloat(e.target.value) || 0)}
                         placeholder="0.00"
-                        className="bg-card border-white/10"
+                        className="dark:bg-card dark:border-white/10"
                       />
                     </TableCell>
                     <TableCell>
@@ -395,10 +396,10 @@ export function BitstopCommissionTracking() {
                         value={record.commission_amount || ''}
                         onChange={(e) => handleFieldChange(record.id, 'commission_amount', parseFloat(e.target.value) || 0)}
                         placeholder="0.00"
-                        className="bg-card border-white/10"
+                        className="dark:bg-card dark:border-white/10"
                       />
                     </TableCell>
-                    <TableCell className="font-mono">
+                    <TableCell className="font-mono truncate">
                       {record.commission_percent > 0
                         ? `${record.commission_percent.toFixed(2)}%`
                         : '-'
@@ -409,7 +410,7 @@ export function BitstopCommissionTracking() {
                         value={record.paid ? 'yes' : 'no'}
                         onValueChange={(value) => handleFieldChange(record.id, 'paid', value === 'yes')}
                       >
-                        <SelectTrigger className={`bg-card border-white/10 ${
+                        <SelectTrigger className={`dark:bg-card dark:border-white/10 ${
                           record.paid ? 'text-green-400 font-semibold' : 'text-red-400 font-semibold'
                         }`}>
                           <SelectValue />
@@ -425,16 +426,18 @@ export function BitstopCommissionTracking() {
                         type="date"
                         value={record.date_paid || ''}
                         onChange={(e) => handleFieldChange(record.id, 'date_paid', e.target.value || null)}
-                        className="bg-card border-white/10"
+                        className="dark:bg-card dark:border-white/10"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="relative">
+                      {/* One line at rest; grows to ~5 lines on focus (.cell-expand-textarea). */}
                       <Textarea
                         value={record.notes || ''}
                         onChange={(e) => handleFieldChange(record.id, 'notes', e.target.value || null)}
                         placeholder="Notes..."
-                        className="bg-card border-white/10 min-w-[200px]"
-                        rows={2}
+                        title={record.notes || undefined}
+                        className="cell-expand-textarea dark:bg-card dark:border-white/10"
+                        rows={1}
                       />
                     </TableCell>
                     <TableCell>
@@ -442,7 +445,7 @@ export function BitstopCommissionTracking() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDeleteRecord(record.id)}
-                        className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                        className="h-7 w-7 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

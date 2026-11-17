@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import * as XLSX from 'xlsx-js-style';
+import { KpiCard } from '@/components/dashboard/MetricsGrid';
 
 interface PlatformMonthlyData {
   platform: string;
@@ -307,95 +308,137 @@ export default function MonthlySalesSummary() {
     XLSX.writeFile(wb, `monthly-sales-summary-${selectedYear}.xlsx`);
   };
 
+  // Display-only roll-ups of the rows already computed above (no extra fetch).
+  const platformLabel = (platform: string) =>
+    platform === 'bitstop' ? 'Bitstop Machines' : 'Denet Machines';
+  const allPlatformsTotal = data.reduce((sum, row) => sum + row.yearTotal, 0);
+  const monthKeyFor = (monthIdx: number) =>
+    `${selectedYear}-${String(monthIdx + 1).padStart(2, '0')}`;
+  const allPlatformsMonth = (monthIdx: number) => {
+    const key = monthKeyFor(monthIdx);
+    const rows = data.filter((row) => row.monthlyTotals[key] !== undefined);
+    return rows.length === 0 ? undefined : rows.reduce((sum, row) => sum + row.monthlyTotals[key], 0);
+  };
+  const formatUsd = (value: number) => `$${Math.round(value).toLocaleString('en-US')}`;
+  const sharePercent = (value: number) =>
+    allPlatformsTotal > 0 ? `${((value / allPlatformsTotal) * 100).toFixed(1)}% of ${selectedYear} sales` : undefined;
+
+  const headCell = "h-auto py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-dim";
+  const numCell = "px-1 py-[9px] text-right text-[12.5px] tabular-nums truncate";
+  const firstCol = "pl-4 pr-[7px] py-[9px] text-[12.5px]";
+  const lastCol = "pl-[7px] pr-4 py-[9px] text-right text-[12.5px] font-semibold tabular-nums truncate";
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <div className="space-y-[18px]">
+      {!isLoading && data.length > 0 && (
+        <section className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+          <KpiCard label={`${selectedYear} sales`} value={formatUsd(allPlatformsTotal)} sub="All platforms" />
+          {data.map((row) => (
+            <KpiCard
+              key={row.platform}
+              label={platformLabel(row.platform)}
+              value={formatUsd(row.yearTotal)}
+              sub={sharePercent(row.yearTotal)}
+            />
+          ))}
+        </section>
+      )}
+
+      <Card className="min-w-0 overflow-hidden rounded-[14px]">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b border-border px-[18px] py-3.5">
           <div>
-            <CardTitle>Sales by Month - totals</CardTitle>
-            <CardDescription>
-              Monthly sales breakdown by platform for {selectedYear}
+            <CardTitle className="text-[15px] tracking-tight">Sales by month — totals</CardTitle>
+            <CardDescription className="mt-0.5 text-xs text-dim">
+              Monthly sales by platform for {selectedYear}
             </CardDescription>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
+              <SelectTrigger className="h-[34px] w-[120px] dark:bg-card" aria-label="Year">
+                <SelectValue placeholder="Select Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableYears.map(year => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="h-[34px] bg-card" onClick={handleExportCSV}>
               <Download className="w-4 h-4 mr-2" />
-              CSV
+              Export CSV
             </Button>
-            <Button variant="outline" size="sm" onClick={handleExportExcel}>
+            <Button size="sm" className="h-[34px]" onClick={handleExportExcel}>
               <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Excel
+              Export Excel
             </Button>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Year Filter */}
-        <div className="flex gap-4">
-          <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableYears.map(year => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Table */}
-        <div className="rounded-md border border-white/10 overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-white/10">
-                <TableHead className="font-bold">Platform</TableHead>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table className="table-fixed">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className={`${headCell} w-[9%] pl-4 pr-[7px]`}>Platform</TableHead>
                 {months.map(month => (
-                  <TableHead key={month} className="text-center font-bold w-[100px]">{month}</TableHead>
+                  <TableHead key={month} className={`${headCell} w-[6.75%] px-1 text-right`}>{month}</TableHead>
                 ))}
-                <TableHead className="text-center font-bold w-[100px]">Totals</TableHead>
+                <TableHead className={`${headCell} w-[10%] pl-[7px] pr-4 text-right`}>Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground">
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={14} className="h-20 text-center text-muted-foreground">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : data.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground">
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={14} className="h-20 text-center text-muted-foreground">
                     No data available for {selectedYear}
                   </TableCell>
                 </TableRow>
               ) : (
-                data.map((row, idx) => (
-                  <TableRow key={idx} className="border-white/5">
-                    <TableCell className="font-medium">
-                      {row.platform === 'bitstop' ? 'Bitstop Machines' : 'Denet Machines'}
-                    </TableCell>
-                    {months.map((_, monthIdx) => {
-                      const monthKey = `${selectedYear}-${String(monthIdx + 1).padStart(2, '0')}`;
-                      const value = row.monthlyTotals[monthKey] || 0;
-                      return (
-                        <TableCell key={monthIdx} className="text-center font-mono">
-                          ${Math.round(value).toLocaleString('en-US')}
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-center font-mono font-semibold">
-                      ${Math.round(row.yearTotal).toLocaleString('en-US')}
-                    </TableCell>
-                  </TableRow>
-                ))
+                <>
+                  {data.map((row, idx) => (
+                    <TableRow key={idx} className="hover:bg-surface-2">
+                      <TableCell className={firstCol}>
+                        {platformLabel(row.platform)}
+                      </TableCell>
+                      {months.map((_, monthIdx) => {
+                        const value = row.monthlyTotals[monthKeyFor(monthIdx)];
+                        return (
+                          <TableCell key={monthIdx} className={numCell} title={value === undefined ? undefined : formatUsd(value)}>
+                            {value === undefined ? <span className="text-dim">—</span> : formatUsd(value)}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className={lastCol} title={formatUsd(row.yearTotal)}>
+                        {formatUsd(row.yearTotal)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {data.length > 1 && (
+                    <TableRow className="bg-surface-2/60 font-semibold hover:bg-surface-2">
+                      <TableCell className={firstCol}>All platforms</TableCell>
+                      {months.map((_, monthIdx) => {
+                        const value = allPlatformsMonth(monthIdx);
+                        return (
+                          <TableCell key={monthIdx} className={numCell} title={value === undefined ? undefined : formatUsd(value)}>
+                            {value === undefined ? <span className="text-dim">—</span> : formatUsd(value)}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className={lastCol} title={formatUsd(allPlatformsTotal)}>{formatUsd(allPlatformsTotal)}</TableCell>
+                    </TableRow>
+                  )}
+                </>
               )}
             </TableBody>
           </Table>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -35,12 +35,14 @@ export default function Login() {
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
             <img
-              src="/images/DNET Logo (black).png"
-              alt="Denet Logo"
-              className="w-32 h-32 object-contain"
+              src="/Denet Favicon.png"
+              alt="Denet"
+              width={88}
+              height={88}
+              className="h-[88px] w-[88px] rounded-full object-contain"
             />
           </div>
-          <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl text-center tracking-tight">Welcome Back</CardTitle>
           <CardDescription className="text-center">
             Sign in to access Denet Analytics
           </CardDescription>
@@ -66,7 +68,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="bg-card border-white/10"
+                className="dark:bg-card"
               />
             </div>
 
@@ -82,7 +84,7 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="bg-card border-white/10"
+                className="dark:bg-card"
               />
             </div>
 

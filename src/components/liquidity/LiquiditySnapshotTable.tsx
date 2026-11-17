@@ -42,14 +42,20 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+const formatSigned = (value: number) =>
+  `${value > 0 ? '+' : ''}${formatCurrency(value)}`;
+
 const formatDate = (dateStr: string): string => {
   const [year, month, day] = dateStr.split('-');
   return `${month}/${day}/${year.slice(2)}`;
 };
 
-const cellPad = 'px-5 py-2.5';
-const colBorder = 'border-l border-white/[0.06]';
-const stickyBg = 'bg-[#0a0a0a]';
+const stickyHead =
+  'sticky left-0 z-20 bg-table-header-bg text-table-header-fg';
+const stickyCell = 'sticky left-0 z-20 bg-card';
+const stickyFoot = 'sticky left-0 z-20 bg-card';
+const colRule = 'border-l border-border';
+const cell = 'px-2 py-1 min-[1440px]:py-1.5';
 
 export function LiquiditySnapshotTable({
   snapshots,
@@ -111,15 +117,15 @@ export function LiquiditySnapshotTable({
       <td
         key={snap.id}
         className={cn(
-          cellPad,
-          colBorder,
-          'text-right font-mono tabular-nums text-base',
-          isLiability && val > 0 && 'text-red-400'
+          cell,
+          colRule,
+          'text-right tabular-nums text-[12.5px] bg-card border-b border-table-row-border group-hover/row:bg-surface-2',
+          isLiability && val > 0 && 'text-danger'
         )}
       >
         {isCrypto ? (
-          <div>
-            <div className="text-xs text-amber-400/60 mb-0.5">
+          <div className="leading-tight">
+            <div className="text-[10.5px] text-dim font-medium mb-0.5">
               {qty.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 4,
@@ -135,49 +141,33 @@ export function LiquiditySnapshotTable({
     );
   };
 
-  const sectionHeaderBg: Record<string, string> = {
-    asset:     'bg-green-500/[0.08]',
-    crypto:    'bg-amber-500/[0.08]',
-    liability: 'bg-red-500/[0.08]',
-  };
-
-  const renderSectionHeader = (label: string, color: string, tintKey: string) => (
-    <tr className={sectionHeaderBg[tintKey]}>
+  const renderSectionHeader = (label: string) => (
+    <tr>
       <td
         className={cn(
-          'sticky left-0 z-20',
-          stickyBg,
-          'px-5 pt-5 pb-1.5 text-xs font-bold uppercase tracking-widest',
-          sectionHeaderBg[tintKey],
-          color
+          stickyHead,
+          'px-2 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em]'
         )}
       >
         {label}
       </td>
       {snapshots.map((snap) => (
-        <td key={snap.id} className={cn('pt-5 pb-1.5', colBorder)} />
+        <td
+          key={snap.id}
+          className="bg-table-header-bg py-1"
+        />
       ))}
     </tr>
   );
 
   const renderCategoryRow = (cat: LiquidityCategory) => {
-    const isLiability = cat.type === 'liability';
-    const isCrypto = cat.type === 'crypto';
-    const isAsset = cat.type === 'asset';
     return (
-      <tr
-        key={cat.id}
-        className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.03]"
-      >
+      <tr key={cat.id} className="group/row">
         <td
           className={cn(
-            'sticky left-0 z-20',
-            stickyBg,
-            cellPad,
-            'font-medium whitespace-nowrap text-sm',
-            isAsset && 'text-green-400/90',
-            isCrypto && 'text-amber-400/90',
-            isLiability && 'text-red-400/90'
+            stickyCell,
+            cell,
+            'font-medium whitespace-nowrap text-[12.5px] text-foreground border-b border-table-row-border group-hover/row:bg-surface-2'
           )}
         >
           {cat.name}
@@ -188,117 +178,117 @@ export function LiquiditySnapshotTable({
   };
 
   return (
-    <div className="overflow-x-auto -mx-6">
-      <table className="border-collapse bg-[#0a0a0a]" style={{ minWidth: 'auto' }}>
+    <div className="min-w-0 w-full overflow-x-auto">
+      <table className="w-full table-fixed border-collapse text-[12.5px]">
         <colgroup>
-          <col style={{ width: '220px', minWidth: '220px' }} />
+          <col style={{ width: '158px' }} />
           {snapshots.map((snap) => (
-            <col key={snap.id} style={{ width: '150px', minWidth: '150px' }} />
+            <col key={snap.id} />
           ))}
         </colgroup>
 
         <thead>
-          <tr className="border-b-2 border-white/10">
+          <tr className="bg-table-header-bg text-table-header-fg">
             <th
               className={cn(
-                'sticky left-0 z-20',
-                stickyBg,
-                'px-5 py-3 text-left text-sm font-bold uppercase tracking-widest text-white'
+                stickyHead,
+                'px-2 py-1 min-[1440px]:py-1.5 text-left text-[11px] font-bold uppercase tracking-[0.08em]'
               )}
             >
               Asset
             </th>
             {snapshots.map((snap) => (
-              <th key={snap.id} className={cn('px-5 py-3 text-center', colBorder)}>
-                <div className="flex flex-col items-center gap-1">
-                  <span className="font-bold text-primary text-base whitespace-nowrap">
-                    {formatDate(snap.snapshot_date)}
-                  </span>
-                  <div className="flex items-center gap-0.5">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground/50 hover:text-foreground"
-                      onClick={() => onEdit(snap)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground/50 hover:text-red-400"
-                      onClick={() => onDelete(snap.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+              <th
+                key={snap.id}
+                className="px-2 py-1 min-[1440px]:py-1.5 text-center text-table-header-fg border-l border-table-header-fg/20"
+              >
+                <div className="font-bold tabular-nums text-xs">
+                  {formatDate(snap.snapshot_date)}
+                </div>
+                <div className="mt-0.5 flex items-center justify-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 text-table-header-fg/70 hover:bg-table-header-fg/10 hover:text-table-header-fg"
+                    onClick={() => onEdit(snap)}
+                    title="Edit snapshot"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 text-table-header-fg/70 hover:bg-table-header-fg/10 hover:text-danger"
+                    onClick={() => onDelete(snap.id)}
+                    title="Delete snapshot"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
               </th>
-            ))}
-          </tr>
-          {/* BTC Price row */}
-          <tr className="border-b border-white/[0.06] bg-amber-400/[0.03]">
-            <td
-              className={cn(
-                'sticky left-0 z-20',
-                stickyBg,
-                'px-5 py-2 text-sm text-amber-400/70 font-medium bg-amber-400/[0.03]'
-              )}
-            >
-              Bitcoin Price
-            </td>
-            {snapshots.map((snap) => (
-              <td
-                key={snap.id}
-                className={cn('px-5 py-2 text-right text-sm font-mono font-semibold text-amber-400/80', colBorder)}
-              >
-                {formatCurrency(snap.bitcoin_price)}
-              </td>
-            ))}
-          </tr>
-          {/* SOL Price row */}
-          <tr className="border-b border-white/[0.06] bg-purple-400/[0.03]">
-            <td
-              className={cn(
-                'sticky left-0 z-20',
-                stickyBg,
-                'px-5 py-2 text-sm text-purple-400/70 font-medium bg-purple-400/[0.03]'
-              )}
-            >
-              Solana Price
-            </td>
-            {snapshots.map((snap) => (
-              <td
-                key={snap.id}
-                className={cn('px-5 py-2 text-right text-sm font-mono font-semibold text-purple-400/80', colBorder)}
-              >
-                {formatCurrency(snap.solana_price)}
-              </td>
             ))}
           </tr>
         </thead>
 
         <tbody>
-          {assets.length > 0 &&
-            renderSectionHeader('Cash Assets', 'text-green-400/60', 'asset')}
-          {assets.map((cat, idx) => renderCategoryRow(cat))}
+          <tr>
+            <td
+              className={cn(
+                stickyCell,
+                'px-2 py-1 text-[12px] font-medium text-dim border-b border-table-row-border'
+              )}
+            >
+              Bitcoin price
+            </td>
+            {snapshots.map((snap) => (
+              <td
+                key={snap.id}
+                className={cn(
+                  'px-2 py-1 text-right text-[12px] tabular-nums text-muted-foreground bg-card border-b border-table-row-border',
+                  colRule
+                )}
+              >
+                {formatCurrency(snap.bitcoin_price)}
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td
+              className={cn(
+                stickyCell,
+                'px-2 py-1 text-[12px] font-medium text-dim border-b border-table-row-border'
+              )}
+            >
+              Solana price
+            </td>
+            {snapshots.map((snap) => (
+              <td
+                key={snap.id}
+                className={cn(
+                  'px-2 py-1 text-right text-[12px] tabular-nums text-muted-foreground bg-card border-b border-table-row-border',
+                  colRule
+                )}
+              >
+                {formatCurrency(snap.solana_price)}
+              </td>
+            ))}
+          </tr>
 
-          {cryptos.length > 0 &&
-            renderSectionHeader('Crypto Assets', 'text-amber-400/60', 'crypto')}
-          {cryptos.map((cat, idx) => renderCategoryRow(cat))}
+          {assets.length > 0 && renderSectionHeader('Cash assets')}
+          {assets.map((cat) => renderCategoryRow(cat))}
 
-          {liabilities.length > 0 &&
-            renderSectionHeader('Liabilities', 'text-red-400/60', 'liability')}
-          {liabilities.map((cat, idx) => renderCategoryRow(cat))}
+          {cryptos.length > 0 && renderSectionHeader('Crypto assets')}
+          {cryptos.map((cat) => renderCategoryRow(cat))}
+
+          {liabilities.length > 0 && renderSectionHeader('Liabilities')}
+          {liabilities.map((cat) => renderCategoryRow(cat))}
         </tbody>
 
         <tfoot>
-          <tr className="border-t-2 border-primary/40 bg-primary/[0.05]">
+          <tr>
             <td
               className={cn(
-                'sticky left-0 z-20',
-                stickyBg,
-                'px-5 py-3 font-bold text-foreground text-base bg-primary/[0.05]'
+                'sticky left-0 z-20 bg-surface-2 px-2 py-1.5 min-[1440px]:py-2 font-bold text-foreground text-[13.5px] border-t-2 border-table-row-border'
               )}
             >
               Total
@@ -308,61 +298,12 @@ export function LiquiditySnapshotTable({
               return (
                 <td
                   key={snap.id}
-                  className={cn('px-5 py-3 text-right font-mono font-bold tabular-nums text-foreground text-lg', colBorder)}
-                >
-                  {formatCurrency(total)}
-                </td>
-              );
-            })}
-          </tr>
-          <tr className="border-b border-white/[0.04]">
-            <td
-              className={cn(
-                'sticky left-0 z-20',
-                stickyBg,
-                cellPad,
-                'text-muted-foreground text-sm'
-              )}
-            >
-              Starting Liquidity
-            </td>
-            {snapshots.map((snap) => (
-              <td
-                key={snap.id}
-                className={cn(
-                  cellPad,
-                  colBorder,
-                  'text-right font-mono tabular-nums text-muted-foreground text-base'
-                )}
-              >
-                {formatCurrency(STARTING_LIQUIDITY)}
-              </td>
-            ))}
-          </tr>
-          <tr className="border-b border-white/[0.04] bg-green-500/[0.03]">
-            <td
-              className={cn(
-                'sticky left-0 z-20',
-                stickyBg,
-                cellPad,
-                'font-bold text-green-400 bg-green-500/[0.03] text-sm'
-              )}
-            >
-              Gain in Liquidity
-            </td>
-            {snapshots.map((snap) => {
-              const { gain } = computeSnapshotTotals(snap);
-              return (
-                <td
-                  key={snap.id}
                   className={cn(
-                    cellPad,
-                    colBorder,
-                    'text-right font-mono font-bold tabular-nums text-base',
-                    gain >= 0 ? 'text-green-400' : 'text-red-400'
+                    'px-2 py-1.5 min-[1440px]:py-2 text-right tabular-nums font-bold text-foreground text-[13.5px] bg-surface-2 border-t-2 border-table-row-border',
+                    colRule
                   )}
                 >
-                  {formatCurrency(gain)}
+                  {formatCurrency(total)}
                 </td>
               );
             })}
@@ -370,13 +311,62 @@ export function LiquiditySnapshotTable({
           <tr>
             <td
               className={cn(
-                'sticky left-0 z-20',
-                stickyBg,
-                cellPad,
-                'text-muted-foreground text-sm'
+                stickyFoot,
+                cell,
+                'text-muted-foreground text-[12.5px] border-b border-table-row-border'
               )}
             >
-              Daily Profit Avg
+              Starting liquidity
+            </td>
+            {snapshots.map((snap) => (
+              <td
+                key={snap.id}
+                className={cn(
+                  cell,
+                  colRule,
+                  'text-right tabular-nums text-muted-foreground text-[12.5px] bg-card border-b border-table-row-border'
+                )}
+              >
+                {formatCurrency(STARTING_LIQUIDITY)}
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td
+              className={cn(
+                stickyFoot,
+                cell,
+                'font-semibold text-[12.5px] text-foreground border-b border-table-row-border'
+              )}
+            >
+              Gain in liquidity
+            </td>
+            {snapshots.map((snap) => {
+              const { gain } = computeSnapshotTotals(snap);
+              return (
+                <td
+                  key={snap.id}
+                  className={cn(
+                    cell,
+                    colRule,
+                    'text-right tabular-nums font-semibold text-[12.5px] bg-card border-b border-table-row-border',
+                    gain >= 0 ? 'text-success' : 'text-danger'
+                  )}
+                >
+                  {formatSigned(gain)}
+                </td>
+              );
+            })}
+          </tr>
+          <tr>
+            <td
+              className={cn(
+                stickyFoot,
+                cell,
+                'text-muted-foreground text-[12.5px]'
+              )}
+            >
+              Daily profit avg
             </td>
             {snapshots.map((snap) => {
               const { dailyAvg } = computeSnapshotTotals(snap);
@@ -384,9 +374,9 @@ export function LiquiditySnapshotTable({
                 <td
                   key={snap.id}
                   className={cn(
-                    cellPad,
-                    colBorder,
-                    'text-right font-mono tabular-nums text-muted-foreground text-base'
+                    cell,
+                    colRule,
+                    'text-right tabular-nums text-muted-foreground text-[12.5px] bg-card'
                   )}
                 >
                   {formatCurrency(dailyAvg)}

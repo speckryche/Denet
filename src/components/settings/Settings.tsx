@@ -17,7 +17,7 @@ export default function Settings() {
     <div className="min-h-screen bg-background text-foreground font-sans">
       <PageHeader title="Settings" />
 
-      <main className="max-w-[95%] mx-auto px-6 py-8 space-y-8">
+      <main className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6 space-y-8">
         <UserManagement />
         <ATMManagement />
         {isAdmin && <BulkPlatformConversion />}

@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import UpdateMachineStateModal from './UpdateMachineStateModal';
 import ProfileTimeline from './ProfileTimeline';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 interface SalesRep {
   id: string;
@@ -368,8 +369,8 @@ export default function BTMDetails() {
     const colCount = isInactive ? 9 : 8;
 
     return (
-      <Card className="p-6 mb-8 bg-[#1a1f2e] border-[#2a3142]">
-        <div className="flex justify-between items-center mb-4">
+      <Card className="min-w-0 p-6 mb-8 bg-[#1a1f2e] border-[#2a3142]">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <h2 className="text-2xl font-bold text-[#F5F1E8]">{title}</h2>
           <Button
             onClick={() => exportToCSV(sorted, `${title.replace(/ /g, '_')}.csv`)}
@@ -382,33 +383,33 @@ export default function BTMDetails() {
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#2a3142] text-xs uppercase tracking-wide text-gray-500">
+        <div className="w-full min-w-0 overflow-x-auto">
+          <table className="w-full table-fixed text-sm">
+            <thead className="bg-table-header-bg text-table-header-fg">
+              <tr className="border-b border-table-header-bg text-xs uppercase tracking-wide text-table-header-fg">
                 <th
-                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
+                  className="w-[12%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-primary"
                   onClick={() => handleSort('atm_id')}
                 >
                   Machine {getSortIcon('atm_id')}
                 </th>
                 <th
-                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
+                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-primary"
                   onClick={() => handleSort('location_name')}
                 >
                   Location {getSortIcon('location_name')}
                 </th>
-                <th className="text-center px-3 py-2 font-mono font-normal">Listed</th>
-                <th className="text-right px-3 py-2 font-mono font-normal">Rent</th>
-                <th className="text-right px-3 py-2 font-mono font-normal">Mgmt</th>
+                <th className="w-[7%] text-center px-3 py-2 font-mono font-normal">Listed</th>
+                <th className="w-[8%] text-right px-3 py-2 font-mono font-normal">Rent</th>
+                <th className="w-[12%] text-right px-3 py-2 font-mono font-normal">Mgmt</th>
                 <th
-                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
+                  className="w-[9%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-primary"
                   onClick={() => handleSort('rent_payment_method')}
                 >
                   Pay {getSortIcon('rent_payment_method')}
                 </th>
-                <th className="text-left px-3 py-2 font-mono font-normal">Installed</th>
-                {isInactive && <th className="text-left px-3 py-2 font-mono font-normal">Removed</th>}
+                <th className="w-[10%] text-left px-3 py-2 font-mono font-normal">Installed</th>
+                {isInactive && <th className="w-[10%] text-left px-3 py-2 font-mono font-normal">Removed</th>}
                 <th className="w-10 px-3 py-2" aria-label="Expand" />
               </tr>
             </thead>
@@ -428,7 +429,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.atm_id || ''}
                                 onChange={(e) => setEditForm({ ...editForm, atm_id: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                                 placeholder="ATM ID"
                               />
                             </div>
@@ -437,7 +438,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.serial_number || ''}
                                 onChange={(e) => setEditForm({ ...editForm, serial_number: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div className="col-span-2">
@@ -445,7 +446,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.location_name || ''}
                                 onChange={(e) => setEditForm({ ...editForm, location_name: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -454,7 +455,7 @@ export default function BTMDetails() {
                                 type="number"
                                 value={editForm.monthly_rent || 0}
                                 onChange={(e) => setEditForm({ ...editForm, monthly_rent: parseFloat(e.target.value) })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -463,7 +464,7 @@ export default function BTMDetails() {
                                 value={editForm.rent_payment_method || ''}
                                 onValueChange={(value) => setEditForm({ ...editForm, rent_payment_method: value })}
                               >
-                                <SelectTrigger className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]">
+                                <SelectTrigger className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                                   <SelectValue placeholder="Select..." />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -478,7 +479,7 @@ export default function BTMDetails() {
                                 type="number"
                                 value={editForm.cash_management_rps || 0}
                                 onChange={(e) => setEditForm({ ...editForm, cash_management_rps: parseFloat(e.target.value) })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -487,7 +488,7 @@ export default function BTMDetails() {
                                 type="number"
                                 value={editForm.cash_management_rep || 0}
                                 onChange={(e) => setEditForm({ ...editForm, cash_management_rep: parseFloat(e.target.value) })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div className="col-span-2">
@@ -495,7 +496,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.street_address || ''}
                                 onChange={(e) => setEditForm({ ...editForm, street_address: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -503,7 +504,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.city || ''}
                                 onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -511,7 +512,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.state || ''}
                                 onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -519,7 +520,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.zip_code || ''}
                                 onChange={(e) => setEditForm({ ...editForm, zip_code: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -528,7 +529,7 @@ export default function BTMDetails() {
                                 type="date"
                                 value={editForm.installed_date || ''}
                                 onChange={(e) => setEditForm({ ...editForm, installed_date: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -537,7 +538,7 @@ export default function BTMDetails() {
                                 type="date"
                                 value={editForm.removed_date || ''}
                                 onChange={(e) => setEditForm({ ...editForm, removed_date: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             {isInactive && (
@@ -547,7 +548,7 @@ export default function BTMDetails() {
                                   value={editForm.warehouse_location || ''}
                                   onValueChange={(value) => setEditForm({ ...editForm, warehouse_location: value })}
                                 >
-                                  <SelectTrigger className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]">
+                                  <SelectTrigger className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                                     <SelectValue placeholder="Select..." />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -583,7 +584,7 @@ export default function BTMDetails() {
                               <Textarea
                                 value={editForm.notes || ''}
                                 onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                                className="bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                                 rows={2}
                               />
                             </div>
@@ -610,13 +611,13 @@ export default function BTMDetails() {
                     >
                       {/* Machine */}
                       <td className="px-3 py-3 align-top">
-                        <div className="font-mono font-bold text-[#F5F1E8]">{profile.atm_id || 'N/A'}</div>
-                        <div className="font-mono text-xs text-gray-500">{profile.serial_number || 'N/A'}</div>
+                        <div className="truncate font-mono font-bold text-[#F5F1E8]" title={profile.atm_id || undefined}>{profile.atm_id || 'N/A'}</div>
+                        <div className="truncate font-mono text-xs text-gray-500" title={profile.serial_number || undefined}>{profile.serial_number || 'N/A'}</div>
                       </td>
                       {/* Location */}
                       <td className="px-3 py-3 align-top">
-                        <div className="font-semibold text-[#F5F1E8]">{profile.location_name}</div>
-                        <div className="text-xs text-gray-500">{address || '—'}</div>
+                        <div className="truncate font-semibold text-[#F5F1E8]" title={profile.location_name}>{profile.location_name}</div>
+                        <div className="truncate text-xs text-gray-500" title={address || undefined}>{address || '—'}</div>
                       </td>
                       {/* Listed (Bitstop OR CoinRadar) */}
                       <td className="px-3 py-3 text-center align-top">
@@ -631,13 +632,13 @@ export default function BTMDetails() {
                         ${profile.monthly_rent}
                       </td>
                       {/* Mgmt (RPS | Rep) */}
-                      <td className="px-3 py-3 text-right align-top font-mono tabular-nums text-[#F5F1E8] whitespace-nowrap">
+                      <td className="px-3 py-3 text-right align-top font-mono tabular-nums text-[#F5F1E8]">
                         ${profile.cash_management_rps} | ${profile.cash_management_rep}
                       </td>
                       {/* Pay */}
                       <td className="px-3 py-3 align-top">
                         {profile.rent_payment_method ? (
-                          <span className="inline-flex items-center rounded-md border border-[#2a3142] bg-[#0F1419] px-2 py-0.5 text-xs font-medium text-gray-300">
+                          <span className="inline-flex max-w-full items-center truncate rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-foreground dark:border-[#2a3142] dark:bg-[#0F1419] dark:text-gray-300" title={profile.rent_payment_method}>
                             {profile.rent_payment_method}
                           </span>
                         ) : (
@@ -672,7 +673,7 @@ export default function BTMDetails() {
                             <div className="space-y-1.5 text-sm">
                               <div>
                                 <span className="text-gray-500">Address: </span>
-                                <span className="text-[#F5F1E8]">{address || '—'}</span>
+                                <span className="break-words text-[#F5F1E8]">{address || '—'}</span>
                               </div>
                               <div>
                                 <span className="text-gray-500">Bitstop listed: </span>
@@ -691,7 +692,7 @@ export default function BTMDetails() {
                             </div>
                             <div className="text-sm">
                               <div className="text-gray-500 mb-1">Notes</div>
-                              <div className="text-[#F5F1E8] whitespace-pre-wrap">{profile.notes || '—'}</div>
+                              <div className="text-[#F5F1E8] whitespace-pre-wrap break-words">{profile.notes || '—'}</div>
                             </div>
                           </div>
 
@@ -773,31 +774,32 @@ export default function BTMDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F1419] p-8">
-      <div className="max-w-[1800px] mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-[#F5F1E8]">BTM Machine Details</h1>
-          <div className="flex gap-4 items-center">
+    <div className="min-h-screen bg-background text-foreground">
+      <PageHeader
+        title="BTM Machine Details"
+        actions={
+          <>
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dim w-4 h-4" />
+              <Input
+                placeholder="Search ATM ID or Location..."
+                aria-label="Search ATM ID or Location"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-9 pl-8 dark:bg-card"
+              />
+            </div>
             {isAdmin && (
-              <Button 
-                onClick={() => setAddingNew(!addingNew)}
-                className="bg-[#0066FF] hover:bg-[#0052CC]"
-              >
+              <Button onClick={() => setAddingNew(!addingNew)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add New Machine
               </Button>
             )}
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search ATM ID or Location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
-              />
-            </div>
-          </div>
-        </div>
+          </>
+        }
+      />
+      <div className="min-w-0 px-4 pb-6 pt-5 xl:px-6 xl:pb-8 xl:pt-6">
+      <div className="max-w-[1800px] mx-auto min-w-0">
 
         {/* Scorecards - Two Platform Sections Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -813,18 +815,18 @@ export default function BTMDetails() {
                   <CardTitle className="text-sm font-medium text-muted-foreground text-center">Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 divide-x divide-white/10">
-                    <div className="text-center pr-2">
-                      <div className="text-xs text-green-400 mb-1">Active</div>
-                      <div className="text-xl font-bold font-mono text-green-400">{activeDenet.length}</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-green-400">Active</div>
+                      <div className="font-mono text-lg font-bold leading-none text-green-400 min-[1440px]:text-xl">{activeDenet.length}</div>
                     </div>
-                    <div className="text-center px-2">
-                      <div className="text-xs text-amber-500 mb-1">Pending</div>
-                      <div className="text-xl font-bold font-mono text-amber-500">{pendingDenet.length}</div>
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-amber-500">Pending</div>
+                      <div className="font-mono text-lg font-bold leading-none text-amber-500 min-[1440px]:text-xl">{pendingDenet.length}</div>
                     </div>
-                    <div className="text-center pl-2">
-                      <div className="text-xs text-red-500 mb-1">Inactive</div>
-                      <div className="text-xl font-bold font-mono text-red-500">{inactiveDenet.length}</div>
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-red-500">Inactive</div>
+                      <div className="font-mono text-lg font-bold leading-none text-red-500 min-[1440px]:text-xl">{inactiveDenet.length}</div>
                     </div>
                   </div>
                 </CardContent>
@@ -836,14 +838,14 @@ export default function BTMDetails() {
                   <CardTitle className="text-sm font-medium text-muted-foreground text-center">Costs</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 divide-x divide-white/10">
-                    <div className="text-center pr-2">
-                      <div className="text-xs text-muted-foreground mb-1">Total Rent</div>
-                      <div className="text-xl font-bold font-mono">${totalRentDenet.toLocaleString()}</div>
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-[10px] leading-tight text-muted-foreground" title="Total Rent">Rent</div>
+                      <div className="font-mono text-base font-bold tabular-nums leading-none min-[1440px]:text-lg">${totalRentDenet.toLocaleString()}</div>
                     </div>
-                    <div className="text-center pl-2">
-                      <div className="text-xs text-muted-foreground mb-1">Management</div>
-                      <div className="text-xl font-bold font-mono">${totalMgmtDenet.toLocaleString()}</div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-[10px] leading-tight text-muted-foreground" title="Management">Mgmt</div>
+                      <div className="font-mono text-base font-bold tabular-nums leading-none min-[1440px]:text-lg">${totalMgmtDenet.toLocaleString()}</div>
                     </div>
                   </div>
                 </CardContent>
@@ -882,18 +884,18 @@ export default function BTMDetails() {
                   <CardTitle className="text-sm font-medium text-muted-foreground text-center">Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 divide-x divide-white/10">
-                    <div className="text-center pr-2">
-                      <div className="text-xs text-green-400 mb-1">Active</div>
-                      <div className="text-xl font-bold font-mono text-green-400">{activeBitstop.length}</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-green-400">Active</div>
+                      <div className="font-mono text-lg font-bold leading-none text-green-400 min-[1440px]:text-xl">{activeBitstop.length}</div>
                     </div>
-                    <div className="text-center px-2">
-                      <div className="text-xs text-amber-500 mb-1">Pending</div>
-                      <div className="text-xl font-bold font-mono text-amber-500">{pendingBitstop.length}</div>
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-amber-500">Pending</div>
+                      <div className="font-mono text-lg font-bold leading-none text-amber-500 min-[1440px]:text-xl">{pendingBitstop.length}</div>
                     </div>
-                    <div className="text-center pl-2">
-                      <div className="text-xs text-red-500 mb-1">Inactive</div>
-                      <div className="text-xl font-bold font-mono text-red-500">{inactiveBitstop.length}</div>
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-red-500">Inactive</div>
+                      <div className="font-mono text-lg font-bold leading-none text-red-500 min-[1440px]:text-xl">{inactiveBitstop.length}</div>
                     </div>
                   </div>
                 </CardContent>
@@ -905,14 +907,14 @@ export default function BTMDetails() {
                   <CardTitle className="text-sm font-medium text-muted-foreground text-center">Costs</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 divide-x divide-white/10">
-                    <div className="text-center pr-2">
-                      <div className="text-xs text-muted-foreground mb-1">Total Rent</div>
-                      <div className="text-xl font-bold font-mono">${totalRentBitstop.toLocaleString()}</div>
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-[10px] leading-tight text-muted-foreground" title="Total Rent">Rent</div>
+                      <div className="font-mono text-base font-bold tabular-nums leading-none min-[1440px]:text-lg">${totalRentBitstop.toLocaleString()}</div>
                     </div>
-                    <div className="text-center pl-2">
-                      <div className="text-xs text-muted-foreground mb-1">Management</div>
-                      <div className="text-xl font-bold font-mono">${totalMgmtBitstop.toLocaleString()}</div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-[10px] leading-tight text-muted-foreground" title="Management">Mgmt</div>
+                      <div className="font-mono text-base font-bold tabular-nums leading-none min-[1440px]:text-lg">${totalMgmtBitstop.toLocaleString()}</div>
                     </div>
                   </div>
                 </CardContent>
@@ -949,7 +951,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.atm_id || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, atm_id: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                   placeholder="e.g., ATM-001"
                 />
               </div>
@@ -958,7 +960,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.serial_number || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, serial_number: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                   placeholder="e.g., SN123456"
                 />
               </div>
@@ -967,7 +969,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.location_name || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, location_name: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                   placeholder="e.g., Downtown Store"
                 />
               </div>
@@ -977,7 +979,7 @@ export default function BTMDetails() {
                   value={newMachineForm.platform || 'denet'}
                   onValueChange={(value: 'denet' | 'bitstop') => setNewMachineForm({ ...newMachineForm, platform: value })}
                 >
-                  <SelectTrigger className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
+                  <SelectTrigger className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -992,7 +994,7 @@ export default function BTMDetails() {
                   value={newMachineForm.sales_rep_id || ''}
                   onValueChange={(value) => setNewMachineForm({ ...newMachineForm, sales_rep_id: value || null })}
                 >
-                  <SelectTrigger className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
+                  <SelectTrigger className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                     <SelectValue placeholder="Select sales rep..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1010,7 +1012,7 @@ export default function BTMDetails() {
                   type="date"
                   value={newMachineForm.installed_date || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, installed_date: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1019,7 +1021,7 @@ export default function BTMDetails() {
                   value={newMachineForm.warehouse_location || ''}
                   onValueChange={(value) => setNewMachineForm({ ...newMachineForm, warehouse_location: value })}
                 >
-                  <SelectTrigger className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
+                  <SelectTrigger className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                     <SelectValue placeholder="Select warehouse..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1054,7 +1056,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.street_address || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, street_address: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1062,7 +1064,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.city || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, city: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1070,7 +1072,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.state || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, state: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1078,7 +1080,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.zip_code || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, zip_code: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1087,7 +1089,7 @@ export default function BTMDetails() {
                   type="number"
                   value={newMachineForm.monthly_rent || 0}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, monthly_rent: parseFloat(e.target.value) })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1096,7 +1098,7 @@ export default function BTMDetails() {
                   value={newMachineForm.rent_payment_method || ''}
                   onValueChange={(value) => setNewMachineForm({ ...newMachineForm, rent_payment_method: value })}
                 >
-                  <SelectTrigger className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
+                  <SelectTrigger className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                     <SelectValue placeholder="Select payment method..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1111,7 +1113,7 @@ export default function BTMDetails() {
                   type="number"
                   value={newMachineForm.cash_management_rps || 0}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, cash_management_rps: parseFloat(e.target.value) })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1120,7 +1122,7 @@ export default function BTMDetails() {
                   type="number"
                   value={newMachineForm.cash_management_rep || 0}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, cash_management_rep: parseFloat(e.target.value) })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div className="col-span-2">
@@ -1128,7 +1130,7 @@ export default function BTMDetails() {
                 <Textarea
                   value={newMachineForm.notes || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, notes: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                   rows={3}
                 />
               </div>
@@ -1166,6 +1168,7 @@ export default function BTMDetails() {
           }}
           onSuccess={() => fetchProfiles()}
         />
+      </div>
       </div>
     </div>
   );

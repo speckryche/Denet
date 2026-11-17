@@ -262,7 +262,7 @@ export default function QboConnection() {
     : 0;
 
   return (
-    <Card className="bg-card/30 border-white/10">
+    <Card className="bg-card/30 border-white/10 min-w-0">
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -273,7 +273,7 @@ export default function QboConnection() {
               Connect the company file, then map our account names to QuickBooks account IDs.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {status?.connected && (
               <>
                 {status?.environment === 'sandbox' && (
@@ -358,7 +358,7 @@ export default function QboConnection() {
 
         {match && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 {match.matched.length} matched · {match.ambiguous.length} ambiguous · {match.unmatched.length} unmatched
                 {' — '}account names are never modified.
@@ -369,29 +369,32 @@ export default function QboConnection() {
               </Button>
             </div>
 
-            <div className="rounded-md border border-white/10 overflow-x-auto">
-              <Table>
+            <div className="rounded-md border border-white/10 min-w-0">
+              <Table className="table-fixed">
                 <TableHeader>
-                  <TableRow className="border-white/10 hover:bg-transparent">
-                    <TableHead className="font-bold text-foreground">Used for</TableHead>
-                    <TableHead className="font-bold text-foreground">Our account name</TableHead>
-                    <TableHead className="font-bold text-foreground">QuickBooks account</TableHead>
-                    <TableHead className="font-bold text-foreground w-[120px]">Match</TableHead>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-bold w-[22%]">Used for</TableHead>
+                    <TableHead className="font-bold w-[28%]">Our account name</TableHead>
+                    <TableHead className="font-bold">QuickBooks account</TableHead>
+                    <TableHead className="font-bold w-[12%]">Match</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {match.matched.map((m) => (
                     <TableRow key={m.target.ref} className="border-white/5">
-                      <TableCell>{m.target.label}</TableCell>
-                      <TableCell className="font-mono text-xs">{m.target.accountName}</TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="truncate" title={m.target.label}>{m.target.label}</TableCell>
+                      <TableCell className="font-mono text-xs truncate" title={m.target.accountName}>{m.target.accountName}</TableCell>
+                      <TableCell
+                        className="text-xs truncate"
+                        title={`${m.account.AcctNum ?? '—'} ${m.account.FullyQualifiedName ?? m.account.Name} #${m.account.Id}`}
+                      >
                         <span className="font-mono">{m.account.AcctNum ?? '—'}</span>{' '}
                         {m.account.FullyQualifiedName ?? m.account.Name}{' '}
                         <span className="text-muted-foreground">#{m.account.Id}</span>
                       </TableCell>
                       <TableCell>
                         <Badge className={m.unchanged
-                          ? 'bg-white/5 text-muted-foreground border-white/10'
+                          ? 'whitespace-nowrap bg-white/5 text-muted-foreground border-white/10'
                           : 'bg-green-500/15 text-green-400 border-green-500/30'}>
                           {m.unchanged ? 'already set' : m.method}
                         </Badge>
@@ -403,8 +406,8 @@ export default function QboConnection() {
                     const options = amb ? amb.candidates : accounts;
                     return (
                       <TableRow key={t.ref} className="border-white/5 bg-amber-500/[0.06]">
-                        <TableCell>{t.label}</TableCell>
-                        <TableCell className="font-mono text-xs">{t.accountName}</TableCell>
+                        <TableCell className="truncate" title={t.label}>{t.label}</TableCell>
+                        <TableCell className="font-mono text-xs truncate" title={t.accountName}>{t.accountName}</TableCell>
                         <TableCell>
                           <Select value={manual[t.ref] ?? ''} onValueChange={(v) => setManual((m) => ({ ...m, [t.ref]: v }))}>
                             <SelectTrigger className="h-8"><SelectValue placeholder="Pick an account…" /></SelectTrigger>

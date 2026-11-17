@@ -353,9 +353,9 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
   };
 
   return (
-    <Card className="bg-card/30 border-white/10">
+    <Card className="min-w-0 bg-card/30 border-white/10">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>Cash Pickups</CardTitle>
             <CardDescription>Track cash removed from ATMs</CardDescription>
@@ -468,7 +468,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
       </CardHeader>
       <CardContent>
         {/* Filters */}
-        <div className="flex gap-4 mb-4">
+        <div className="flex flex-wrap gap-4 mb-4">
           <div className="w-48">
             <Select value={filterPerson} onValueChange={setFilterPerson}>
               <SelectTrigger>
@@ -552,17 +552,17 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                 <div key={monthKey} className="rounded-md border border-white/10 overflow-hidden">
                   {/* Month Header */}
                   <div
-                    className="flex items-center justify-between p-4 bg-slate-700/40 cursor-pointer hover:bg-slate-600/50 transition-colors"
+                    className="flex flex-wrap items-center justify-between gap-3 p-4 bg-table-header-bg text-table-header-fg cursor-pointer hover:bg-neutral-900 dark:bg-surface-2 dark:text-foreground dark:hover:bg-muted/80 transition-colors"
                     onClick={() => toggleMonth(monthKey)}
                   >
                     <div className="flex items-center gap-2">
                       {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                        <ChevronDown className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                       ) : (
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                        <ChevronRight className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                       )}
                       <span className="font-semibold text-lg">{getMonthLabel(monthKey)}</span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-table-header-fg/70 dark:text-muted-foreground">
                         ({monthPickups.length} pickup{monthPickups.length !== 1 ? 's' : ''})
                       </span>
                     </div>
@@ -573,27 +573,27 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
 
                   {/* Month Content */}
                   {isExpanded && (
-                    <Table>
+                    <Table className="table-fixed">
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Person</TableHead>
+                          <TableHead className="w-[8%]">Date</TableHead>
+                          <TableHead className="w-[9%]">Person</TableHead>
                           <TableHead>ATM</TableHead>
-                          <TableHead>City</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead className="text-right">Deposited</TableHead>
-                          <TableHead className="text-right">Balance</TableHead>
-                          <TableHead>Notes</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                          <TableHead className="w-[10%]">City</TableHead>
+                          <TableHead className="w-[9%] text-right">Amount</TableHead>
+                          <TableHead className="w-[17%] text-right">Deposited</TableHead>
+                          <TableHead className="w-[9%] text-right">Balance</TableHead>
+                          <TableHead className="w-[14%]">Notes</TableHead>
+                          <TableHead className="w-20 text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {monthPickups.map((pickup) => (
                           <TableRow key={pickup.id}>
                             <TableCell>{new Date(pickup.pickup_date + 'T00:00:00').toLocaleDateString()}</TableCell>
-                            <TableCell>{pickup.person_name}</TableCell>
-                            <TableCell>{pickup.atm_name}</TableCell>
-                            <TableCell>{pickup.city}</TableCell>
+                            <TableCell className="truncate" title={pickup.person_name}>{pickup.person_name}</TableCell>
+                            <TableCell className="truncate" title={pickup.atm_name}>{pickup.atm_name}</TableCell>
+                            <TableCell className="truncate" title={pickup.city}>{pickup.city}</TableCell>
                             <TableCell className="text-right font-mono">
                               ${pickup.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
@@ -613,20 +613,24 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                             }`}>
                               ${pickup.remaining_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
-                            <TableCell className="max-w-xs truncate">{pickup.notes || '-'}</TableCell>
+                            <TableCell className="truncate" title={pickup.notes || undefined}>{pickup.notes || '-'}</TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
+                              <div className="flex justify-end gap-1">
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-7 w-7"
                                   onClick={() => handleEdit(pickup)}
+                                  title="Edit"
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-7 w-7"
                                   onClick={() => handleDelete(pickup.id)}
+                                  title="Delete"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>

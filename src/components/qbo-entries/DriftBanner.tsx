@@ -48,32 +48,32 @@ export function DriftBanner({
         </div>
       </div>
 
-      <div className="rounded-md border border-amber-500/20 overflow-x-auto">
-        <Table>
+      <div className="min-w-0 overflow-hidden rounded-md border border-amber-500/20">
+        <Table className="table-fixed">
           <TableHeader>
-            <TableRow className="border-amber-500/20 hover:bg-transparent">
-              <TableHead className="text-amber-300">Change</TableHead>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-[12%] whitespace-normal leading-tight text-amber-300">Change</TableHead>
               <TableHead className="text-amber-300">Account</TableHead>
-              <TableHead className="text-amber-300 text-right">Debit was → now</TableHead>
-              <TableHead className="text-amber-300 text-right">Credit was → now</TableHead>
-              <TableHead className="text-amber-300 text-right">Difference</TableHead>
+              <TableHead className="w-[20%] whitespace-normal leading-tight text-amber-300 text-right">Debit was → now</TableHead>
+              <TableHead className="w-[20%] whitespace-normal leading-tight text-amber-300 text-right">Credit was → now</TableHead>
+              <TableHead className="w-[16%] whitespace-normal leading-tight text-amber-300 text-right">Difference</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {drift.diffs.map((d, idx) => (
               <TableRow key={`${d.account}-${idx}`} className="border-amber-500/10">
                 <TableCell className="text-xs">{KIND_LABEL[d.kind] || d.kind}</TableCell>
-                <TableCell>
-                  <div className="font-medium">{d.account}</div>
-                  <div className="text-xs text-muted-foreground">{d.description}</div>
+                <TableCell className="min-w-0">
+                  <div className="truncate font-medium" title={d.account}>{d.account}</div>
+                  <div className="truncate text-xs text-muted-foreground" title={d.description}>{d.description}</div>
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm">
+                <TableCell className="whitespace-normal break-words text-right font-mono text-sm">
                   {fmtAmount(d.snapshotDebit)} → {fmtAmount(d.currentDebit)}
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm">
+                <TableCell className="whitespace-normal break-words text-right font-mono text-sm">
                   {fmtAmount(d.snapshotCredit)} → {fmtAmount(d.currentCredit)}
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm font-semibold">
+                <TableCell className="whitespace-normal break-words text-right font-mono text-sm font-semibold">
                   {d.debitDelta !== 0 ? `DR ${fmtAmount(d.debitDelta)}` : ''}
                   {d.debitDelta !== 0 && d.creditDelta !== 0 ? ' / ' : ''}
                   {d.creditDelta !== 0 ? `CR ${fmtAmount(d.creditDelta)}` : ''}

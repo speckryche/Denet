@@ -5,16 +5,11 @@ import { DataTable } from './DataTable';
 import DatePickerWithRange from '@/components/ui/date-picker-with-range';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, AlertTriangle, Filter, Search } from 'lucide-react';
-import UserMenu from '@/components/layout/UserMenu';
+import { AlertCircle, AlertTriangle, Search } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { usePendingCount } from '@/components/pending/pending-count';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { findCtrQualifyingGroups } from '@/lib/ctr';
 import { DateRange } from 'react-day-picker';
@@ -27,6 +22,8 @@ export default function Dashboard() {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
   const [atmIdFilter, setAtmIdFilter] = useState<string>('');
   const [pendingCTRCount, setPendingCTRCount] = useState(0);
+  // Same hook/count as the sidebar badge (count only, no extra metrics query).
+  const pendingCount = usePendingCount();
 
   // Default date range: 1st of current month to today
   const getCurrentMonthDateRange = (): DateRange => {
@@ -305,37 +302,19 @@ export default function Dashboard() {
     "status"
   ];
 
-  return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-[95%] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img
-              src="/images/DNET Logo (black).png"
-              alt="Denet Logo"
-              className="w-20 h-20 object-contain"
-            />
-            <h1 className="font-display font-bold text-xl tracking-tight">
-              Denet <span className="text-muted-foreground font-normal">Analytics</span>
-            </h1>
-          </div>
+  const platformOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'denet', label: 'Denet' },
+    { value: 'bitstop', label: 'Bitstop' },
+  ];
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-secondary/10 rounded-lg p-1">
-              <Filter className="w-4 h-4 ml-2 text-muted-foreground" />
-              <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
-                <SelectTrigger className="w-[140px] border-0 bg-transparent focus:ring-0 h-8">
-                  <SelectValue placeholder="Platform" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Platforms</SelectItem>
-                  <SelectItem value="denet">Denet</SelectItem>
-                  <SelectItem value="bitstop">Bitstop</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="hidden md:flex items-center gap-2">
+  return (
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
+      <PageHeader
+        title="Dashboard"
+        actions={
+          <>
+            <div className="hidden md:flex items-center gap-1.5">
               <DatePickerWithRange
                 date={dateRange}
                 onDateChange={setDateRange}
@@ -351,16 +330,41 @@ export default function Dashboard() {
                 </Button>
               )}
             </div>
-            <UserMenu />
-          </div>
-        </div>
-      </header>
+            <div
+              role="group"
+              aria-label="Platform filter"
+              className="inline-flex rounded-lg border border-border bg-surface-2 p-[3px]"
+            >
+              {platformOptions.map((opt) => {
+                const on = selectedPlatform === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setSelectedPlatform(opt.value)}
+                    className={cn(
+                      "h-7 rounded-md px-2.5 text-[12.5px] font-semibold transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      on
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        }
+      />
 
-      <main className="max-w-[95%] mx-auto px-6 py-8 space-y-8">
+      <main className="min-w-0 px-4 pb-6 pt-5 xl:px-6 xl:pb-8 xl:pt-6 space-y-[18px]">
 
         {/* Error Banner */}
         {error && (
-          <Alert variant="destructive" className="mb-6 animate-in slide-in-from-top-2">
+          <Alert variant="destructive" className="animate-in slide-in-from-top-2">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
@@ -369,34 +373,39 @@ export default function Dashboard() {
 
         {/* CTR Alert Banner */}
         {pendingCTRCount > 0 && (
-          <Alert className="mb-6 border-red-400/30 bg-red-500/[0.06] animate-in slide-in-from-top-2 cursor-pointer" onClick={() => navigate('/reports?tab=ctr-filings')}>
-            <AlertTriangle className="h-4 w-4 text-red-400" />
-            <AlertTitle className="text-red-400">CTR Filing Required</AlertTitle>
-            <AlertDescription className="text-red-400/80">
-              {pendingCTRCount} customer{pendingCTRCount !== 1 ? 's' : ''} ha{pendingCTRCount !== 1 ? 've' : 's'} exceeded $10,001 in daily transactions and need{pendingCTRCount === 1 ? 's' : ''} a CTR filed.{' '}
-              <span className="underline underline-offset-2">View CTR Filings →</span>
-            </AlertDescription>
-          </Alert>
+          <button
+            type="button"
+            onClick={() => navigate('/reports?tab=ctr-filings')}
+            className="flex w-full items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-danger/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring animate-in slide-in-from-top-2"
+          >
+            <AlertTriangle className="h-[18px] w-[18px] shrink-0 text-danger" />
+            <span>
+              <strong className="font-semibold text-danger">CTR filing required.</strong>{' '}
+              {pendingCTRCount} customer{pendingCTRCount !== 1 ? 's' : ''} ha{pendingCTRCount !== 1 ? 've' : 's'} exceeded $10,001 in daily transactions and need{pendingCTRCount === 1 ? 's' : ''} a CTR filed.
+            </span>
+            <span className="ml-auto whitespace-nowrap text-[13px] font-semibold">View CTR Filings →</span>
+          </button>
         )}
 
-        {/* Metrics Section */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-display font-bold">Overview</h2>
-          <MetricsGrid
-            denetMetrics={metrics.denet}
-            bitstopMetrics={metrics.bitstop}
-          />
-        </div>
+        {/* KPIs */}
+        <MetricsGrid
+          denetMetrics={metrics.denet}
+          bitstopMetrics={metrics.bitstop}
+          pendingCount={pendingCount}
+        />
 
-        {/* Data Table Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-bold">Recent Transactions</h2>
+        {/* Recent transactions */}
+        <DataTable
+          data={transactions}
+          columns={dbColumns}
+          title="Recent transactions"
+          toolbar={
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-dim" />
               <Input
-                placeholder="Filter by ATM ID..."
-                className="pl-8 w-[180px] h-9 bg-card border-white/10"
+                placeholder="Filter by ATM ID…"
+                aria-label="Filter by ATM ID"
+                className="h-[34px] w-[170px] dark:bg-background pl-8 text-[13px]"
                 value={atmIdFilter}
                 onChange={(e) => setAtmIdFilter(e.target.value)}
               />
@@ -405,15 +414,14 @@ export default function Dashboard() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setAtmIdFilter('')}
-                  className="absolute right-1 top-1 h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  className="absolute right-1 top-1/2 h-6 -translate-y-1/2 px-2 text-xs text-muted-foreground hover:text-foreground"
                 >
                   Clear
                 </Button>
               )}
             </div>
-          </div>
-          <DataTable data={transactions} columns={dbColumns} />
-        </div>
+          }
+        />
       </main>
     </div>
   );

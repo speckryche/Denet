@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { TrendingUp, DollarSign, BarChart3, Calendar, List, Shield, GitCompare, LineChart, Table2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import MonthlySalesSummary from './MonthlySalesSummary';
@@ -14,18 +12,23 @@ import CTRReport from './CTRReport';
 import PlatformComparison from './PlatformComparison';
 
 const TABS = [
-  { key: 'monthly-sales', label: 'Sales - Totals', icon: TrendingUp },
-  { key: 'atm-monthly', label: 'Sales - by ATM', icon: Calendar },
-  { key: 'atm-pl', label: 'ATM P&L', icon: DollarSign },
-  { key: 'fleet-pl', label: 'Fleet P&L', icon: LineChart },
-  { key: 'per-machine-pl', label: 'Per-Machine P&L', icon: Table2 },
-  { key: 'atm-summary', label: 'ATM Summary', icon: BarChart3 },
-  { key: 'atm-transactions', label: 'ATM Transactions', icon: List },
-  { key: 'ctr-filings', label: 'CTR Filings', icon: Shield },
-  { key: 'platform-comparison', label: 'Platform Comparison', icon: GitCompare },
+  { key: 'monthly-sales', label: 'Sales — totals' },
+  { key: 'atm-monthly', label: 'Sales — by ATM' },
+  { key: 'atm-pl', label: 'ATM P&L' },
+  { key: 'fleet-pl', label: 'Fleet P&L' },
+  { key: 'per-machine-pl', label: 'Per-machine P&L' },
+  { key: 'atm-summary', label: 'ATM summary' },
+  { key: 'atm-transactions', label: 'Transactions' },
+  { key: 'ctr-filings', label: 'CTR filings' },
+  { key: 'platform-comparison', label: 'Platform comparison' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
+
+const DEFAULT_TAB: TabKey = 'monthly-sales';
+
+const isTabKey = (value: string | null): value is TabKey =>
+  TABS.some((t) => t.key === value);
 
 const TAB_CONTENT: Record<TabKey, React.FC> = {
   'monthly-sales': MonthlySalesSummary,
@@ -40,47 +43,57 @@ const TAB_CONTENT: Record<TabKey, React.FC> = {
 };
 
 export default function Reports() {
-  const [searchParams] = useSearchParams();
+  // The URL is the single source of truth for the active tab, so deep links
+  // (e.g. the Dashboard CTR banner -> ?tab=ctr-filings) and shared URLs work,
+  // and back/forward moves between tabs.
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const initialTab = TABS.some((t) => t.key === tabParam) ? (tabParam as TabKey) : 'monthly-sales';
-  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
-
-  useEffect(() => {
-    if (tabParam && TABS.some((t) => t.key === tabParam)) {
-      setActiveTab(tabParam as TabKey);
-    }
-  }, [tabParam]);
+  const activeTab: TabKey = isTabKey(tabParam) ? tabParam : DEFAULT_TAB;
   const ActiveContent = TAB_CONTENT[activeTab];
 
-  return (
-    <div className="min-h-screen bg-background text-foreground font-sans">
-      <PageHeader title="Reports & Analytics" />
+  const selectTab = (key: TabKey) => {
+    if (key === activeTab) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', key);
+    setSearchParams(next);
+  };
 
-      <main className="max-w-[95%] mx-auto px-6 py-8 space-y-6 overflow-x-hidden">
-        {/* Executive Dashboard nav: large icon+label buttons */}
-        <div className="flex gap-3 max-w-[1000px]">
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <PageHeader title="Reports" subtitle="Sales, P&L, CTR, and platform comparison" />
+
+      <main className="min-w-0 px-4 pb-6 pt-2 xl:px-6 xl:pb-8 space-y-[18px] overflow-x-hidden">
+        <div
+          role="tablist"
+          aria-label="Report"
+          className="flex flex-wrap gap-1 border-b border-border"
+        >
           {TABS.map((tab) => {
-            const Icon = tab.icon;
             const isActive = activeTab === tab.key;
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => selectTab(tab.key)}
                 className={cn(
-                  "h-20 flex-1 flex flex-col items-center justify-center gap-1.5 rounded-lg border transition-colors",
+                  "-mb-px border-b-2 px-3 pb-3 pt-2.5 text-[13px] transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                   isActive
-                    ? "bg-primary/10 border-primary text-primary"
-                    : "bg-white/[0.02] border-white/10 text-muted-foreground hover:bg-white/5"
+                    ? "border-primary font-semibold text-foreground"
+                    : "border-transparent font-medium text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-xs font-medium">{tab.label}</span>
+                {tab.label}
               </button>
             );
           })}
         </div>
 
-        <ActiveContent />
+        <div role="tabpanel">
+          <ActiveContent />
+        </div>
       </main>
     </div>
   );

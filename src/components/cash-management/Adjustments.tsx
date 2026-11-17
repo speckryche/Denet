@@ -255,9 +255,9 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
   const monthTotal = (rows: Adjustment[]) => rows.reduce((sum, a) => sum + a.delta_amount, 0);
 
   return (
-    <Card className="bg-card/30 border-white/10">
+    <Card className="min-w-0 bg-card/30 border-white/10">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Scale className="w-5 h-5 text-primary" />
@@ -272,7 +272,7 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
       </CardHeader>
       <CardContent>
         {/* Filter */}
-        <div className="flex gap-4 mb-4">
+        <div className="flex flex-wrap gap-4 mb-4">
           <div className="w-48">
             <Select value={filterPerson} onValueChange={setFilterPerson}>
               <SelectTrigger>
@@ -307,17 +307,17 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
                 <div key={monthKey} className="rounded-md border border-white/10 overflow-hidden">
                   {/* Month Header */}
                   <div
-                    className="flex items-center justify-between p-4 bg-slate-700/40 cursor-pointer hover:bg-slate-600/50 transition-colors"
+                    className="flex flex-wrap items-center justify-between gap-3 p-4 bg-table-header-bg text-table-header-fg cursor-pointer hover:bg-neutral-900 dark:bg-surface-2 dark:text-foreground dark:hover:bg-muted/80 transition-colors"
                     onClick={() => toggleMonth(monthKey)}
                   >
                     <div className="flex items-center gap-2">
                       {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                        <ChevronDown className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                       ) : (
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                        <ChevronRight className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                       )}
                       <span className="font-semibold text-lg">{monthLabel(monthKey)}</span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-table-header-fg/70 dark:text-muted-foreground">
                         ({rows.length} adjustment{rows.length !== 1 ? 's' : ''})
                       </span>
                     </div>
@@ -332,14 +332,14 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
 
                   {/* Month Content */}
                   {isExpanded && (
-                    <Table>
+                    <Table className="table-fixed">
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Effective Date</TableHead>
-                          <TableHead>Person</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="w-[13%] whitespace-normal">Effective Date</TableHead>
+                          <TableHead className="w-[16%]">Person</TableHead>
+                          <TableHead className="w-[13%] text-right">Amount</TableHead>
                           <TableHead>Reason</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                          <TableHead className="w-20 text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -348,7 +348,7 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
                             <TableCell>
                               {new Date(adj.effective_date + 'T00:00:00').toLocaleDateString()}
                             </TableCell>
-                            <TableCell>{adj.person_name}</TableCell>
+                            <TableCell className="truncate" title={adj.person_name}>{adj.person_name}</TableCell>
                             <TableCell
                               className={`text-right font-mono ${
                                 adj.delta_amount > 0
@@ -360,15 +360,15 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
                             >
                               {signedMoney(adj.delta_amount)}
                             </TableCell>
-                            <TableCell className="max-w-md whitespace-pre-wrap break-words">
+                            <TableCell className="whitespace-pre-wrap break-words">
                               {adj.reason}
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => openEdit(adj)}>
+                              <div className="flex justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(adj)} title="Edit">
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleDelete(adj)}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(adj)} title="Delete">
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>

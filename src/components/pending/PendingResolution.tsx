@@ -184,7 +184,7 @@ export default function PendingResolution() {
     <div className="min-h-screen bg-background text-foreground">
       <PageHeader title="Pending Resolution" />
 
-      <div className="max-w-[95%] mx-auto px-6 py-8 space-y-6">
+      <div className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6 space-y-6">
         {/* Load failure — never render an empty list as "all clear". */}
         {loadError && (
           <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -241,8 +241,8 @@ export default function PendingResolution() {
         </div>
 
         {/* ── ACTIONABLE ── */}
-        <Card className="bg-card/30 border-white/10">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <Card className="min-w-0 bg-card/30 border-white/10">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
             <CardTitle className="flex items-center gap-2 text-base">
               <Clock className="w-4 h-4 text-primary" />
               Awaiting Resolution
@@ -255,7 +255,7 @@ export default function PendingResolution() {
               Refresh
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0">
             {!isLoading && actionableRows.length === 0 && !loadError ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
                 <CheckCircle2 className="w-8 h-8 text-emerald-400/70 mb-3" />
@@ -295,10 +295,10 @@ export default function PendingResolution() {
 
         {/* ── TERMINAL (informational) ── */}
         <Collapsible open={terminalOpen} onOpenChange={setTerminalOpen}>
-          <Card className="bg-card/20 border-white/10">
+          <Card className="min-w-0 bg-card/20 border-white/10">
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-white/[0.02] transition-colors">
-                <CardTitle className="flex items-center gap-2 text-base text-muted-foreground font-normal">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-base text-muted-foreground font-normal">
                   <ChevronDown
                     className={cn(
                       'w-4 h-4 transition-transform',
@@ -314,7 +314,7 @@ export default function PendingResolution() {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent>
+              <CardContent className="min-w-0">
                 <PendingTransactionsTable
                   rows={terminalRows}
                   showActions={false}

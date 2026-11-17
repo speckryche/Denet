@@ -445,7 +445,7 @@ export default function QboEntries() {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans">
         <PageHeader title="QBO Entries" />
-        <main className="max-w-[95%] mx-auto px-6 py-8">
+        <main className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6">
           <Card className="bg-card/30 border-white/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -481,10 +481,10 @@ export default function QboEntries() {
     const postButton = postButtonFor(snapshot);
 
     return (
-      <Card className="bg-card/30 border-white/10">
+      <Card className="min-w-0 bg-card/30 border-white/10">
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <CardTitle>{title}</CardTitle>
               <CardDescription>
                 {entered && !drifted
@@ -492,7 +492,7 @@ export default function QboEntries() {
                   : `Dated ${je.date} · ${je.monthText}`}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Post to QBO sits first: it is the path that should be taken,
                   with "Mark as entered" kept as the manual fallback. Shown only
                   when the JE is genuinely postable — see postButtonFor(). A
@@ -578,7 +578,7 @@ export default function QboEntries() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="min-w-0 space-y-4">
           {attention && (
             <Alert className={snapshot?.post_state === 'unknown'
               ? 'bg-orange-500/10 border-orange-500/40 text-orange-300'
@@ -620,7 +620,7 @@ export default function QboEntries() {
     <div className="min-h-screen bg-background text-foreground font-sans">
       <PageHeader title="QBO Entries" />
 
-      <main className="max-w-[95%] mx-auto px-6 py-8 space-y-6">
+      <main className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6 space-y-6">
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Month</Label>
@@ -717,7 +717,7 @@ export default function QboEntries() {
               current.coinbaseCheckList,
               coinbaseSnapshot,
               coinbaseDrift,
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4">
                 <CoinbaseUpload selectedMonth={selectedMonth} onImported={loadAll} />
                 {current.hasCoinbaseData ? (
                   <CoinbaseBuysTable

@@ -570,7 +570,7 @@ export function ATMManagement() {
   return (
     <SettingsGuard>
     <div>
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <CardTitle>ATM & Sales Rep Management</CardTitle>
         <CardDescription>
@@ -597,9 +597,9 @@ export function ATMManagement() {
           </TabsList>
 
           <TabsContent value="sales-reps" className="mt-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
               <h3 className="text-lg font-semibold">Sales Representatives</h3>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Dialog open={isAddRepOpen} onOpenChange={setIsAddRepOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" disabled={isReadOnly}>
@@ -679,16 +679,16 @@ export function ATMManagement() {
                 <p>No sales reps yet. Click "Add Sales Rep" to get started.</p>
               </div>
             ) : (
-              <div className="rounded-md border border-white/10 overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-white/5">
-                    <TableRow className="border-white/10">
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Commission %</TableHead>
-                      <TableHead>Flat Monthly Fee</TableHead>
-                      <TableHead>Active</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
+              <div className="rounded-md border border-white/10 min-w-0">
+                <Table className="table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[24%]">Name</TableHead>
+                      <TableHead className="w-[30%]">Email</TableHead>
+                      <TableHead className="w-[13%] whitespace-normal leading-tight">Commission %</TableHead>
+                      <TableHead className="w-[13%] whitespace-normal leading-tight">Flat Monthly Fee</TableHead>
+                      <TableHead className="w-[13%]">Active</TableHead>
+                      <TableHead className="w-[7%]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -698,7 +698,7 @@ export function ATMManagement() {
                           <Input
                             value={rep.name}
                             onChange={(e) => handleRepFieldChange(rep.id, 'name', e.target.value)}
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                             disabled={isReadOnly}
                           />
                         </TableCell>
@@ -708,7 +708,8 @@ export function ATMManagement() {
                             value={rep.email || ''}
                             onChange={(e) => handleRepFieldChange(rep.id, 'email', e.target.value)}
                             placeholder="email@example.com"
-                            className="bg-card border-white/10"
+                            title={rep.email || undefined}
+                            className="dark:bg-card dark:border-white/10"
                             disabled={isReadOnly}
                           />
                         </TableCell>
@@ -718,7 +719,7 @@ export function ATMManagement() {
                             step="0.01"
                             value={rep.commission_percentage}
                             onChange={(e) => handleRepFieldChange(rep.id, 'commission_percentage', parseFloat(e.target.value) || 0)}
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                             disabled={isReadOnly}
                           />
                         </TableCell>
@@ -728,7 +729,7 @@ export function ATMManagement() {
                             step="0.01"
                             value={rep.flat_monthly_fee}
                             onChange={(e) => handleRepFieldChange(rep.id, 'flat_monthly_fee', parseFloat(e.target.value) || 0)}
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                             disabled={isReadOnly}
                           />
                         </TableCell>
@@ -738,7 +739,7 @@ export function ATMManagement() {
                             onValueChange={(value) => handleRepFieldChange(rep.id, 'active', value === 'true')}
                             disabled={isReadOnly}
                           >
-                            <SelectTrigger className="bg-card border-white/10">
+                            <SelectTrigger className="dark:bg-card dark:border-white/10">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -753,7 +754,7 @@ export function ATMManagement() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteRep(rep.id)}
-                            className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            className="h-7 w-7 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -767,8 +768,8 @@ export function ATMManagement() {
           </TabsContent>
 
           <TabsContent value="atms" className="mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <div>
                   <h3 className="text-lg font-semibold">ATM Profiles</h3>
                   {hasUnsavedChanges && (
@@ -780,7 +781,7 @@ export function ATMManagement() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Platform:</span>
                   <Select value={platformFilter} onValueChange={(value: 'all' | 'bitstop' | 'denet') => setPlatformFilter(value)}>
-                    <SelectTrigger className="w-32 bg-card border-white/10">
+                    <SelectTrigger className="w-32 dark:bg-card dark:border-white/10">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -791,7 +792,7 @@ export function ATMManagement() {
                   </Select>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setIsAddATMOpen(true)} disabled={isReadOnly}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add ATM
@@ -820,14 +821,14 @@ export function ATMManagement() {
                     <h4 className="text-md font-semibold text-green-500 mb-3">
                       Active ATMs ({profiles.filter(p => p.active !== false && (platformFilter === 'all' || p.platform === platformFilter)).length})
                     </h4>
-                    <div className="rounded-md border border-white/10 overflow-x-auto">
-                      <Table>
-                        <TableHeader className="bg-white/5">
-                          <TableRow className="border-white/10">
-                            <TableHead className="min-w-[70px]">
+                    <div className="rounded-md border border-white/10 min-w-0">
+                      <Table className="table-fixed min-w-[1040px]">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[5.5%]">
                               <button
                                 onClick={() => toggleAtmSort('atm_id')}
-                                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                className="flex items-center gap-1 hover:opacity-80 transition-opacity"
                               >
                                 ATM ID
                                 {atmSortField === 'atm_id' && (atmSortOrder === 'asc' ? (
@@ -838,10 +839,10 @@ export function ATMManagement() {
                                 {atmSortField !== 'atm_id' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                               </button>
                             </TableHead>
-                            <TableHead className="min-w-[140px]">
+                            <TableHead className="w-[10%]">
                               <button
                                 onClick={() => toggleAtmSort('location_name')}
-                                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                className="flex items-center gap-1 hover:opacity-80 transition-opacity"
                               >
                                 Location Name
                                 {atmSortField === 'location_name' && (atmSortOrder === 'asc' ? (
@@ -852,32 +853,33 @@ export function ATMManagement() {
                                 {atmSortField !== 'location_name' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                               </button>
                             </TableHead>
-                            <TableHead className="min-w-[90px]">City</TableHead>
-                            <TableHead className="min-w-[50px]">State</TableHead>
-                            <TableHead className="min-w-[70px]">Platform</TableHead>
-                            <TableHead className="min-w-[120px]">Sales Rep</TableHead>
-                            <TableHead className="min-w-[100px]">Rent ($)</TableHead>
-                            <TableHead className="min-w-[100px]">CM RPS ($)</TableHead>
-                            <TableHead className="min-w-[100px]">CM Rep ($)</TableHead>
-                            <TableHead className="min-w-[90px]">Rent Pymt</TableHead>
-                            <TableHead className="min-w-[100px]">Installed</TableHead>
-                            <TableHead className="min-w-[100px]">Removed</TableHead>
-                            <TableHead className="min-w-[90px]">Status</TableHead>
-                            <TableHead className="min-w-[200px]">Notes</TableHead>
-                            <TableHead className="w-[60px]">Delete</TableHead>
+                            <TableHead className="w-[7%] whitespace-normal leading-tight">City</TableHead>
+                            <TableHead className="w-[4%] whitespace-normal leading-tight">State</TableHead>
+                            <TableHead className="w-[7%] whitespace-normal leading-tight">Platform</TableHead>
+                            <TableHead className="w-[8%] whitespace-normal leading-tight">Sales Rep</TableHead>
+                            <TableHead className="w-[6%] whitespace-normal leading-tight">Rent ($)</TableHead>
+                            <TableHead className="w-[6%] whitespace-normal leading-tight">CM RPS ($)</TableHead>
+                            <TableHead className="w-[6%] whitespace-normal leading-tight">CM Rep ($)</TableHead>
+                            <TableHead className="w-[6.5%] whitespace-normal leading-tight">Rent Pymt</TableHead>
+                            <TableHead className="w-[9%] whitespace-normal leading-tight">Installed</TableHead>
+                            <TableHead className="w-[9%] whitespace-normal leading-tight">Removed</TableHead>
+                            <TableHead className="w-[7%] whitespace-normal leading-tight">Status</TableHead>
+                            <TableHead className="w-[5.5%] whitespace-normal leading-tight">Notes</TableHead>
+                            <TableHead className="w-[3.5%]" title="Delete"><span className="sr-only">Delete</span></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {profiles.filter(p => p.active !== false && (platformFilter === 'all' || p.platform === platformFilter)).map((profile) => (
                       <TableRow key={profile.id} className="border-white/5">
-                        <TableCell className="font-mono text-sm">{profile.atm_id}</TableCell>
+                        <TableCell className="font-mono text-sm truncate" title={profile.atm_id}>{profile.atm_id}</TableCell>
                         <TableCell>
                           <Input
                             disabled={isReadOnly}
                             value={profile.location_name || ''}
+                            title={profile.location_name || undefined}
                             onChange={(e) => handleATMFieldChange(profile.id, 'location_name', e.target.value)}
                             placeholder="Location name"
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                           />
                         </TableCell>
                         <TableCell>
@@ -886,7 +888,7 @@ export function ATMManagement() {
                             value={profile.city || ''}
                             onChange={(e) => handleATMFieldChange(profile.id, 'city', e.target.value)}
                             placeholder="City"
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                           />
                         </TableCell>
                         <TableCell>
@@ -896,7 +898,7 @@ export function ATMManagement() {
                             onChange={(e) => handleATMFieldChange(profile.id, 'state', e.target.value)}
                             placeholder="ST"
                             maxLength={2}
-                            className="bg-card border-white/10 uppercase w-16"
+                            className="dark:bg-card dark:border-white/10 uppercase"
                             style={{ textTransform: 'uppercase' }}
                           />
                         </TableCell>
@@ -906,7 +908,7 @@ export function ATMManagement() {
                             value={profile.platform || 'none'}
                             onValueChange={(value) => handleATMFieldChange(profile.id, 'platform', value === 'none' ? null : value)}
                           >
-                            <SelectTrigger className="bg-card border-white/10">
+                            <SelectTrigger className="dark:bg-card dark:border-white/10">
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -922,7 +924,7 @@ export function ATMManagement() {
                             value={profile.sales_rep_id || 'none'}
                             onValueChange={(value) => handleATMFieldChange(profile.id, 'sales_rep_id', value === 'none' ? null : value)}
                           >
-                            <SelectTrigger className="bg-card border-white/10">
+                            <SelectTrigger className="dark:bg-card dark:border-white/10">
                               <SelectValue placeholder="No rep" />
                             </SelectTrigger>
                             <SelectContent>
@@ -943,7 +945,7 @@ export function ATMManagement() {
                             value={profile.monthly_rent}
                             onChange={(e) => handleATMFieldChange(profile.id, 'monthly_rent', parseFloat(e.target.value) || 0)}
                             placeholder="0.00"
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                           />
                         </TableCell>
                         <TableCell>
@@ -954,7 +956,7 @@ export function ATMManagement() {
                             value={profile.cash_management_rps}
                             onChange={(e) => handleATMFieldChange(profile.id, 'cash_management_rps', parseFloat(e.target.value) || 0)}
                             placeholder="0.00"
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                           />
                         </TableCell>
                         <TableCell>
@@ -965,7 +967,7 @@ export function ATMManagement() {
                             value={profile.cash_management_rep}
                             onChange={(e) => handleATMFieldChange(profile.id, 'cash_management_rep', parseFloat(e.target.value) || 0)}
                             placeholder="0.00"
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                           />
                         </TableCell>
                         <TableCell>
@@ -974,7 +976,7 @@ export function ATMManagement() {
                             value={profile.rent_payment_method || 'none'}
                             onValueChange={(value) => handleATMFieldChange(profile.id, 'rent_payment_method', value === 'none' ? null : value)}
                           >
-                            <SelectTrigger className={`bg-card border-white/10 ${
+                            <SelectTrigger className={`dark:bg-card dark:border-white/10 ${
                               profile.rent_payment_method === 'Bill Pay' ? 'text-blue-400 font-semibold' :
                               profile.rent_payment_method === 'ACH' ? 'text-green-400 font-semibold' :
                               ''
@@ -994,7 +996,7 @@ export function ATMManagement() {
                             type="date"
                             value={profile.installed_date || ''}
                             onChange={(e) => handleATMFieldChange(profile.id, 'installed_date', e.target.value || null)}
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                           />
                         </TableCell>
                         <TableCell>
@@ -1003,7 +1005,7 @@ export function ATMManagement() {
                             type="date"
                             value={profile.removed_date || ''}
                             onChange={(e) => handleATMFieldChange(profile.id, 'removed_date', e.target.value || null)}
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                           />
                         </TableCell>
                         <TableCell>
@@ -1012,7 +1014,7 @@ export function ATMManagement() {
                             value={profile.active === null ? 'active' : (profile.active ? 'active' : 'inactive')}
                             onValueChange={(value) => handleATMFieldChange(profile.id, 'active', value === 'active')}
                           >
-                            <SelectTrigger className={`bg-card border-white/10 font-semibold ${
+                            <SelectTrigger className={`dark:bg-card dark:border-white/10 font-semibold ${
                               profile.active === false ? 'text-red-500' : 'text-green-500'
                             }`}>
                               <SelectValue />
@@ -1027,9 +1029,10 @@ export function ATMManagement() {
                           <Input
                             disabled={isReadOnly}
                             value={profile.notes || ''}
+                            title={profile.notes || undefined}
                             onChange={(e) => handleATMFieldChange(profile.id, 'notes', e.target.value || null)}
                             placeholder="Notes"
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                           />
                         </TableCell>
                         <TableCell>
@@ -1037,7 +1040,7 @@ export function ATMManagement() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteATMClick(profile)}
-                            className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            className="h-7 w-7 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                             disabled={isReadOnly}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1057,14 +1060,14 @@ export function ATMManagement() {
                   <h4 className="text-md font-semibold text-red-500 mb-3">
                     Inactive ATMs ({profiles.filter(p => p.active === false && (platformFilter === 'all' || p.platform === platformFilter)).length})
                   </h4>
-                  <div className="rounded-md border border-white/10 overflow-x-auto">
-                    <Table>
-                      <TableHeader className="bg-white/5">
-                        <TableRow className="border-white/10">
-                          <TableHead className="min-w-[70px]">
+                  <div className="rounded-md border border-white/10 min-w-0">
+                    <Table className="table-fixed min-w-[1040px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[5.5%]">
                             <button
                               onClick={() => toggleAtmSort('atm_id')}
-                              className="flex items-center gap-1 hover:text-foreground transition-colors"
+                              className="flex items-center gap-1 hover:opacity-80 transition-opacity"
                             >
                               ATM ID
                               {atmSortField === 'atm_id' && (atmSortOrder === 'asc' ? (
@@ -1075,10 +1078,10 @@ export function ATMManagement() {
                               {atmSortField !== 'atm_id' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                             </button>
                           </TableHead>
-                          <TableHead className="min-w-[140px]">
+                          <TableHead className="w-[10%]">
                             <button
                               onClick={() => toggleAtmSort('location_name')}
-                              className="flex items-center gap-1 hover:text-foreground transition-colors"
+                              className="flex items-center gap-1 hover:opacity-80 transition-opacity"
                             >
                               Location Name
                               {atmSortField === 'location_name' && (atmSortOrder === 'asc' ? (
@@ -1089,32 +1092,33 @@ export function ATMManagement() {
                               {atmSortField !== 'location_name' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                             </button>
                           </TableHead>
-                          <TableHead className="min-w-[90px]">City</TableHead>
-                          <TableHead className="min-w-[50px]">State</TableHead>
-                          <TableHead className="min-w-[70px]">Platform</TableHead>
-                          <TableHead className="min-w-[120px]">Sales Rep</TableHead>
-                          <TableHead className="min-w-[60px]">Rent ($)</TableHead>
-                          <TableHead className="min-w-[60px]">CM RPS ($)</TableHead>
-                          <TableHead className="min-w-[60px]">CM Rep ($)</TableHead>
-                          <TableHead className="min-w-[90px]">Rent Pymt</TableHead>
-                          <TableHead className="min-w-[100px]">Installed</TableHead>
-                          <TableHead className="min-w-[100px]">Removed</TableHead>
-                          <TableHead className="min-w-[90px]">Status</TableHead>
-                          <TableHead className="min-w-[200px]">Notes</TableHead>
-                          <TableHead className="w-[60px]">Delete</TableHead>
+                          <TableHead className="w-[7%] whitespace-normal leading-tight">City</TableHead>
+                          <TableHead className="w-[4%] whitespace-normal leading-tight">State</TableHead>
+                          <TableHead className="w-[7%] whitespace-normal leading-tight">Platform</TableHead>
+                          <TableHead className="w-[8%] whitespace-normal leading-tight">Sales Rep</TableHead>
+                          <TableHead className="w-[6%] whitespace-normal leading-tight">Rent ($)</TableHead>
+                          <TableHead className="w-[6%] whitespace-normal leading-tight">CM RPS ($)</TableHead>
+                          <TableHead className="w-[6%] whitespace-normal leading-tight">CM Rep ($)</TableHead>
+                          <TableHead className="w-[6.5%] whitespace-normal leading-tight">Rent Pymt</TableHead>
+                          <TableHead className="w-[9%] whitespace-normal leading-tight">Installed</TableHead>
+                          <TableHead className="w-[9%] whitespace-normal leading-tight">Removed</TableHead>
+                          <TableHead className="w-[7%] whitespace-normal leading-tight">Status</TableHead>
+                          <TableHead className="w-[5.5%] whitespace-normal leading-tight">Notes</TableHead>
+                          <TableHead className="w-[3.5%]" title="Delete"><span className="sr-only">Delete</span></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {profiles.filter(p => p.active === false && (platformFilter === 'all' || p.platform === platformFilter)).map((profile) => (
                           <TableRow key={profile.id} className="border-white/5">
-                            <TableCell className="font-mono text-sm">{profile.atm_id}</TableCell>
+                            <TableCell className="font-mono text-sm truncate" title={profile.atm_id}>{profile.atm_id}</TableCell>
                             <TableCell>
                               <Input
                                 disabled={isReadOnly}
                                 value={profile.location_name || ''}
+                            title={profile.location_name || undefined}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'location_name', e.target.value)}
                                 placeholder="Location name"
-                                className="bg-card border-white/10"
+                                className="dark:bg-card dark:border-white/10"
                               />
                             </TableCell>
                             <TableCell>
@@ -1123,7 +1127,7 @@ export function ATMManagement() {
                                 value={profile.city || ''}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'city', e.target.value)}
                                 placeholder="City"
-                                className="bg-card border-white/10"
+                                className="dark:bg-card dark:border-white/10"
                               />
                             </TableCell>
                             <TableCell>
@@ -1133,7 +1137,7 @@ export function ATMManagement() {
                                 onChange={(e) => handleATMFieldChange(profile.id, 'state', e.target.value)}
                                 placeholder="ST"
                                 maxLength={2}
-                                className="bg-card border-white/10 uppercase w-16"
+                                className="dark:bg-card dark:border-white/10 uppercase"
                                 style={{ textTransform: 'uppercase' }}
                               />
                             </TableCell>
@@ -1143,7 +1147,7 @@ export function ATMManagement() {
                                 value={profile.platform || 'none'}
                                 onValueChange={(value) => handleATMFieldChange(profile.id, 'platform', value === 'none' ? null : value)}
                               >
-                                <SelectTrigger className="bg-card border-white/10">
+                                <SelectTrigger className="dark:bg-card dark:border-white/10">
                                   <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1159,7 +1163,7 @@ export function ATMManagement() {
                                 value={profile.sales_rep_id || 'none'}
                                 onValueChange={(value) => handleATMFieldChange(profile.id, 'sales_rep_id', value === 'none' ? null : value)}
                               >
-                                <SelectTrigger className="bg-card border-white/10">
+                                <SelectTrigger className="dark:bg-card dark:border-white/10">
                                   <SelectValue placeholder="No rep" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1180,7 +1184,7 @@ export function ATMManagement() {
                                 value={profile.monthly_rent}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'monthly_rent', parseFloat(e.target.value) || 0)}
                                 placeholder="0.00"
-                                className="bg-card border-white/10"
+                                className="dark:bg-card dark:border-white/10"
                               />
                             </TableCell>
                             <TableCell>
@@ -1191,7 +1195,7 @@ export function ATMManagement() {
                                 value={profile.cash_management_rps}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'cash_management_rps', parseFloat(e.target.value) || 0)}
                                 placeholder="0.00"
-                                className="bg-card border-white/10"
+                                className="dark:bg-card dark:border-white/10"
                               />
                             </TableCell>
                             <TableCell>
@@ -1202,7 +1206,7 @@ export function ATMManagement() {
                                 value={profile.cash_management_rep}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'cash_management_rep', parseFloat(e.target.value) || 0)}
                                 placeholder="0.00"
-                                className="bg-card border-white/10"
+                                className="dark:bg-card dark:border-white/10"
                               />
                             </TableCell>
                             <TableCell>
@@ -1211,7 +1215,7 @@ export function ATMManagement() {
                                 value={profile.rent_payment_method || 'none'}
                                 onValueChange={(value) => handleATMFieldChange(profile.id, 'rent_payment_method', value === 'none' ? null : value)}
                               >
-                                <SelectTrigger className={`bg-card border-white/10 ${
+                                <SelectTrigger className={`dark:bg-card dark:border-white/10 ${
                                   profile.rent_payment_method === 'Bill Pay' ? 'text-blue-400 font-semibold' :
                                   profile.rent_payment_method === 'ACH' ? 'text-green-400 font-semibold' :
                                   ''
@@ -1231,7 +1235,7 @@ export function ATMManagement() {
                                 type="date"
                                 value={profile.installed_date || ''}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'installed_date', e.target.value || null)}
-                                className="bg-card border-white/10"
+                                className="dark:bg-card dark:border-white/10"
                               />
                             </TableCell>
                             <TableCell>
@@ -1240,7 +1244,7 @@ export function ATMManagement() {
                                 type="date"
                                 value={profile.removed_date || ''}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'removed_date', e.target.value || null)}
-                                className="bg-card border-white/10"
+                                className="dark:bg-card dark:border-white/10"
                               />
                             </TableCell>
                             <TableCell>
@@ -1249,7 +1253,7 @@ export function ATMManagement() {
                                 value={profile.active === null ? 'active' : (profile.active ? 'active' : 'inactive')}
                                 onValueChange={(value) => handleATMFieldChange(profile.id, 'active', value === 'active')}
                               >
-                                <SelectTrigger className={`bg-card border-white/10 font-semibold ${
+                                <SelectTrigger className={`dark:bg-card dark:border-white/10 font-semibold ${
                                   profile.active === false ? 'text-red-500' : 'text-green-500'
                                 }`}>
                                   <SelectValue />
@@ -1264,9 +1268,10 @@ export function ATMManagement() {
                               <Input
                                 disabled={isReadOnly}
                                 value={profile.notes || ''}
+                            title={profile.notes || undefined}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'notes', e.target.value || null)}
                                 placeholder="Notes"
-                                className="bg-card border-white/10"
+                                className="dark:bg-card dark:border-white/10"
                               />
                             </TableCell>
                             <TableCell>
@@ -1274,7 +1279,7 @@ export function ATMManagement() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDeleteATMClick(profile)}
-                                className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                className="h-7 w-7 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                                 disabled={isReadOnly}
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1322,7 +1327,7 @@ export function ATMManagement() {
                   value={newATM.atm_id}
                   onChange={(e) => setNewATM({ ...newATM, atm_id: e.target.value })}
                   placeholder="Enter ATM ID"
-                  className="bg-card border-white/10"
+                  className="dark:bg-card dark:border-white/10"
                 />
               </div>
               <div className="grid gap-2">
@@ -1332,7 +1337,7 @@ export function ATMManagement() {
                   value={newATM.serial_number}
                   onChange={(e) => setNewATM({ ...newATM, serial_number: e.target.value })}
                   placeholder="Enter serial number"
-                  className="bg-card border-white/10"
+                  className="dark:bg-card dark:border-white/10"
                 />
               </div>
             </div>
@@ -1343,7 +1348,7 @@ export function ATMManagement() {
                 value={newATM.location_name}
                 onChange={(e) => setNewATM({ ...newATM, location_name: e.target.value })}
                 placeholder="Enter location name"
-                className="bg-card border-white/10"
+                className="dark:bg-card dark:border-white/10"
               />
             </div>
             <div className="grid gap-2">
@@ -1353,7 +1358,7 @@ export function ATMManagement() {
                 value={newATM.street_address}
                 onChange={(e) => setNewATM({ ...newATM, street_address: e.target.value })}
                 placeholder="Enter street address"
-                className="bg-card border-white/10"
+                className="dark:bg-card dark:border-white/10"
               />
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -1364,7 +1369,7 @@ export function ATMManagement() {
                   value={newATM.city}
                   onChange={(e) => setNewATM({ ...newATM, city: e.target.value })}
                   placeholder="City"
-                  className="bg-card border-white/10"
+                  className="dark:bg-card dark:border-white/10"
                 />
               </div>
               <div className="grid gap-2">
@@ -1375,7 +1380,7 @@ export function ATMManagement() {
                   onChange={(e) => setNewATM({ ...newATM, state: e.target.value.toUpperCase() })}
                   placeholder="ST"
                   maxLength={2}
-                  className="bg-card border-white/10 uppercase"
+                  className="dark:bg-card dark:border-white/10 uppercase"
                 />
               </div>
               <div className="grid gap-2">
@@ -1385,7 +1390,7 @@ export function ATMManagement() {
                   value={newATM.zip_code}
                   onChange={(e) => setNewATM({ ...newATM, zip_code: e.target.value })}
                   placeholder="Zip"
-                  className="bg-card border-white/10"
+                  className="dark:bg-card dark:border-white/10"
                 />
               </div>
             </div>
@@ -1395,7 +1400,7 @@ export function ATMManagement() {
                 value={newATM.platform || 'none'}
                 onValueChange={(value) => setNewATM({ ...newATM, platform: value === 'none' ? null : value })}
               >
-                <SelectTrigger className="bg-card border-white/10">
+                <SelectTrigger className="dark:bg-card dark:border-white/10">
                   <SelectValue placeholder="Select platform" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1411,7 +1416,7 @@ export function ATMManagement() {
                 value={newATM.sales_rep_id || 'none'}
                 onValueChange={(value) => setNewATM({ ...newATM, sales_rep_id: value === 'none' ? null : value })}
               >
-                <SelectTrigger className="bg-card border-white/10">
+                <SelectTrigger className="dark:bg-card dark:border-white/10">
                   <SelectValue placeholder="Select sales rep" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1430,7 +1435,7 @@ export function ATMManagement() {
                 value={newATM.warehouse_location || 'none'}
                 onValueChange={(value) => setNewATM({ ...newATM, warehouse_location: value === 'none' ? null : value })}
               >
-                <SelectTrigger className="bg-card border-white/10">
+                <SelectTrigger className="dark:bg-card dark:border-white/10">
                   <SelectValue placeholder="Select warehouse" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1471,7 +1476,7 @@ export function ATMManagement() {
                   value={newATM.monthly_rent}
                   onChange={(e) => setNewATM({ ...newATM, monthly_rent: parseFloat(e.target.value) || 0 })}
                   placeholder="0.00"
-                  className="bg-card border-white/10"
+                  className="dark:bg-card dark:border-white/10"
                 />
               </div>
               <div className="grid gap-2">
@@ -1483,7 +1488,7 @@ export function ATMManagement() {
                   value={newATM.cash_management_rps}
                   onChange={(e) => setNewATM({ ...newATM, cash_management_rps: parseFloat(e.target.value) || 0 })}
                   placeholder="0.00"
-                  className="bg-card border-white/10"
+                  className="dark:bg-card dark:border-white/10"
                 />
               </div>
               <div className="grid gap-2">
@@ -1495,7 +1500,7 @@ export function ATMManagement() {
                   value={newATM.cash_management_rep}
                   onChange={(e) => setNewATM({ ...newATM, cash_management_rep: parseFloat(e.target.value) || 0 })}
                   placeholder="0.00"
-                  className="bg-card border-white/10"
+                  className="dark:bg-card dark:border-white/10"
                 />
               </div>
             </div>
@@ -1506,7 +1511,7 @@ export function ATMManagement() {
                   value={newATM.rent_payment_method || 'none'}
                   onValueChange={(value) => setNewATM({ ...newATM, rent_payment_method: value === 'none' ? null : value })}
                 >
-                  <SelectTrigger className="bg-card border-white/10">
+                  <SelectTrigger className="dark:bg-card dark:border-white/10">
                     <SelectValue placeholder="Select method" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1523,7 +1528,7 @@ export function ATMManagement() {
                   type="date"
                   value={newATM.installed_date || ''}
                   onChange={(e) => setNewATM({ ...newATM, installed_date: e.target.value || null })}
-                  className="bg-card border-white/10"
+                  className="dark:bg-card dark:border-white/10"
                 />
               </div>
             </div>
@@ -1534,7 +1539,7 @@ export function ATMManagement() {
                 value={newATM.notes}
                 onChange={(e) => setNewATM({ ...newATM, notes: e.target.value })}
                 placeholder="Optional notes"
-                className="bg-card border-white/10"
+                className="dark:bg-card dark:border-white/10"
               />
             </div>
           </div>

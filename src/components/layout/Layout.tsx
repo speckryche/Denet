@@ -16,8 +16,8 @@ function LayoutContent({ children }: LayoutProps) {
       {/* Main content area with left margin to account for sidebar */}
       <main
         className={cn(
-          "flex-1 transition-all duration-300",
-          isCollapsed ? "ml-16" : "ml-64"
+          "flex-1 min-w-0 transition-all duration-200",
+          isCollapsed ? "ml-[72px]" : "ml-[252px]"
         )}
       >
         {children}

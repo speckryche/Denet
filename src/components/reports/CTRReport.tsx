@@ -535,7 +535,7 @@ export default function CTRReport() {
           </Select>
         </div>
 
-        <div className="relative w-[260px]">
+        <div className="relative w-[260px] max-w-full">
           <Input
             placeholder="Search by customer name"
             value={nameSearch}
@@ -595,24 +595,24 @@ export default function CTRReport() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="bg-card/30 border-white/10">
+        <Card className="bg-card/30 border-white/10 min-w-0">
           <CardContent className="p-0">
-            <Table>
+            <Table className="table-fixed min-w-[980px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-8" />
-                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[100px]">Date</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Customer ID</TableHead>
-                  <TableHead className="text-right">Daily Total</TableHead>
-                  <TableHead className="text-center"># Txns</TableHead>
-                  <TableHead className="text-center">Category</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead>Filed Date</TableHead>
+                  <TableHead className="w-[110px]">Customer ID</TableHead>
+                  <TableHead className="text-right w-[96px]">Daily Total</TableHead>
+                  <TableHead className="text-center w-[64px]"># Txns</TableHead>
+                  <TableHead className="text-center w-[96px]">Category</TableHead>
+                  <TableHead className="text-center w-[96px]">Status</TableHead>
+                  <TableHead className="w-[92px]">Filed Date</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead>Won't File Reason</TableHead>
                   {viewMode === 'aggregate' && isAdmin && (
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-right w-[168px]">Actions</TableHead>
                   )}
                 </TableRow>
               </TableHeader>
@@ -641,12 +641,12 @@ export default function CTRReport() {
                             <ChevronRight className="w-4 h-4 text-muted-foreground" />
                           )}
                         </TableCell>
-                        <TableCell className="font-mono">{formatDate(item.trigger_date)}</TableCell>
-                        <TableCell className="font-medium">{item.customer_name}</TableCell>
-                        <TableCell className="text-muted-foreground font-mono text-sm">
+                        <TableCell className="font-mono whitespace-nowrap">{formatDate(item.trigger_date)}</TableCell>
+                        <TableCell className="font-medium truncate" title={item.customer_name}>{item.customer_name}</TableCell>
+                        <TableCell className="text-muted-foreground font-mono text-sm truncate" title={item.customer_id}>
                           {item.customer_id}
                         </TableCell>
-                        <TableCell className="text-right font-mono font-semibold text-red-400">
+                        <TableCell className="text-right font-mono font-semibold text-red-400 whitespace-nowrap">
                           {formatCurrency(item.total_amount)}
                         </TableCell>
                         <TableCell className="text-center">{item.transaction_count}</TableCell>
@@ -674,13 +674,13 @@ export default function CTRReport() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
+                        <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                           {item.filed_date ? formatDate(item.filed_date) : '—'}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
+                        <TableCell className="text-muted-foreground text-sm truncate" title={item.notes || undefined}>
                           {item.notes || '—'}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
+                        <TableCell className="text-muted-foreground text-sm truncate" title={item.wont_file_reason || undefined}>
                           {item.wont_file_reason || '—'}
                         </TableCell>
                         {viewMode === 'aggregate' && isAdmin && (
@@ -725,26 +725,26 @@ export default function CTRReport() {
                                   <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                                     Transactions on {formatDate(item.trigger_date)}
                                   </div>
-                                  <table className="w-full text-sm">
-                                    <thead>
-                                      <tr className="text-xs text-muted-foreground">
-                                        <th className="text-left py-1.5 pr-4">Transaction ID</th>
-                                        <th className="text-left py-1.5 pr-4">ATM</th>
+                                  <table className="w-full table-fixed text-sm">
+                                    <thead className="bg-table-header-bg text-table-header-fg">
+                                      <tr className="text-xs text-table-header-fg [&>th:first-child]:pl-2">
+                                        <th className="text-left py-1.5 pr-4 w-[28%]">Transaction ID</th>
+                                        <th className="text-left py-1.5 pr-4 w-[26%]">ATM</th>
                                         <th className="text-left py-1.5 pr-4">ATM Address</th>
-                                        <th className="text-right py-1.5">Amount</th>
+                                        <th className="text-right py-1.5 pr-2 w-[110px]">Amount</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {expansion.transactions.map((tx) => (
                                         <tr key={tx.id} className="border-t border-white/[0.04]">
-                                          <td className="py-1.5 pr-4 font-mono text-xs text-muted-foreground">
+                                          <td className="py-1.5 pr-4 font-mono text-xs text-muted-foreground truncate" title={tx.id}>
                                             {tx.id}
                                           </td>
-                                          <td className="py-1.5 pr-4">{tx.atm_name}</td>
-                                          <td className="py-1.5 pr-4 text-muted-foreground">
+                                          <td className="py-1.5 pr-4 truncate" title={tx.atm_name}>{tx.atm_name}</td>
+                                          <td className="py-1.5 pr-4 text-muted-foreground truncate" title={tx.atm_address || undefined}>
                                             {tx.atm_address || '—'}
                                           </td>
-                                          <td className="py-1.5 text-right font-mono">
+                                          <td className="py-1.5 pr-2 text-right font-mono whitespace-nowrap">
                                             {formatCurrency(tx.sale)}
                                           </td>
                                         </tr>

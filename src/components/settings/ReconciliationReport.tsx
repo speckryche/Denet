@@ -109,9 +109,9 @@ export function ReconciliationReport() {
   const truncated = shown.length > MAX_ROWS;
 
   return (
-    <Card className="bg-card/30 border-white/10">
+    <Card className="bg-card/30 border-white/10 min-w-0">
       <CardHeader>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
@@ -190,9 +190,9 @@ export function ReconciliationReport() {
             </div>
 
             {/* Filter */}
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex flex-wrap items-center gap-3 mb-3">
               <span className="text-sm text-muted-foreground">Show:</span>
-              <div className="w-64">
+              <div className="w-64 max-w-full">
                 <Select value={filter} onValueChange={(v) => setFilter(v as FilterMode)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -216,26 +216,26 @@ export function ReconciliationReport() {
                 No rows for this filter.
               </div>
             ) : (
-              <div className="rounded-md border border-white/10 overflow-hidden">
-                <Table>
+              <div className="rounded-md border border-white/10 overflow-hidden min-w-0">
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ATM</TableHead>
+                      <TableHead className="w-[12%]">ATM</TableHead>
                       <TableHead>Location</TableHead>
-                      <TableHead>Tx Date</TableHead>
-                      <TableHead>Tx Platform</TableHead>
-                      <TableHead>Matched Profile</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-[12%]">Tx Date</TableHead>
+                      <TableHead className="w-[11%]">Tx Platform</TableHead>
+                      <TableHead className="w-[22%]">Matched Profile</TableHead>
+                      <TableHead className="w-[12%] text-right">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {shown.slice(0, MAX_ROWS).map((f) => (
                       <TableRow key={f.id}>
-                        <TableCell className="font-mono">{f.atm_id}</TableCell>
-                        <TableCell>{f.location || '—'}</TableCell>
-                        <TableCell>{f.date}</TableCell>
-                        <TableCell className="capitalize">{f.txPlatform || '—'}</TableCell>
-                        <TableCell>
+                        <TableCell className="font-mono truncate" title={f.atm_id}>{f.atm_id}</TableCell>
+                        <TableCell className="truncate" title={f.location || undefined}>{f.location || '—'}</TableCell>
+                        <TableCell className="whitespace-nowrap">{f.date}</TableCell>
+                        <TableCell className="capitalize truncate">{f.txPlatform || '—'}</TableCell>
+                        <TableCell className="truncate">
                           {f.kind === 'mismatch' ? (
                             <span className="text-red-400 capitalize">{f.profilePlatform}</span>
                           ) : (

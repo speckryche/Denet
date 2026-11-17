@@ -92,17 +92,17 @@ export function CoinbaseBuysTable({
     .join(' · ');
 
   return (
-    <div className="rounded-md border border-white/10 overflow-x-auto">
-      <Table>
+    <div className="min-w-0 overflow-hidden rounded-md border border-white/10">
+      <Table className="table-fixed">
         <TableHeader>
-          <TableRow className="border-white/10 hover:bg-transparent">
-            <TableHead className="font-bold text-foreground w-[120px]">Date</TableHead>
-            <TableHead className="font-bold text-foreground w-[80px]">Coin</TableHead>
-            <TableHead className="font-bold text-foreground text-right w-[140px]">Quantity</TableHead>
-            <TableHead className="font-bold text-foreground text-right w-[140px]">USD amount</TableHead>
-            <TableHead className="font-bold text-foreground text-right w-[110px]">Fee</TableHead>
-            <TableHead className="font-bold text-foreground w-[90px]">Status</TableHead>
-            <TableHead className="font-bold text-foreground w-[230px]">Treatment</TableHead>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="font-bold w-[12%]">Date</TableHead>
+            <TableHead className="font-bold w-[8%]">Coin</TableHead>
+            <TableHead className="font-bold text-right w-[15%]">Quantity</TableHead>
+            <TableHead className="font-bold text-right w-[14%]">USD amount</TableHead>
+            <TableHead className="font-bold text-right w-[11%]">Fee</TableHead>
+            <TableHead className="font-bold w-[10%]">Status</TableHead>
+            <TableHead className="font-bold">Treatment</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -120,14 +120,15 @@ export function CoinbaseBuysTable({
                 // glance in a month that is mostly inventory.
                 className={`border-white/5 ${isInvestment ? 'bg-amber-500/[0.07]' : ''}`}
               >
-                <TableCell className="font-mono text-sm">{buy.dateCompleted.slice(0, 10)}</TableCell>
-                <TableCell className="font-semibold">{buy.coin}</TableCell>
-                <TableCell className="text-right font-mono">{fmtQuantity(buy.quantity)}</TableCell>
+                <TableCell className="truncate font-mono text-sm">{buy.dateCompleted.slice(0, 10)}</TableCell>
+                <TableCell className="truncate font-semibold" title={buy.coin}>{buy.coin}</TableCell>
+                <TableCell className="truncate text-right font-mono" title={fmtQuantity(buy.quantity)}>{fmtQuantity(buy.quantity)}</TableCell>
                 <TableCell className="text-right font-mono">{fmtAmount(buy.amount)}</TableCell>
                 <TableCell className="text-right font-mono">{fmtAmount(buy.fee)}</TableCell>
                 <TableCell>
                   <span
-                    className={`px-2 py-1 rounded text-xs ${
+                    title={buy.status || undefined}
+                    className={`inline-block max-w-full truncate align-middle px-2 py-1 rounded text-xs ${
                       buy.status.toUpperCase() === 'FILLED'
                         ? 'bg-green-500/20 text-green-300'
                         : 'bg-amber-500/20 text-amber-300'
@@ -137,7 +138,7 @@ export function CoinbaseBuysTable({
                   </span>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <Select
                       value={buy.treatment}
                       disabled={readOnly || savingKey === key}
@@ -153,7 +154,7 @@ export function CoinbaseBuysTable({
                       {/* No icon here: SelectValue renders the selected
                           SelectItem's children, which already carry one.
                           Adding another produced "[icon][icon] Inventory". */}
-                      <SelectTrigger className={`h-8 w-[150px] ${TREATMENT_STYLES[buy.treatment]}`}>
+                      <SelectTrigger className={`h-8 ${TREATMENT_STYLES[buy.treatment]}`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -173,7 +174,7 @@ export function CoinbaseBuysTable({
                     </Select>
                     {destination && (
                       <span
-                        className="text-xs text-muted-foreground font-mono whitespace-nowrap"
+                        className="shrink-0 whitespace-nowrap text-xs text-muted-foreground font-mono"
                         title={
                           isInvestment
                             ? asset?.investment_account_name
@@ -193,7 +194,7 @@ export function CoinbaseBuysTable({
           })}
           <TableRow className="border-t-2 border-white/20 font-bold hover:bg-transparent">
             <TableCell colSpan={2}>{buys.length} buys</TableCell>
-            <TableCell className="text-right font-mono text-xs whitespace-nowrap">
+            <TableCell className="whitespace-normal break-words text-right font-mono text-xs">
               {quantityTotals || '—'}
             </TableCell>
             <TableCell className="text-right font-mono">{fmtAmount(totalAmount)}</TableCell>

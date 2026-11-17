@@ -403,7 +403,7 @@ export default function FleetMonthlyPnL() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <CardTitle>Fleet Monthly P&amp;L</CardTitle>
             <CardDescription>Fleet-wide profit &amp; loss by month</CardDescription>
@@ -475,11 +475,11 @@ export default function FleetMonthlyPnL() {
         )}
 
         {/* Table */}
-        <div className="rounded-md border border-white/10 overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-white/10">
-                <TableHead className="font-bold sticky left-0 bg-background z-10">Line Item</TableHead>
+        <div className="rounded-md border border-white/10 min-w-0">
+          <Table className="text-xs">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-bold sticky left-0 bg-table-header-bg z-10 w-[130px] px-1.5">Line Item</TableHead>
                 {months.map((ym) => {
                   const isPartial = ym === partialMonth;
                   const isMissing = commStatus[ym] === 'missing';
@@ -487,7 +487,7 @@ export default function FleetMonthlyPnL() {
                     <TableHead
                       key={ym}
                       className={cn(
-                        'text-right font-bold whitespace-nowrap',
+                        'text-right font-bold whitespace-nowrap px-1.5',
                         (isPartial || isMissing) && 'text-amber-400',
                       )}
                       title={
@@ -505,7 +505,7 @@ export default function FleetMonthlyPnL() {
                     </TableHead>
                   );
                 })}
-                <TableHead className="text-right font-bold whitespace-nowrap">Total</TableHead>
+                <TableHead className="text-right font-bold whitespace-nowrap px-1.5">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -533,7 +533,7 @@ export default function FleetMonthlyPnL() {
                   >
                     <TableCell
                       className={cn(
-                        'sticky left-0 bg-background z-10',
+                        'sticky left-0 bg-background z-10 px-1.5 whitespace-nowrap',
                         r.emphasis ? 'font-bold' : 'font-medium',
                         r.informational && 'font-normal',
                       )}
@@ -546,7 +546,7 @@ export default function FleetMonthlyPnL() {
                         <TableCell
                           key={ym}
                           className={cn(
-                            'text-right font-mono',
+                            'text-right font-mono tabular-nums whitespace-nowrap px-1.5',
                             r.emphasis && (v < 0 ? 'text-red-400' : v > 0 ? 'text-green-400' : ''),
                           )}
                         >
@@ -559,7 +559,7 @@ export default function FleetMonthlyPnL() {
                       return (
                         <TableCell
                           className={cn(
-                            'text-right font-mono font-semibold',
+                            'text-right font-mono font-semibold tabular-nums whitespace-nowrap px-1.5',
                             r.emphasis && (v < 0 ? 'text-red-400' : v > 0 ? 'text-green-400' : ''),
                           )}
                         >

@@ -765,7 +765,7 @@ export default function PlatformComparison() {
               )}
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -814,7 +814,7 @@ export default function PlatformComparison() {
         {!isLoading && canRun && machineCount > 0 && (
           <>
             {/* Summary header */}
-            <div className="flex items-center gap-6 text-sm border-b border-white/10 pb-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm border-b border-white/10 pb-4">
               <div>
                 <span className="text-muted-foreground">Date Range: </span>
                 <span className="font-medium">
@@ -846,17 +846,17 @@ export default function PlatformComparison() {
             </div>
 
             {/* Comparison table */}
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+            <div className="w-full min-w-0 overflow-x-auto">
+              <table className="w-full table-fixed border-collapse">
                 <colgroup>
-                  <col style={{ width: '200px' }} />
-                  <col style={{ width: '180px' }} />
-                  <col style={{ width: '180px' }} />
-                  <col style={{ width: '160px' }} />
+                  <col style={{ width: '28%' }} />
+                  <col style={{ width: '24%' }} />
+                  <col style={{ width: '24%' }} />
+                  <col style={{ width: '24%' }} />
                 </colgroup>
-                <thead>
-                  <tr className="border-b-2 border-white/10">
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <thead className="bg-table-header-bg text-table-header-fg">
+                  <tr className="border-b-2 border-table-header-bg">
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-table-header-fg">
                       &nbsp;
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-primary">
@@ -865,7 +865,7 @@ export default function PlatformComparison() {
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-amber-400">
                       Projected (Bitstop)
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-table-header-fg">
                       Delta
                     </th>
                   </tr>

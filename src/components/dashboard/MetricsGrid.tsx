@@ -1,5 +1,5 @@
+import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
 
 interface PlatformMetrics {
   totalSales: number;
@@ -12,59 +12,39 @@ interface PlatformMetrics {
 interface MetricsGridProps {
   denetMetrics: PlatformMetrics;
   bitstopMetrics: PlatformMetrics;
+  // Optional 4th card: actionable pending-resolution count (usePendingCount).
+  // null = unknown/loading; the card is hidden rather than showing "0".
+  pendingCount?: number | null;
 }
 
-function StatBar({
+export function KpiCard({
   label,
-  labelColor,
-  metrics,
+  value,
+  sub,
   className,
 }: {
   label: string;
-  labelColor: string;
-  metrics: { label: string; value: string; sub?: string; highlight?: boolean }[];
+  value: ReactNode;
+  sub?: ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn('space-y-3', className)}>
-      <h3 className={cn('text-lg font-semibold', labelColor)}>{label}</h3>
-      <Card className="bg-card border-white/5">
-        <CardContent className="p-0">
-          <div className="flex divide-x divide-white/5">
-            {metrics.map((m) => (
-              <div
-                key={m.label}
-                className={cn(
-                  'flex-1 px-5 py-4 text-center',
-                  m.highlight && 'bg-green-500/5'
-                )}
-              >
-                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                  {m.label}
-                </div>
-                <div
-                  className={cn(
-                    'text-xl font-bold font-mono',
-                    m.highlight ? 'text-green-400' : 'text-foreground'
-                  )}
-                >
-                  {m.value}
-                </div>
-                {m.sub && (
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {m.sub}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <article
+      className={cn(
+        'rounded-[14px] border border-border bg-card px-[18px] py-4 shadow-sm',
+        className
+      )}
+    >
+      <div className="text-xs font-semibold tracking-[0.02em] text-muted-foreground">{label}</div>
+      <div className="mt-1.5 text-[26px] font-bold leading-tight tracking-tight tabular-nums text-card-foreground">
+        {value}
+      </div>
+      {sub && <div className="mt-1.5 text-xs font-medium text-dim">{sub}</div>}
+    </article>
   );
 }
 
-export function MetricsGrid({ denetMetrics, bitstopMetrics }: MetricsGridProps) {
+export function MetricsGrid({ denetMetrics, bitstopMetrics, pendingCount }: MetricsGridProps) {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -75,20 +55,8 @@ export function MetricsGrid({ denetMetrics, bitstopMetrics }: MetricsGridProps) 
 
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
 
-  const buildMetrics = (m: PlatformMetrics) => {
-    const grossProfit = m.totalFees - m.totalOperatorFees;
-    const feesP = m.totalSales > 0 ? (m.totalFees / m.totalSales) * 100 : 0;
-    const opP = m.totalSales > 0 ? (m.totalOperatorFees / m.totalSales) * 100 : 0;
-    const gpP = m.totalSales > 0 ? (grossProfit / m.totalSales) * 100 : 0;
-
-    return [
-      { label: 'Active BTMs', value: m.activeATMCount.toString() },
-      { label: 'Total Sales', value: formatCurrency(m.totalSales) },
-      { label: 'Total Fees', value: formatCurrency(m.totalFees), sub: formatPercent(feesP) },
-      { label: 'Bitstop Fees', value: formatCurrency(m.totalOperatorFees), sub: formatPercent(opP) },
-      { label: 'Gross Profit', value: formatCurrency(grossProfit), sub: formatPercent(gpP), highlight: true },
-    ];
-  };
+  // Same gross-profit definition as before: fees minus Bitstop (operator) fees.
+  const grossProfit = (m: PlatformMetrics) => m.totalFees - m.totalOperatorFees;
 
   // Combined totals
   const combined: PlatformMetrics = {
@@ -99,16 +67,63 @@ export function MetricsGrid({ denetMetrics, bitstopMetrics }: MetricsGridProps) 
     activeATMCount: denetMetrics.activeATMCount + bitstopMetrics.activeATMCount,
   };
 
+  const combinedGP = grossProfit(combined);
+  const gpPercent = combined.totalSales > 0 ? (combinedGP / combined.totalSales) * 100 : 0;
+  const feesPercent = combined.totalSales > 0 ? (combined.totalFees / combined.totalSales) * 100 : 0;
+  const showPending = pendingCount != null;
+
   return (
-    <div className="space-y-6">
-      <StatBar label="Denet Platform" labelColor="text-primary" metrics={buildMetrics(denetMetrics)} />
-      <StatBar label="Bitstop Platform" labelColor="text-orange-400" metrics={buildMetrics(bitstopMetrics)} />
-      <StatBar
-        label="Total (Both Platforms)"
-        labelColor="text-green-400"
-        metrics={buildMetrics(combined)}
-        className="pt-6 border-t-2 border-primary/30"
+    <section
+      className={cn(
+        'grid grid-cols-1 gap-3.5 sm:grid-cols-2',
+        showPending ? 'xl:grid-cols-4' : 'xl:grid-cols-3'
+      )}
+    >
+      <KpiCard
+        label="Total sales"
+        value={formatCurrency(combined.totalSales)}
+        sub={
+          <>
+            <span className="block">
+              Denet {formatCurrency(denetMetrics.totalSales)} · Bitstop {formatCurrency(bitstopMetrics.totalSales)}
+            </span>
+            <span className="block">
+              Fees {formatCurrency(combined.totalFees)} ({formatPercent(feesPercent)}) · Bitstop fees{' '}
+              {formatCurrency(combined.totalOperatorFees)}
+            </span>
+          </>
+        }
       />
-    </div>
+      <KpiCard
+        label="Gross profit"
+        value={
+          <span className={cn(combinedGP < 0 && 'text-danger')}>{formatCurrency(combinedGP)}</span>
+        }
+        sub={
+          <>
+            <span className="block">{formatPercent(gpPercent)} of sales</span>
+            <span className="block">
+              Denet {formatCurrency(grossProfit(denetMetrics))} · Bitstop {formatCurrency(grossProfit(bitstopMetrics))}
+            </span>
+          </>
+        }
+      />
+      <KpiCard
+        label="Active BTMs"
+        value={combined.activeATMCount.toLocaleString('en-US')}
+        sub={
+          <>
+            {denetMetrics.activeATMCount} Denet · {bitstopMetrics.activeATMCount} Bitstop
+          </>
+        }
+      />
+      {pendingCount != null && (
+        <KpiCard
+          label="Awaiting resolution"
+          value={pendingCount.toLocaleString('en-US')}
+          sub="Pending · all dates & platforms"
+        />
+      )}
+    </section>
   );
 }

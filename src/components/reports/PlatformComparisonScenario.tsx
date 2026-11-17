@@ -529,7 +529,7 @@ export default function PlatformComparisonScenario({
   return (
     <Card className="bg-white/5 border-white/10">
       <CardHeader>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <CardTitle>Scenario Builder</CardTitle>
             <CardDescription>
@@ -537,7 +537,7 @@ export default function PlatformComparisonScenario({
               from the report above; override any value freely.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleExportExcel}>
               <FileSpreadsheet className="w-4 h-4 mr-1.5" />
               Export to Excel
@@ -566,21 +566,21 @@ export default function PlatformComparisonScenario({
           />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+        <div className="w-full min-w-0 overflow-x-auto">
+          <table className="w-full table-fixed border-collapse">
             <colgroup>
-              <col style={{ width: '200px' }} />
-              <col style={{ width: '130px' }} />
-              <col style={{ width: '180px' }} />
-              <col style={{ width: '180px' }} />
-              <col style={{ width: '160px' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '21%' }} />
+              <col style={{ width: '21%' }} />
+              <col style={{ width: '18%' }} />
             </colgroup>
-            <thead>
-              <tr className="border-b-2 border-white/10">
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <thead className="bg-table-header-bg text-table-header-fg">
+              <tr className="border-b-2 border-table-header-bg">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-table-header-fg">
                   &nbsp;
                 </th>
-                <th className="px-3 py-3 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <th className="px-3 py-3 text-right text-xs font-bold uppercase tracking-widest text-table-header-fg">
                   Per Machine
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-primary">
@@ -589,7 +589,7 @@ export default function PlatformComparisonScenario({
                 <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-amber-400">
                   Projected (Bitstop)
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-table-header-fg">
                   Delta
                 </th>
               </tr>

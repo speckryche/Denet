@@ -4,6 +4,7 @@ import { UploadZone } from '../dashboard/UploadZone';
 import { LastUploadDates } from '../dashboard/LastUploadDates';
 import { UploadHistory } from '../dashboard/UploadHistory';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { AlertCircle, X, Bell, ArrowRightLeft } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -835,23 +836,10 @@ export default function CsvUploads() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
-      <header className="border-b border-white/10 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-[95%] mx-auto px-6 h-16 flex items-center">
-          <div className="flex items-center gap-3">
-            <img
-              src="/images/DNET Logo (black).png"
-              alt="Denet Logo"
-              className="w-20 h-20 object-contain"
-            />
-            <h1 className="font-display font-bold text-xl tracking-tight">
-              CSV <span className="text-muted-foreground font-normal">Uploads</span>
-            </h1>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
+      <PageHeader title="CSV Uploads" />
 
-      <main className="max-w-[95%] mx-auto px-6 py-8 space-y-8">
+      <main className="min-w-0 px-4 pb-6 pt-5 xl:px-6 xl:pb-8 xl:pt-6 space-y-8">
         {/* Error Banner */}
         {error && (
           <Alert variant="destructive" className="mb-6 animate-in slide-in-from-top-2">
@@ -866,8 +854,8 @@ export default function CsvUploads() {
           <Alert className="bg-secondary/10 border-secondary/20 text-secondary animate-in slide-in-from-top-2">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Import Complete</AlertTitle>
-            <AlertDescription className="flex items-center justify-between">
-              <div>
+            <AlertDescription className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <span>
                   Processed {uploadStats.processed} records. <span className="font-bold">{uploadStats.inserted} new, {uploadStats.updated} updated.</span>
                 </span>
@@ -913,7 +901,7 @@ export default function CsvUploads() {
               <p>
                 The following {newATMIds.length} new ATM ID{newATMIds.length > 1 ? 's were' : ' was'} detected and added to your system:
               </p>
-              <div className="font-mono text-sm bg-black/20 p-2 rounded">
+              <div className="break-words font-mono text-sm bg-black/20 p-2 rounded">
                 {newATMIds.sort((a, b) => (parseInt(a) || 0) - (parseInt(b) || 0)).join(', ')}
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -969,11 +957,11 @@ export default function CsvUploads() {
 
         {/* Upload Section */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-display font-bold">Upload Data</h2>
             <UploadHistory key={uploadHistoryKey} onUploadDeleted={() => fetchAllTransactionDates()} />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-6 [&>*]:min-w-0">
             <UploadZone onFileSelect={handleFileSelect} />
             <LastUploadDates
               denetFirstDate={transactionDates.denetFirst}
@@ -1012,8 +1000,8 @@ export default function CsvUploads() {
                 className="flex items-center gap-3 p-3 rounded border border-amber-400/20 bg-amber-400/5"
               >
                 <ArrowRightLeft className="w-4 h-4 text-amber-400 shrink-0" />
-                <div className="flex-1 text-sm">
-                  <div className="font-medium">
+                <div className="min-w-0 flex-1 text-sm">
+                  <div className="break-words font-medium">
                     {c.location_name || c.atm_id}{' '}
                     <span className="text-muted-foreground font-mono text-xs">
                       ({c.atm_id})

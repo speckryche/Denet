@@ -121,10 +121,10 @@ export default function CashManagement() {
     <div className="min-h-screen bg-background text-foreground">
       <PageHeader title="Cash Management" />
 
-      <div className="max-w-[95%] mx-auto px-6 py-8 space-y-6">
+      <div className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6 space-y-6">
 
         {/* Cash in Transit Dashboard */}
-        <Card className="bg-card/30 border-white/10">
+        <Card className="min-w-0 bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-primary" />
@@ -137,7 +137,7 @@ export default function CashManagement() {
               {cashInTransit.map(person => (
                 <div
                   key={person.person_id}
-                  className="relative text-center p-4 rounded-lg bg-slate-700/30 border border-slate-600/20"
+                  className="relative min-w-0 text-center p-4 rounded-lg bg-surface-2 border border-border"
                 >
                   <Button
                     type="button"
@@ -156,7 +156,7 @@ export default function CashManagement() {
                   >
                     <Scale className="w-4 h-4" />
                   </Button>
-                  <div className="text-sm font-semibold text-muted-foreground mb-1">
+                  <div className="truncate px-5 text-sm font-semibold text-muted-foreground mb-1" title={person.person_name}>
                     {person.person_name}
                   </div>
                   <div className={`text-2xl font-bold ${person.amount > 0 ? 'text-green-500' : person.amount < 0 ? 'text-red-500' : 'text-foreground'}`}>
@@ -164,7 +164,7 @@ export default function CashManagement() {
                   </div>
                 </div>
               ))}
-              <div className="text-center p-4 rounded-lg bg-slate-600/30 border border-slate-500/30">
+              <div className="text-center p-4 rounded-lg bg-card border border-border shadow-sm">
                 <div className="text-sm font-semibold text-muted-foreground mb-1">
                   Total
                 </div>
@@ -177,22 +177,22 @@ export default function CashManagement() {
         </Card>
 
         {/* Tabs for Pickups and Deposits */}
-        <Tabs defaultValue="pickups" className="space-y-4">
+        <Tabs defaultValue="pickups" className="min-w-0 space-y-4">
           <TabsList>
             <TabsTrigger value="pickups">Cash Pickups</TabsTrigger>
             <TabsTrigger value="deposits">Deposits</TabsTrigger>
             <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="pickups" className="space-y-4">
+          <TabsContent value="pickups" className="min-w-0 space-y-4">
             <CashPickups onUpdate={handleRefresh} />
           </TabsContent>
 
-          <TabsContent value="deposits" className="space-y-4">
+          <TabsContent value="deposits" className="min-w-0 space-y-4">
             <Deposits onUpdate={handleRefresh} />
           </TabsContent>
 
-          <TabsContent value="adjustments" className="space-y-4">
+          <TabsContent value="adjustments" className="min-w-0 space-y-4">
             <Adjustments onUpdate={handleRefresh} />
           </TabsContent>
         </Tabs>

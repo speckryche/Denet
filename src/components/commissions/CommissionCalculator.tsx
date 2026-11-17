@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calculator, CheckCircle, AlertCircle, Eye, Download, Trash2, ChevronDown, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { Calculator, CheckCircle, AlertCircle, Eye, Download, Trash2, ChevronDown, ChevronRight, FileSpreadsheet, Undo2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -665,7 +665,7 @@ export default function CommissionCalculator() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground">
-        <div className="max-w-[95%] mx-auto px-6 py-8">
+        <div className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6">
           <p>Loading...</p>
         </div>
       </div>
@@ -676,7 +676,7 @@ export default function CommissionCalculator() {
     <div className="min-h-screen bg-background text-foreground font-sans">
       <PageHeader title="Commission Calculator" />
 
-      <main className="max-w-[95%] mx-auto px-6 py-8 space-y-6">
+      <main className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6 space-y-6">
         {successMessage && (
           <Alert className="bg-green-500/10 border-green-500/20 text-green-500">
             <CheckCircle className="h-4 w-4" />
@@ -691,7 +691,7 @@ export default function CommissionCalculator() {
           </Alert>
         )}
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calculator className="w-5 h-5" />
@@ -702,7 +702,7 @@ export default function CommissionCalculator() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4 items-end">
+            <div className="flex flex-wrap gap-4 items-end">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Month</label>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -743,7 +743,7 @@ export default function CommissionCalculator() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Commission Records</CardTitle>
             <CardDescription>
@@ -782,23 +782,23 @@ export default function CommissionCalculator() {
                       <div key={year} className="rounded-md border border-white/10 overflow-hidden">
                         {/* Year Header */}
                         <div
-                          className="flex items-center justify-between p-4 bg-slate-700/40 cursor-pointer hover:bg-slate-600/50 transition-colors"
+                          className="flex flex-wrap items-center justify-between gap-3 p-4 bg-table-header-bg text-table-header-fg cursor-pointer hover:bg-neutral-900 dark:bg-surface-2 dark:text-foreground dark:hover:bg-muted/80 transition-colors"
                           onClick={() => toggleYear(year)}
                         >
                           <div className="flex items-center gap-4">
                             {isExpanded ? (
-                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                              <ChevronDown className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                             ) : (
-                              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                              <ChevronRight className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                             )}
                             <span className="font-semibold text-xl">{year}</span>
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-table-header-fg/70 dark:text-muted-foreground">
                               ({totalRecords} record{totalRecords !== 1 ? 's' : ''})
                             </span>
                           </div>
                           <div className="flex items-center gap-6">
                             <div className="text-right">
-                              <div className="text-xs text-muted-foreground">Total Commissions</div>
+                              <div className="text-xs text-table-header-fg/70 dark:text-muted-foreground">Total Commissions</div>
                               <div className="text-lg font-mono font-semibold text-green-500">
                                 ${Math.round(totalCommissionAmount).toLocaleString('en-US')}
                               </div>
@@ -808,25 +808,26 @@ export default function CommissionCalculator() {
 
                         {/* Year Content - Table */}
                         {isExpanded && (
-                          <div className="overflow-x-auto">
-                            <Table>
-                              <TableHeader className="bg-white/5">
-                                <TableRow className="border-white/10">
-                                  <TableHead>Sales Rep</TableHead>
-                                  <TableHead>Month</TableHead>
-                                  <TableHead className="text-right">Total Sales</TableHead>
-                                  <TableHead className="text-right">Total Fees</TableHead>
-                                  <TableHead className="text-right">Bitstop Fees</TableHead>
-                                  <TableHead className="text-right">Rent</TableHead>
-                                  <TableHead className="text-right">Mgmt - RPS</TableHead>
-                                  <TableHead className="text-right">Mgmt - Rep</TableHead>
-                                  <TableHead className="text-right">Net Profit</TableHead>
-                                  <TableHead className="text-right">Commissions</TableHead>
-                                  <TableHead className="text-right">Flat Fee</TableHead>
-                                  <TableHead className="text-right">Total</TableHead>
-                                  <TableHead className="text-center">ATMs</TableHead>
-                                  <TableHead>Status</TableHead>
-                                  <TableHead className="w-[200px]">Actions</TableHead>
+                          // 15 columns: reserved Actions width + short headers so the
+                          // five icon buttons stay on one line and the row still fits ~1100px.
+                          <Table containerClassName="overflow-x-hidden" className="w-full table-fixed text-[13px] [&_td]:px-1 [&_th]:px-1 [&_th]:whitespace-nowrap">
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-[9%]" title="Sales Rep">Sales Rep</TableHead>
+                                  <TableHead className="w-[5.5%]" title="Month">Month</TableHead>
+                                  <TableHead className="w-[7%] text-right" title="Total Sales">Sales</TableHead>
+                                  <TableHead className="w-[6%] text-right" title="Total Fees">Fees</TableHead>
+                                  <TableHead className="w-[6%] text-right" title="Bitstop Fees">BS fees</TableHead>
+                                  <TableHead className="w-[5.5%] text-right" title="Rent">Rent</TableHead>
+                                  <TableHead className="w-[5%] text-right" title="Management — RPS">RPS</TableHead>
+                                  <TableHead className="w-[5%] text-right" title="Management — Rep">Rep</TableHead>
+                                  <TableHead className="w-[6%] text-right" title="Net Profit">Net</TableHead>
+                                  <TableHead className="w-[6%] text-right" title="Commissions">Comm.</TableHead>
+                                  <TableHead className="w-[5%] text-right" title="Flat Fee">Flat</TableHead>
+                                  <TableHead className="w-[6.5%] text-right" title="Total">Total</TableHead>
+                                  <TableHead className="w-[3.5%] text-center" title="ATMs">ATMs</TableHead>
+                                  <TableHead className="w-[7%]" title="Status">Status</TableHead>
+                                  <TableHead className="w-[17%]" title="Actions">Actions</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -841,98 +842,106 @@ export default function CommissionCalculator() {
 
                                   return (
                                     <TableRow key={commission.id} className="border-white/5">
-                                      <TableCell className="font-medium">
+                                      <TableCell className="truncate font-medium" title={commission.sales_rep?.name || undefined}>
                                         {commission.sales_rep?.name || 'Unknown'}
                                       </TableCell>
-                                      <TableCell>{monthStr}</TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap">{monthStr}</TableCell>
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.total_sales).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.total_fees).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.bitstop_fees).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.rent).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.mgmt_rps).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.mgmt_rep).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.total_net_profit).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.commission_amount).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.flat_fee_amount).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono font-semibold">
+                                      <TableCell className="whitespace-nowrap text-right font-mono font-semibold tabular-nums">
                                         ${Math.round(commission.total_commission).toLocaleString('en-US')}
                                       </TableCell>
                                       <TableCell className="text-center">{commission.atm_count}</TableCell>
                                       <TableCell>
-                                        <Badge variant={commission.paid ? 'default' : 'secondary'}>
+                                        <Badge variant={commission.paid ? 'default' : 'secondary'} className="px-1.5 text-[11px]">
                                           {commission.paid ? 'Paid' : 'Unpaid'}
                                         </Badge>
                                       </TableCell>
-                                      <TableCell>
-                                        <div className="flex gap-2">
+                                      <TableCell className="whitespace-nowrap">
+                                        <div className="flex flex-nowrap items-center justify-end gap-0">
                                           <Button
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon"
+                                            className="h-6 w-6 shrink-0"
                                             onClick={() => handleViewDetails(commission)}
                                             title="View Summary"
                                           >
-                                            <Eye className="w-4 h-4" />
+                                            <Eye className="h-3.5 w-3.5" />
                                           </Button>
                                           <Button
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon"
+                                            className="h-6 w-6 shrink-0"
                                             onClick={() => handleExportTransactionDetails(commission)}
                                             title="Download Transaction Details"
                                           >
-                                            <FileSpreadsheet className="w-4 h-4" />
+                                            <FileSpreadsheet className="h-3.5 w-3.5" />
                                           </Button>
                                           <Button
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon"
+                                            className="h-6 w-6 shrink-0"
                                             onClick={() => handleExportCSV(commission)}
                                             title="Download Commission Summary"
                                           >
-                                            <Download className="w-4 h-4" />
+                                            <Download className="h-3.5 w-3.5" />
                                           </Button>
                                           {commission.paid ? (
                                             <Button
                                               variant="ghost"
-                                              size="sm"
+                                              size="icon"
                                               onClick={() => handleMarkAsUnpaid(commission.id)}
-                                              className="text-yellow-500 hover:text-yellow-400"
+                                              className="h-6 w-6 shrink-0 text-yellow-500 hover:text-yellow-400"
+                                              title="Mark Unpaid"
+                                              aria-label="Mark Unpaid"
                                             >
-                                              Mark Unpaid
+                                              <Undo2 className="h-3.5 w-3.5" />
                                             </Button>
                                           ) : (
                                             <Button
                                               variant="ghost"
-                                              size="sm"
+                                              size="icon"
                                               onClick={() => handleMarkAsPaid(commission.id)}
-                                              className="text-green-500 hover:text-green-400"
+                                              className="h-6 w-6 shrink-0 text-green-500 hover:text-green-400"
+                                              title="Mark Paid"
+                                              aria-label="Mark Paid"
                                             >
-                                              Mark Paid
+                                              <CheckCircle className="h-3.5 w-3.5" />
                                             </Button>
                                           )}
                                           <Button
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon"
                                             onClick={() => handleDeleteCommission(commission.id)}
-                                            className="text-red-500 hover:text-red-400"
+                                            className="h-6 w-6 shrink-0 text-red-500 hover:text-red-400"
+                                            title="Delete"
                                           >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="h-3.5 w-3.5" />
                                           </Button>
                                         </div>
                                       </TableCell>
@@ -941,7 +950,6 @@ export default function CommissionCalculator() {
                                 })}
                               </TableBody>
                             </Table>
-                          </div>
                         )}
                       </div>
                     );
@@ -994,11 +1002,11 @@ export default function CommissionCalculator() {
                 </div>
               </div>
 
-              <div className="rounded-md border border-white/10 overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-white/5">
-                    <TableRow className="border-white/10">
-                      <TableHead>ATM ID</TableHead>
+              <div className="min-w-0 overflow-hidden rounded-md border border-white/10">
+                <Table className="table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[18%]">ATM ID</TableHead>
                       <TableHead className="text-right">Total Sales</TableHead>
                       <TableHead className="text-right">Total Fees</TableHead>
                       <TableHead className="text-right">Rent</TableHead>
@@ -1010,23 +1018,23 @@ export default function CommissionCalculator() {
                   <TableBody>
                     {commissionDetails.map((detail) => (
                       <TableRow key={detail.id} className="border-white/5">
-                        <TableCell className="font-mono">{detail.atm_id}</TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="truncate font-mono" title={detail.atm_id}>{detail.atm_id}</TableCell>
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.total_sales).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.total_fees).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.rent).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.cash_management_rps).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.cash_management_rep).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.net_profit).toLocaleString('en-US')}
                         </TableCell>
                       </TableRow>

@@ -265,13 +265,13 @@ export function CryptoInvestments() {
 
   return (
     <>
-      <Card className="bg-card/30 border-white/10">
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="min-w-0 overflow-hidden bg-card border-border shadow-sm">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2">
-            <Bitcoin className="w-5 h-5 text-amber-400" />
+            <Bitcoin className="w-5 h-5 text-primary" />
             Crypto Investments
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -288,140 +288,142 @@ export function CryptoInvestments() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center px-4 py-8 text-muted-foreground">
               Loading...
             </div>
           ) : enriched.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center px-4 py-8 text-muted-foreground">
               <p>No crypto investments tracked yet.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="w-full min-w-0 overflow-x-auto">
               <table className="w-full text-sm table-fixed">
                 <colgroup>
                   <col style={{ width: '10%' }} />
-                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '9.5%' }} />
                   <col style={{ width: '8%' }} />
                   <col style={{ width: '9%' }} />
                   <col style={{ width: '10%' }} />
-                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '10.5%' }} />
+                  <col style={{ width: '9.5%' }} />
                   <col style={{ width: '10%' }} />
-                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '8.5%' }} />
                   <col style={{ width: '9%' }} />
-                  <col style={{ width: '9%' }} />
-                  <col style={{ width: '4%' }} />
+                  <col style={{ width: '6%' }} />
                 </colgroup>
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <thead className="bg-table-header-bg text-table-header-fg">
+                  <tr className="border-b border-table-header-bg">
+                    <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       Crypto
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       Current Price
                     </th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-2 py-2.5 text-center text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       As Of
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       Quantity
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       Total Cost
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       Current Value
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       Avg Cost Each
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       Unrealized
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       Realized
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
                       Total Gain
                     </th>
-                    <th className="px-3 py-2.5 w-[80px]" />
+                    <th className="px-2 py-2.5" />
                   </tr>
                 </thead>
                 <tbody>
                   {enriched.map((inv) => (
                     <tr
                       key={inv.id}
-                      className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
+                      className="border-b border-table-row-border hover:bg-surface-2 transition-colors group"
                     >
-                      <td className="px-3 py-2.5 font-medium">{inv.crypto_name}</td>
-                      <td className="px-3 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
+                      <td className="truncate px-2 py-2.5 font-medium" title={inv.crypto_name}>{inv.crypto_name}</td>
+                      <td className="px-2 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
                         {(() => {
                           const coinId = getCoinGeckoId(inv.crypto_name);
                           const price = coinId ? livePrices[coinId] : null;
                           return price ? formatCurrency(price) : '—';
                         })()}
                       </td>
-                      <td className="px-3 py-2.5 text-center text-muted-foreground">
+                      <td className="px-2 py-2.5 text-center text-muted-foreground">
                         {formatDate(inv.as_of_date)}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                      <td className="px-2 py-2.5 text-right font-mono tabular-nums">
                         {formatQuantity(inv.quantity)}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                      <td className="px-2 py-2.5 text-right font-mono tabular-nums">
                         {formatCurrency(inv.total_cost)}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                      <td className="px-2 py-2.5 text-right font-mono tabular-nums">
                         {formatCurrency(inv.current_value)}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
+                      <td className="px-2 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
                         {formatCurrency(inv.avgCost)}
                       </td>
                       <td
                         className={cn(
-                          'px-3 py-2.5 text-right font-mono tabular-nums',
+                          'px-2 py-2.5 text-right font-mono tabular-nums',
                           inv.unrealizedGain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(inv.unrealizedGain)}
                       </td>
                       <td
                         className={cn(
-                          'px-3 py-2.5 text-right font-mono tabular-nums',
+                          'px-2 py-2.5 text-right font-mono tabular-nums',
                           inv.realized_gain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(inv.realized_gain)}
                       </td>
                       <td
                         className={cn(
-                          'px-3 py-2.5 text-right font-mono font-semibold tabular-nums',
+                          'px-2 py-2.5 text-right font-mono font-semibold tabular-nums',
                           inv.totalGain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(inv.totalGain)}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-2 py-2.5">
                         <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-foreground"
                             onClick={() => openEdit(inv)}
+                            title="Edit"
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                            className="h-7 w-7 text-muted-foreground hover:text-danger"
                             onClick={() => setDeleteTarget(inv.id)}
+                            title="Delete"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -432,43 +434,43 @@ export function CryptoInvestments() {
                 </tbody>
                 {enriched.length > 1 && (
                   <tfoot>
-                    <tr className="border-t-2 border-primary/30 bg-white/[0.03]">
-                      <td className="px-3 py-3 font-bold" colSpan={4}>
+                    <tr className="border-t-2 border-table-row-border bg-surface-2">
+                      <td className="px-2 py-3 font-bold" colSpan={4}>
                         Totals
                       </td>
-                      <td className="px-3 py-3 text-right font-mono font-bold tabular-nums">
+                      <td className="px-2 py-3 text-right font-mono font-bold tabular-nums">
                         {formatCurrency(totals.total_cost)}
                       </td>
-                      <td className="px-3 py-3 text-right font-mono font-bold tabular-nums">
+                      <td className="px-2 py-3 text-right font-mono font-bold tabular-nums">
                         {formatCurrency(totals.current_value)}
                       </td>
-                      <td className="px-3 py-3" />
+                      <td className="px-2 py-3" />
                       <td
                         className={cn(
-                          'px-3 py-3 text-right font-mono font-bold tabular-nums',
+                          'px-2 py-3 text-right font-mono font-bold tabular-nums',
                           totals.unrealizedGain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(totals.unrealizedGain)}
                       </td>
                       <td
                         className={cn(
-                          'px-3 py-3 text-right font-mono font-bold tabular-nums',
+                          'px-2 py-3 text-right font-mono font-bold tabular-nums',
                           totals.realized_gain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(totals.realized_gain)}
                       </td>
                       <td
                         className={cn(
-                          'px-3 py-3 text-right font-mono font-bold tabular-nums',
+                          'px-2 py-3 text-right font-mono font-bold tabular-nums',
                           totals.totalGain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(totals.totalGain)}
@@ -566,7 +568,7 @@ export function CryptoInvestments() {
             </div>
 
             {error && (
-              <div className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2">
+              <div className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-md px-3 py-2">
                 {error}
               </div>
             )}

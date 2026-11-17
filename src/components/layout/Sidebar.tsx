@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   Home,
   BarChart3,
@@ -13,7 +13,6 @@ import {
   Wallet,
   Clock,
   BookOpen, Undo2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { usePendingCount } from '@/components/pending/pending-count';
@@ -30,187 +29,189 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const iconClass = "w-[18px] h-[18px] shrink-0";
+
+const navGroups: NavGroup[] = [
   {
-    name: 'Dashboard',
-    path: '/',
-    icon: <Home className="w-5 h-5" />,
-    title: 'Dashboard'
+    label: 'Overview',
+    items: [
+      { name: 'Dashboard', path: '/', icon: <Home className={iconClass} />, title: 'Dashboard' },
+    ],
   },
   {
-    name: 'CSV Uploads',
-    path: '/csv-uploads',
-    icon: <Upload className="w-5 h-5" />,
-    title: 'CSV Uploads'
+    label: 'Operations',
+    items: [
+      { name: 'CSV Uploads', path: '/csv-uploads', icon: <Upload className={iconClass} />, title: 'CSV Uploads' },
+      {
+        name: 'Pending Resolution',
+        path: '/pending-resolution',
+        icon: <Clock className={iconClass} />,
+        title: 'Pending Resolution',
+        showPendingBadge: true,
+      },
+    ],
   },
   {
-    name: 'Pending Resolution',
-    path: '/pending-resolution',
-    icon: <Clock className="w-5 h-5" />,
-    title: 'Pending Resolution',
-    showPendingBadge: true
+    label: 'Analytics',
+    items: [
+      { name: 'Reports', path: '/reports', icon: <BarChart3 className={iconClass} />, title: 'Reports' },
+      { name: 'Commissions', path: '/commissions', icon: <Calculator className={iconClass} />, title: 'Commission Calculator' },
+      { name: 'Bitstop Commissions', path: '/bitstop-commissions', icon: <TrendingUp className={iconClass} />, title: 'Bitstop Commissions' },
+    ],
   },
   {
-    name: 'Reports',
-    path: '/reports',
-    icon: <BarChart3 className="w-5 h-5" />,
-    title: 'Reports'
+    label: 'Treasury',
+    items: [
+      { name: 'Cash Management', path: '/cash-management', icon: <Banknote className={iconClass} />, title: 'Cash Management' },
+      { name: 'Liquidity', path: '/liquidity', icon: <Wallet className={iconClass} />, title: 'Liquidity' },
+    ],
   },
   {
-    name: 'Commissions',
-    path: '/commissions',
-    icon: <Calculator className="w-5 h-5" />,
-    title: 'Commission Calculator'
+    label: 'Fleet',
+    items: [
+      { name: 'BTM Machine Details', path: '/btm-details', icon: <Server className={iconClass} />, title: 'BTM Machine Details' },
+    ],
   },
   {
-    name: 'Cash Management',
-    path: '/cash-management',
-    icon: <Banknote className="w-5 h-5" />,
-    title: 'Cash Management'
+    label: 'Admin',
+    items: [
+      { name: 'QBO Entries', path: '/qbo-entries', icon: <BookOpen className={iconClass} />, title: 'QBO Entries', adminOnly: true },
+      { name: 'Refunds', path: '/refunds', icon: <Undo2 className={iconClass} />, title: 'Refunds', adminOnly: true },
+      { name: 'Settings', path: '/settings', icon: <Settings className={iconClass} />, title: 'Settings' },
+    ],
   },
-  {
-    name: 'Bitstop Commissions',
-    path: '/bitstop-commissions',
-    icon: <TrendingUp className="w-5 h-5" />,
-    title: 'Bitstop Commissions'
-  },
-  {
-    name: 'BTM Machine Details',
-    path: '/btm-details',
-    icon: <Server className="w-5 h-5" />,
-    title: 'BTM Machine Details'
-  },
-{
-    name: 'Liquidity',
-    path: '/liquidity',
-    icon: <Wallet className="w-5 h-5" />,
-    title: 'Liquidity'
-  },
-  {
-    name: 'QBO Entries',
-    path: '/qbo-entries',
-    icon: <BookOpen className="w-5 h-5" />,
-    title: 'QBO Entries',
-    adminOnly: true
-  },
-  {
-    name: 'Refunds',
-    path: '/refunds',
-    icon: <Undo2 className="w-5 h-5" />,
-    title: 'Refunds',
-    adminOnly: true
-  },
-  {
-    name: 'Settings',
-    path: '/settings',
-    icon: <Settings className="w-5 h-5" />,
-    title: 'Settings'
-  }
 ];
 
 export function Sidebar() {
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const { role } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
   // null while loading or on error — the badge hides rather than showing a
   // misleading "0", which would read as "nothing to chase".
   const pendingCount = usePendingCount();
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.adminOnly || role === 'admin'),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 h-screen bg-card border-r border-white/10 transition-all duration-300 z-50 flex flex-col",
-        isCollapsed ? "w-16" : "w-64"
+        "fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-border bg-elevated transition-all duration-200",
+        isCollapsed ? "w-[72px]" : "w-[252px]"
       )}
     >
-      {/* Header/Logo Area */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
-        {!isCollapsed && (
-          <h1 className="text-lg font-bold text-foreground">BTM Analytics</h1>
+      {/* Brand */}
+      <div
+        className={cn(
+          "flex min-h-16 border-b border-border",
+          isCollapsed
+            ? "flex-col items-center justify-center gap-2 px-2 py-3"
+            : "items-center gap-2.5 py-4 pl-4 pr-3.5"
         )}
-        <Button
-          variant="ghost"
-          size="icon"
+      >
+        <img
+          src="/Denet Favicon.png"
+          alt="Denet"
+          width={32}
+          height={32}
+          className="h-8 w-8 shrink-0 rounded-full"
+        />
+        {!isCollapsed && (
+          <div className="min-w-0">
+            <div className="truncate text-sm font-bold leading-tight tracking-tight text-foreground">
+              Denet Analytics
+            </div>
+            <div className="text-[11px] font-medium text-dim">BTM operations</div>
+          </div>
+        )}
+        <button
+          type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
           className={cn(
-            "text-muted-foreground hover:text-foreground",
-            isCollapsed && "mx-auto"
+            "grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors",
+            "hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            !isCollapsed && "ml-auto"
           )}
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!isCollapsed}
         >
           {isCollapsed ? (
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="h-3.5 w-3.5" />
           ) : (
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="h-3.5 w-3.5" />
           )}
-        </Button>
+        </button>
       </div>
 
-      {/* Navigation Items */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {navItems
-          .filter((item) => !item.adminOnly || role === 'admin')
-          .map((item) => {
-          const active = isActive(item.path);
-          const badgeCount =
-            item.showPendingBadge && pendingCount !== null && pendingCount > 0
-              ? pendingCount
-              : null;
-          return (
-            <Button
-              key={item.path}
-              variant={active ? "secondary" : "ghost"}
-              className={cn(
-                "w-full justify-start transition-all relative",
-                isCollapsed ? "px-2" : "px-4",
-                active
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              )}
-              onClick={() => navigate(item.path)}
-              title={
-                isCollapsed
-                  ? badgeCount
-                    ? `${item.title} (${badgeCount} awaiting resolution)`
-                    : item.title
-                  : undefined
-              }
-            >
-              <span className={cn(isCollapsed ? "mx-auto" : "mr-3")}>
-                {item.icon}
-              </span>
-              {!isCollapsed && (
-                <span className="text-sm font-medium">{item.name}</span>
-              )}
-              {badgeCount !== null && (
-                <span
-                  className={cn(
-                    "flex items-center justify-center rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold tabular-nums",
-                    // Collapsed: float over the icon. Expanded: sit at the row end.
-                    isCollapsed
-                      ? "absolute top-1 right-1 h-4 min-w-4 px-1"
-                      : "ml-auto h-5 min-w-5 px-1.5"
-                  )}
-                >
-                  {badgeCount}
-                </span>
-              )}
-            </Button>
-          );
-        })}
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-2.5 py-3" aria-label="Main">
+        {visibleGroups.map((group, gi) => (
+          <div key={group.label} className={cn(isCollapsed && gi > 0 && "mt-2 border-t border-border pt-2")}>
+            {!isCollapsed && (
+              <div className="px-2.5 pb-1.5 pt-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-dim">
+                {group.label}
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const badgeCount =
+                  item.showPendingBadge && pendingCount !== null && pendingCount > 0
+                    ? pendingCount
+                    : null;
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end
+                    title={
+                      isCollapsed
+                        ? badgeCount
+                          ? `${item.title} (${badgeCount} awaiting resolution)`
+                          : item.title
+                        : undefined
+                    }
+                    className={({ isActive }) =>
+                      cn(
+                        "relative flex items-center gap-2.5 rounded-lg text-[13.5px] font-medium transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        isCollapsed ? "justify-center py-2.5" : "px-2.5 py-[7px]",
+                        isActive
+                          ? "bg-primary/15 font-semibold text-primary"
+                          : "text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+                      )
+                    }
+                  >
+                    {item.icon}
+                    {!isCollapsed && <span className="truncate">{item.name}</span>}
+                    {badgeCount !== null && (
+                      <span
+                        className={cn(
+                          "flex items-center justify-center rounded-full bg-primary text-[11px] font-bold tabular-nums text-primary-foreground",
+                          // Collapsed: float over the icon. Expanded: sit at the row end.
+                          isCollapsed
+                            ? "absolute right-1.5 top-1 h-4 min-w-4 px-1"
+                            : "ml-auto h-[18px] min-w-[18px] px-[5px]"
+                        )}
+                      >
+                        {badgeCount}
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
-
-      {/* Footer - Optional branding or version */}
-      {!isCollapsed && (
-        <div className="p-4 border-t border-white/10 text-xs text-muted-foreground text-center">
-          v1.0.0
-        </div>
-      )}
     </aside>
   );
 }

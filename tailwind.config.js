@@ -18,39 +18,66 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['Manrope', 'sans-serif'],
-        display: ['Space Grotesk', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
       },
+      // All semantic colors read the CSS variables in src/index.css
+      // (:root = light, .dark = dark). Values are bare HSL triplets so
+      // opacity modifiers (bg-primary/10) work.
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "#0F1419", // Deep charcoal base
-        foreground: "#F5F1E8", // Warm cream
+        border: "hsl(var(--border) / <alpha-value>)",
+        "border-strong": "hsl(var(--border-strong) / <alpha-value>)",
+        input: "hsl(var(--input) / <alpha-value>)",
+        // Form-field border/fill (darker border + white fill in light)
+        "input-border": "hsl(var(--input-border) / <alpha-value>)",
+        "input-bg": "hsl(var(--input-bg) / <alpha-value>)",
+        // Body-row dividers (slightly stronger than --border in light)
+        "table-row-border": "hsl(var(--table-row-border) / <alpha-value>)",
+        ring: "hsl(var(--ring) / <alpha-value>)",
+        background: "hsl(var(--background) / <alpha-value>)",
+        foreground: "hsl(var(--foreground) / <alpha-value>)",
+        // Sidebar / sticky header surface
+        elevated: "hsl(var(--elevated) / <alpha-value>)",
+        // Table header strip, hover rows, segmented-control track
+        "surface-2": "hsl(var(--surface-2) / <alpha-value>)",
+        // Tertiary text: kickers, table header labels, footnotes
+        dim: "hsl(var(--dim) / <alpha-value>)",
+        // Table header strip (black/white in light, surface-2/dim in dark)
+        "table-header-bg": "hsl(var(--table-header-bg) / <alpha-value>)",
+        "table-header-fg": "hsl(var(--table-header-fg) / <alpha-value>)",
         primary: {
-          DEFAULT: "#0066FF", // Electric blue
-          foreground: "#FFFFFF",
+          DEFAULT: "hsl(var(--primary) / <alpha-value>)",
+          foreground: "hsl(var(--primary-foreground) / <alpha-value>)",
         },
         secondary: {
-          DEFAULT: "#FF9500", // Muted amber
-          foreground: "#FFFFFF",
+          DEFAULT: "hsl(var(--secondary) / <alpha-value>)",
+          foreground: "hsl(var(--secondary-foreground) / <alpha-value>)",
         },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive) / <alpha-value>)",
+          foreground: "hsl(var(--destructive-foreground) / <alpha-value>)",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success) / <alpha-value>)",
+          foreground: "hsl(var(--success-foreground) / <alpha-value>)",
+        },
+        danger: "hsl(var(--danger) / <alpha-value>)",
         muted: {
-          DEFAULT: "#1E2329", // Slightly lighter charcoal
-          foreground: "#A0A5AA",
+          DEFAULT: "hsl(var(--muted) / <alpha-value>)",
+          foreground: "hsl(var(--muted-foreground) / <alpha-value>)",
         },
         accent: {
-          DEFAULT: "#1E2329",
-          foreground: "#F5F1E8",
+          DEFAULT: "hsl(var(--accent) / <alpha-value>)",
+          foreground: "hsl(var(--accent-foreground) / <alpha-value>)",
         },
         popover: {
-          DEFAULT: "#0F1419",
-          foreground: "#F5F1E8",
+          DEFAULT: "hsl(var(--popover) / <alpha-value>)",
+          foreground: "hsl(var(--popover-foreground) / <alpha-value>)",
         },
         card: {
-          DEFAULT: "#161B22", // Slightly lighter for cards
-          foreground: "#F5F1E8",
+          DEFAULT: "hsl(var(--card) / <alpha-value>)",
+          foreground: "hsl(var(--card-foreground) / <alpha-value>)",
         },
       },
       borderRadius: {
