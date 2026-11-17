@@ -257,7 +257,7 @@ export function TickerMappings() {
                         value={mapping.display_value || ''}
                         onChange={(e) => handleDisplayValueChange(mapping.id, e.target.value)}
                         placeholder={mapping.original_value}
-                        className="max-w-xs bg-card border-white/10"
+                        className="max-w-xs dark:bg-card dark:border-white/10"
                         disabled={isReadOnly}
                       />
                     </TableCell>

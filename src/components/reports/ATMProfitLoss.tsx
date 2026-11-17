@@ -1389,7 +1389,7 @@ export default function ATMProfitLoss() {
                               <span className="text-muted-foreground">$</span>
                               <input
                                 type="number"
-                                className="w-24 bg-background border border-border rounded px-2 py-1 text-right text-sm font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-24 bg-input-bg dark:bg-background border border-input-border rounded px-2 py-1 text-right text-sm font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
                                 onKeyDown={(e) => {

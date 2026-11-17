@@ -68,7 +68,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="bg-card"
+                className="dark:bg-card"
               />
             </div>
 
@@ -84,7 +84,7 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="bg-card"
+                className="dark:bg-card"
               />
             </div>
 

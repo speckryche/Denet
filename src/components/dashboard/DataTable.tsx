@@ -215,7 +215,7 @@ export function DataTable({ data = [], columns = [], title, toolbar }: DataTable
             <Input
               placeholder="Search transactions…"
               aria-label="Search transactions"
-              className="h-[34px] w-[220px] bg-background pl-8 text-[13px]"
+              className="h-[34px] w-[220px] dark:bg-background pl-8 text-[13px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

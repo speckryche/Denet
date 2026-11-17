@@ -51,8 +51,13 @@
 
     --border: 214 20% 86.3%;             /* #D5DBE3 */
     --border-strong: 215 15.9% 79%;      /* #C1C8D2 */
-    --input: 214 20% 86.3%;
-    --ring: 36 100% 38.8%;
+    /* Form fields: darker border + solid white fill so inputs read clearly
+       on white cards/rows. --input mirrors --input-border for border-input. */
+    --input-border: 218 10.6% 64.9%;     /* #9CA3AF */
+    --input-bg: 0 0% 100%;               /* #FFFFFF */
+    --input: 218 10.6% 64.9%;            /* #9CA3AF */
+    --table-row-border: 215 15.9% 79%;   /* #C1C8D2 */
+    --ring: 36 100% 38.8%;               /* #C67800 */
 
     --radius: 0.625rem;
   }
@@ -96,6 +101,11 @@
     --border: 216 17.9% 22%;             /* #2E3642 */
     --border-strong: 217 15.9% 28.4%;    /* #3D4654 */
     --input: 216 17.9% 22%;
+    --input-border: 216 17.9% 22%;       /* #2E3642 (= --input / --border) */
+    /* Not used in dark: fields use dark:bg-transparent (or their existing
+       dark:bg-* fill). Kept equal to --card so stray uses stay on-palette. */
+    --input-bg: 217 22% 11.6%;
+    --table-row-border: 216 17.9% 22%;   /* #2E3642 (= --border) */
     --ring: 36 91.3% 54.9%;
   }
 }
@@ -114,6 +124,13 @@
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="month"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
+  }
+  /* Light only: native date/month inputs not routed through <Input> get the
+     same field chrome. Dark is untouched (calendar invert above stays dark-only). */
+  /* :where() keeps specificity at zero so explicit utilities still win. */
+  :where(html:not(.dark)) :where(input[type="date"], input[type="month"]) {
+    border-color: hsl(var(--input-border));
+    background-color: hsl(var(--input-bg));
   }
   /* Remove number input spinner arrows app-wide */
   input[type="number"]::-webkit-outer-spin-button,
@@ -141,6 +158,18 @@ html:not(.dark) .border-white\/\[0\.04\],
 html:not(.dark) .border-white\/\[0\.06\],
 html:not(.dark) .border-\[\#2a3142\] {
   border-color: hsl(var(--border));
+}
+/* Body/footer row dividers using those same dark-only borders get the
+   (slightly stronger) row token instead. Header rows are left alone. */
+html:not(.dark) :is(tbody, tfoot) > tr:is(
+  .border-white\/5,
+  .border-white\/10,
+  .border-white\/20,
+  .border-white\/\[0\.04\],
+  .border-white\/\[0\.06\],
+  .border-\[\#2a3142\]
+) {
+  border-color: hsl(var(--table-row-border));
 }
 html:not(.dark) .bg-white\/\[0\.02\],
 html:not(.dark) .bg-white\/\[0\.03\],

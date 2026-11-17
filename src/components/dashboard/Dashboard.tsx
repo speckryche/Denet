@@ -405,7 +405,7 @@ export default function Dashboard() {
               <Input
                 placeholder="Filter by ATM ID…"
                 aria-label="Filter by ATM ID"
-                className="h-[34px] w-[170px] bg-background pl-8 text-[13px]"
+                className="h-[34px] w-[170px] dark:bg-background pl-8 text-[13px]"
                 value={atmIdFilter}
                 onChange={(e) => setAtmIdFilter(e.target.value)}
               />

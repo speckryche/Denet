@@ -29,6 +29,11 @@ module.exports = {
         border: "hsl(var(--border) / <alpha-value>)",
         "border-strong": "hsl(var(--border-strong) / <alpha-value>)",
         input: "hsl(var(--input) / <alpha-value>)",
+        // Form-field border/fill (darker border + white fill in light)
+        "input-border": "hsl(var(--input-border) / <alpha-value>)",
+        "input-bg": "hsl(var(--input-bg) / <alpha-value>)",
+        // Body-row dividers (slightly stronger than --border in light)
+        "table-row-border": "hsl(var(--table-row-border) / <alpha-value>)",
         ring: "hsl(var(--ring) / <alpha-value>)",
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",

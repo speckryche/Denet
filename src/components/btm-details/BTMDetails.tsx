@@ -429,7 +429,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.atm_id || ''}
                                 onChange={(e) => setEditForm({ ...editForm, atm_id: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                                 placeholder="ATM ID"
                               />
                             </div>
@@ -438,7 +438,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.serial_number || ''}
                                 onChange={(e) => setEditForm({ ...editForm, serial_number: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div className="col-span-2">
@@ -446,7 +446,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.location_name || ''}
                                 onChange={(e) => setEditForm({ ...editForm, location_name: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -455,7 +455,7 @@ export default function BTMDetails() {
                                 type="number"
                                 value={editForm.monthly_rent || 0}
                                 onChange={(e) => setEditForm({ ...editForm, monthly_rent: parseFloat(e.target.value) })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -464,7 +464,7 @@ export default function BTMDetails() {
                                 value={editForm.rent_payment_method || ''}
                                 onValueChange={(value) => setEditForm({ ...editForm, rent_payment_method: value })}
                               >
-                                <SelectTrigger className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]">
+                                <SelectTrigger className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                                   <SelectValue placeholder="Select..." />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -479,7 +479,7 @@ export default function BTMDetails() {
                                 type="number"
                                 value={editForm.cash_management_rps || 0}
                                 onChange={(e) => setEditForm({ ...editForm, cash_management_rps: parseFloat(e.target.value) })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -488,7 +488,7 @@ export default function BTMDetails() {
                                 type="number"
                                 value={editForm.cash_management_rep || 0}
                                 onChange={(e) => setEditForm({ ...editForm, cash_management_rep: parseFloat(e.target.value) })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div className="col-span-2">
@@ -496,7 +496,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.street_address || ''}
                                 onChange={(e) => setEditForm({ ...editForm, street_address: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -504,7 +504,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.city || ''}
                                 onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -512,7 +512,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.state || ''}
                                 onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -520,7 +520,7 @@ export default function BTMDetails() {
                               <Input
                                 value={editForm.zip_code || ''}
                                 onChange={(e) => setEditForm({ ...editForm, zip_code: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -529,7 +529,7 @@ export default function BTMDetails() {
                                 type="date"
                                 value={editForm.installed_date || ''}
                                 onChange={(e) => setEditForm({ ...editForm, installed_date: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             <div>
@@ -538,7 +538,7 @@ export default function BTMDetails() {
                                 type="date"
                                 value={editForm.removed_date || ''}
                                 onChange={(e) => setEditForm({ ...editForm, removed_date: e.target.value })}
-                                className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                               />
                             </div>
                             {isInactive && (
@@ -548,7 +548,7 @@ export default function BTMDetails() {
                                   value={editForm.warehouse_location || ''}
                                   onValueChange={(value) => setEditForm({ ...editForm, warehouse_location: value })}
                                 >
-                                  <SelectTrigger className="h-8 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]">
+                                  <SelectTrigger className="h-8 dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                                     <SelectValue placeholder="Select..." />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -584,7 +584,7 @@ export default function BTMDetails() {
                               <Textarea
                                 value={editForm.notes || ''}
                                 onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                                className="bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
+                                className="dark:bg-[#1a1f2e] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                                 rows={2}
                               />
                             </div>
@@ -786,7 +786,7 @@ export default function BTMDetails() {
                 aria-label="Search ATM ID or Location"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-9 pl-8 bg-card"
+                className="h-9 pl-8 dark:bg-card"
               />
             </div>
             {isAdmin && (
@@ -951,7 +951,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.atm_id || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, atm_id: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                   placeholder="e.g., ATM-001"
                 />
               </div>
@@ -960,7 +960,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.serial_number || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, serial_number: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                   placeholder="e.g., SN123456"
                 />
               </div>
@@ -969,7 +969,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.location_name || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, location_name: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                   placeholder="e.g., Downtown Store"
                 />
               </div>
@@ -979,7 +979,7 @@ export default function BTMDetails() {
                   value={newMachineForm.platform || 'denet'}
                   onValueChange={(value: 'denet' | 'bitstop') => setNewMachineForm({ ...newMachineForm, platform: value })}
                 >
-                  <SelectTrigger className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
+                  <SelectTrigger className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -994,7 +994,7 @@ export default function BTMDetails() {
                   value={newMachineForm.sales_rep_id || ''}
                   onValueChange={(value) => setNewMachineForm({ ...newMachineForm, sales_rep_id: value || null })}
                 >
-                  <SelectTrigger className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
+                  <SelectTrigger className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                     <SelectValue placeholder="Select sales rep..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1012,7 +1012,7 @@ export default function BTMDetails() {
                   type="date"
                   value={newMachineForm.installed_date || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, installed_date: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1021,7 +1021,7 @@ export default function BTMDetails() {
                   value={newMachineForm.warehouse_location || ''}
                   onValueChange={(value) => setNewMachineForm({ ...newMachineForm, warehouse_location: value })}
                 >
-                  <SelectTrigger className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
+                  <SelectTrigger className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                     <SelectValue placeholder="Select warehouse..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1056,7 +1056,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.street_address || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, street_address: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1064,7 +1064,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.city || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, city: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1072,7 +1072,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.state || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, state: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1080,7 +1080,7 @@ export default function BTMDetails() {
                 <Input
                   value={newMachineForm.zip_code || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, zip_code: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1089,7 +1089,7 @@ export default function BTMDetails() {
                   type="number"
                   value={newMachineForm.monthly_rent || 0}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, monthly_rent: parseFloat(e.target.value) })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1098,7 +1098,7 @@ export default function BTMDetails() {
                   value={newMachineForm.rent_payment_method || ''}
                   onValueChange={(value) => setNewMachineForm({ ...newMachineForm, rent_payment_method: value })}
                 >
-                  <SelectTrigger className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]">
+                  <SelectTrigger className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]">
                     <SelectValue placeholder="Select payment method..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1113,7 +1113,7 @@ export default function BTMDetails() {
                   type="number"
                   value={newMachineForm.cash_management_rps || 0}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, cash_management_rps: parseFloat(e.target.value) })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div>
@@ -1122,7 +1122,7 @@ export default function BTMDetails() {
                   type="number"
                   value={newMachineForm.cash_management_rep || 0}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, cash_management_rep: parseFloat(e.target.value) })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                 />
               </div>
               <div className="col-span-2">
@@ -1130,7 +1130,7 @@ export default function BTMDetails() {
                 <Textarea
                   value={newMachineForm.notes || ''}
                   onChange={(e) => setNewMachineForm({ ...newMachineForm, notes: e.target.value })}
-                  className="bg-[#0F1419] border-[#2a3142] text-[#F5F1E8]"
+                  className="dark:bg-[#0F1419] dark:border-[#2a3142] dark:text-[#F5F1E8]"
                   rows={3}
                 />
               </div>

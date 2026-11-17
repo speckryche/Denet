@@ -377,14 +377,14 @@ export default function BitstopCommissions() {
                               </TableHeader>
                               <TableBody>
                                 {yearRecords.map((record) => (
-                                  <TableRow key={record.id} className="border-border">
+                                  <TableRow key={record.id}>
                         <TableCell>
                           <Select
                             disabled={!isAdmin}
                             value={record.month}
                             onValueChange={(value) => handleFieldChange(record.id, 'month', value)}
                           >
-                            <SelectTrigger className="border-border bg-card">
+                            <SelectTrigger className="dark:bg-card">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -400,7 +400,7 @@ export default function BitstopCommissions() {
                             type="number"
                             value={record.year}
                             onChange={(e) => handleFieldChange(record.id, 'year', parseInt(e.target.value) || 2025)}
-                            className="border-border bg-card"
+                            className="dark:bg-card"
                           />
                         </TableCell>
                         <TableCell>
@@ -409,7 +409,7 @@ export default function BitstopCommissions() {
                             value={record.received_report ? 'yes' : 'no'}
                             onValueChange={(value) => handleFieldChange(record.id, 'received_report', value === 'yes')}
                           >
-                            <SelectTrigger className={`border-border bg-card ${
+                            <SelectTrigger className={`dark:bg-card ${
                               record.received_report ? 'text-success font-semibold' : 'text-danger font-semibold'
                             }`}>
                               <SelectValue />
@@ -430,7 +430,7 @@ export default function BitstopCommissions() {
                               handleFieldChange(record.id, 'total_sales', numericValue ? parseFloat(numericValue) : 0);
                             }}
                             placeholder="$0"
-                            className="border-border bg-card font-mono text-right"
+                            className="dark:bg-card font-mono text-right"
                           />
                         </TableCell>
                         <TableCell>
@@ -443,7 +443,7 @@ export default function BitstopCommissions() {
                               handleFieldChange(record.id, 'commission_amount', numericValue ? parseFloat(numericValue) : 0);
                             }}
                             placeholder="$0"
-                            className="border-border bg-card font-mono text-right"
+                            className="dark:bg-card font-mono text-right"
                           />
                         </TableCell>
                         <TableCell className="font-mono">
@@ -458,7 +458,7 @@ export default function BitstopCommissions() {
                             value={record.paid ? 'yes' : 'no'}
                             onValueChange={(value) => handleFieldChange(record.id, 'paid', value === 'yes')}
                           >
-                            <SelectTrigger className={`border-border bg-card ${
+                            <SelectTrigger className={`dark:bg-card ${
                               record.paid ? 'text-success font-semibold' : 'text-danger font-semibold'
                             }`}>
                               <SelectValue />
@@ -475,7 +475,7 @@ export default function BitstopCommissions() {
                             type="date"
                             value={record.date_paid || ''}
                             onChange={(e) => handleFieldChange(record.id, 'date_paid', e.target.value || null)}
-                            className="border-border bg-card"
+                            className="dark:bg-card"
                           />
                         </TableCell>
                         <TableCell>
@@ -492,7 +492,7 @@ export default function BitstopCommissions() {
                               )
                             }
                             placeholder="—"
-                            className="border-border bg-card"
+                            className="dark:bg-card"
                           />
                           {/* Report total vs what Bitstop actually deposited. Part 2
                               subtracts expected clawbacks from the expected figure. */}
@@ -527,7 +527,7 @@ export default function BitstopCommissions() {
                             value={record.notes || ''}
                             onChange={(e) => handleFieldChange(record.id, 'notes', e.target.value || null)}
                             placeholder="Notes..."
-                            className="border-border bg-card min-w-[200px]"
+                            className="dark:bg-card min-w-[200px]"
                             rows={2}
                           />
                         </TableCell>

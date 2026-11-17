@@ -176,7 +176,7 @@ export function UserManagement() {
                           disabled={isSelf || savingId === u.id}
                         >
                           <SelectTrigger
-                            className="bg-card border-white/10"
+                            className="dark:bg-card dark:border-white/10"
                             title={isSelf ? 'You cannot change your own role' : undefined}
                           >
                             <SelectValue />

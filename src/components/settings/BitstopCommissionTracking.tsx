@@ -344,7 +344,7 @@ export function BitstopCommissionTracking() {
                         value={record.month}
                         onValueChange={(value) => handleFieldChange(record.id, 'month', value)}
                       >
-                        <SelectTrigger className="bg-card border-white/10">
+                        <SelectTrigger className="dark:bg-card dark:border-white/10">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -359,7 +359,7 @@ export function BitstopCommissionTracking() {
                         type="number"
                         value={record.year}
                         onChange={(e) => handleFieldChange(record.id, 'year', parseInt(e.target.value) || 2025)}
-                        className="bg-card border-white/10"
+                        className="dark:bg-card dark:border-white/10"
                       />
                     </TableCell>
                     <TableCell>
@@ -367,7 +367,7 @@ export function BitstopCommissionTracking() {
                         value={record.received_report ? 'yes' : 'no'}
                         onValueChange={(value) => handleFieldChange(record.id, 'received_report', value === 'yes')}
                       >
-                        <SelectTrigger className={`bg-card border-white/10 ${
+                        <SelectTrigger className={`dark:bg-card dark:border-white/10 ${
                           record.received_report ? 'text-green-400 font-semibold' : 'text-red-400 font-semibold'
                         }`}>
                           <SelectValue />
@@ -385,7 +385,7 @@ export function BitstopCommissionTracking() {
                         value={record.total_sales || ''}
                         onChange={(e) => handleFieldChange(record.id, 'total_sales', parseFloat(e.target.value) || 0)}
                         placeholder="0.00"
-                        className="bg-card border-white/10"
+                        className="dark:bg-card dark:border-white/10"
                       />
                     </TableCell>
                     <TableCell>
@@ -395,7 +395,7 @@ export function BitstopCommissionTracking() {
                         value={record.commission_amount || ''}
                         onChange={(e) => handleFieldChange(record.id, 'commission_amount', parseFloat(e.target.value) || 0)}
                         placeholder="0.00"
-                        className="bg-card border-white/10"
+                        className="dark:bg-card dark:border-white/10"
                       />
                     </TableCell>
                     <TableCell className="font-mono">
@@ -409,7 +409,7 @@ export function BitstopCommissionTracking() {
                         value={record.paid ? 'yes' : 'no'}
                         onValueChange={(value) => handleFieldChange(record.id, 'paid', value === 'yes')}
                       >
-                        <SelectTrigger className={`bg-card border-white/10 ${
+                        <SelectTrigger className={`dark:bg-card dark:border-white/10 ${
                           record.paid ? 'text-green-400 font-semibold' : 'text-red-400 font-semibold'
                         }`}>
                           <SelectValue />
@@ -425,7 +425,7 @@ export function BitstopCommissionTracking() {
                         type="date"
                         value={record.date_paid || ''}
                         onChange={(e) => handleFieldChange(record.id, 'date_paid', e.target.value || null)}
-                        className="bg-card border-white/10"
+                        className="dark:bg-card dark:border-white/10"
                       />
                     </TableCell>
                     <TableCell>
@@ -433,7 +433,7 @@ export function BitstopCommissionTracking() {
                         value={record.notes || ''}
                         onChange={(e) => handleFieldChange(record.id, 'notes', e.target.value || null)}
                         placeholder="Notes..."
-                        className="bg-card border-white/10 min-w-[200px]"
+                        className="dark:bg-card dark:border-white/10 min-w-[200px]"
                         rows={2}
                       />
                     </TableCell>

@@ -354,7 +354,7 @@ export default function MonthlySalesSummary() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
-              <SelectTrigger className="h-[34px] w-[120px] bg-card" aria-label="Year">
+              <SelectTrigger className="h-[34px] w-[120px] dark:bg-card" aria-label="Year">
                 <SelectValue placeholder="Select Year" />
               </SelectTrigger>
               <SelectContent>
@@ -402,7 +402,7 @@ export default function MonthlySalesSummary() {
               ) : (
                 <>
                   {data.map((row, idx) => (
-                    <TableRow key={idx} className="border-border hover:bg-surface-2">
+                    <TableRow key={idx} className="hover:bg-surface-2">
                       <TableCell className={firstCol}>
                         {platformLabel(row.platform)}
                       </TableCell>
@@ -420,7 +420,7 @@ export default function MonthlySalesSummary() {
                     </TableRow>
                   ))}
                   {data.length > 1 && (
-                    <TableRow className="border-border bg-surface-2/60 font-semibold hover:bg-surface-2">
+                    <TableRow className="bg-surface-2/60 font-semibold hover:bg-surface-2">
                       <TableCell className={firstCol}>All platforms</TableCell>
                       {months.map((_, monthIdx) => {
                         const value = allPlatformsMonth(monthIdx);
