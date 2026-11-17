@@ -51,6 +51,9 @@ const MONTH_ORDER: { [key: string]: number } = {
   'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
 };
 
+// Column header style shared with the Dashboard DataTable.
+const TH = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-dim whitespace-nowrap';
+
 export default function BitstopCommissions() {
   const { role } = useAuth();
   const isAdmin = role === 'admin';
@@ -256,7 +259,7 @@ export default function BitstopCommissions() {
       <PageHeader title="Bitstop Commission Tracking" />
 
       <div className="max-w-[95%] mx-auto px-6 py-8">
-        <Card className="bg-card/30 border-white/10">
+        <Card className="bg-card border-border">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -272,13 +275,13 @@ export default function BitstopCommissions() {
           </CardHeader>
           <CardContent>
             {successMessage && (
-              <Alert className="mb-4 bg-green-500/10 border-green-500/20 text-green-500">
+              <Alert className="mb-4 bg-success/10 border-success/20 text-success">
                 <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
             )}
 
             {error && (
-              <Alert className="mb-4 bg-red-500/10 border-red-500/20 text-red-500">
+              <Alert className="mb-4 bg-destructive/10 border-destructive/20 text-destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -308,39 +311,44 @@ export default function BitstopCommissions() {
                     const commissionPercent = totalSales > 0 ? (totalCommissions / totalSales) * 100 : 0;
 
                     return (
-                      <div key={year} className="rounded-md border border-white/10 overflow-hidden">
+                      <div key={year} className="rounded-[14px] border border-border bg-card overflow-hidden shadow-sm">
                         {/* Year Header with Summary */}
                         <div
-                          className="flex items-center justify-between p-4 bg-slate-700/40 cursor-pointer hover:bg-slate-600/50 transition-colors"
+                          className={`flex flex-wrap items-center justify-between gap-4 px-[18px] py-3.5 bg-muted/50 dark:bg-surface-2 cursor-pointer hover:bg-muted dark:hover:bg-muted/80 transition-colors ${
+                            isExpanded ? 'border-b border-border' : ''
+                          }`}
                           onClick={() => toggleYear(year)}
                         >
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-3">
                             {isExpanded ? (
-                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                              <ChevronDown className="w-4 h-4 text-dim" />
                             ) : (
-                              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                              <ChevronRight className="w-4 h-4 text-dim" />
                             )}
-                            <span className="font-semibold text-xl">{year}</span>
-                            <span className="text-sm text-muted-foreground">
-                              ({yearRecords.length} month{yearRecords.length !== 1 ? 's' : ''})
+                            <span className="text-lg font-semibold tracking-tight text-foreground tabular-nums">{year}</span>
+                            <span className="text-[13px] text-muted-foreground">
+                              {yearRecords.length} month{yearRecords.length !== 1 ? 's' : ''}
                             </span>
                           </div>
-                          <div className="flex items-center gap-6">
+                          <div className="flex items-center gap-8">
                             <div className="text-right">
-                              <div className="text-xs text-muted-foreground">Total Sales</div>
-                              <div className="text-lg font-mono font-semibold text-primary">
+                              <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-dim">Total Sales</div>
+                              <div className="text-base font-semibold text-foreground tabular-nums">
                                 ${Math.round(totalSales).toLocaleString('en-US')}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-muted-foreground">Commissions</div>
-                              <div className="text-lg font-mono font-semibold text-green-500">
+                              <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-dim">Commissions</div>
+                              <div className="text-base font-semibold text-foreground tabular-nums">
                                 ${Math.round(totalCommissions).toLocaleString('en-US')}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-muted-foreground">Comm %</div>
-                              <div className="text-lg font-mono font-semibold text-blue-400">
+                              <div className="flex items-center justify-end gap-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-dim">
+                                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+                                Comm %
+                              </div>
+                              <div className="text-base font-semibold text-foreground tabular-nums">
                                 {commissionPercent.toFixed(2)}%
                               </div>
                             </div>
@@ -351,32 +359,32 @@ export default function BitstopCommissions() {
                         {isExpanded && (
                           <div className="overflow-x-auto">
                             <Table>
-                              <TableHeader className="bg-white/5">
-                                <TableRow className="border-white/10">
-                                  <TableHead className="min-w-[100px]">Month</TableHead>
-                                  <TableHead className="min-w-[80px]">Year</TableHead>
-                                  <TableHead className="min-w-[140px]">Received Comm Report</TableHead>
-                                  <TableHead className="min-w-[120px]">Total Sales</TableHead>
-                                  <TableHead className="min-w-[120px]">Commissions</TableHead>
-                                  <TableHead className="min-w-[100px]">Comm %</TableHead>
-                                  <TableHead className="min-w-[100px]">Paid</TableHead>
-                                  <TableHead className="min-w-[120px]">Date Paid</TableHead>
-                                  <TableHead className="min-w-[130px]">Amount Received</TableHead>
-                                  <TableHead className="min-w-[110px]">Audit</TableHead>
-                                  <TableHead className="min-w-[200px]">Notes</TableHead>
-                                  <TableHead className="min-w-[120px]">Actions</TableHead>
+                              <TableHeader className="bg-surface-2">
+                                <TableRow className="border-border hover:bg-transparent">
+                                  <TableHead className={`${TH} min-w-[100px]`}>Month</TableHead>
+                                  <TableHead className={`${TH} min-w-[80px]`}>Year</TableHead>
+                                  <TableHead className={`${TH} min-w-[140px]`}>Received Comm Report</TableHead>
+                                  <TableHead className={`${TH} min-w-[120px] text-right`}>Total Sales</TableHead>
+                                  <TableHead className={`${TH} min-w-[120px] text-right`}>Commissions</TableHead>
+                                  <TableHead className={`${TH} min-w-[100px]`}>Comm %</TableHead>
+                                  <TableHead className={`${TH} min-w-[100px]`}>Paid</TableHead>
+                                  <TableHead className={`${TH} min-w-[120px]`}>Date Paid</TableHead>
+                                  <TableHead className={`${TH} min-w-[130px]`}>Amount Received</TableHead>
+                                  <TableHead className={`${TH} min-w-[110px]`}>Audit</TableHead>
+                                  <TableHead className={`${TH} min-w-[200px]`}>Notes</TableHead>
+                                  <TableHead className={`${TH} min-w-[120px]`}>Actions</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {yearRecords.map((record) => (
-                                  <TableRow key={record.id} className="border-white/5">
+                                  <TableRow key={record.id} className="border-border">
                         <TableCell>
                           <Select
                             disabled={!isAdmin}
                             value={record.month}
                             onValueChange={(value) => handleFieldChange(record.id, 'month', value)}
                           >
-                            <SelectTrigger className="bg-card border-white/10">
+                            <SelectTrigger className="border-border bg-card">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -392,7 +400,7 @@ export default function BitstopCommissions() {
                             type="number"
                             value={record.year}
                             onChange={(e) => handleFieldChange(record.id, 'year', parseInt(e.target.value) || 2025)}
-                            className="bg-card border-white/10"
+                            className="border-border bg-card"
                           />
                         </TableCell>
                         <TableCell>
@@ -401,8 +409,8 @@ export default function BitstopCommissions() {
                             value={record.received_report ? 'yes' : 'no'}
                             onValueChange={(value) => handleFieldChange(record.id, 'received_report', value === 'yes')}
                           >
-                            <SelectTrigger className={`bg-card border-white/10 ${
-                              record.received_report ? 'text-green-400 font-semibold' : 'text-red-400 font-semibold'
+                            <SelectTrigger className={`border-border bg-card ${
+                              record.received_report ? 'text-success font-semibold' : 'text-danger font-semibold'
                             }`}>
                               <SelectValue />
                             </SelectTrigger>
@@ -422,7 +430,7 @@ export default function BitstopCommissions() {
                               handleFieldChange(record.id, 'total_sales', numericValue ? parseFloat(numericValue) : 0);
                             }}
                             placeholder="$0"
-                            className="bg-card border-white/10 font-mono text-right"
+                            className="border-border bg-card font-mono text-right"
                           />
                         </TableCell>
                         <TableCell>
@@ -435,7 +443,7 @@ export default function BitstopCommissions() {
                               handleFieldChange(record.id, 'commission_amount', numericValue ? parseFloat(numericValue) : 0);
                             }}
                             placeholder="$0"
-                            className="bg-card border-white/10 font-mono text-right"
+                            className="border-border bg-card font-mono text-right"
                           />
                         </TableCell>
                         <TableCell className="font-mono">
@@ -450,8 +458,8 @@ export default function BitstopCommissions() {
                             value={record.paid ? 'yes' : 'no'}
                             onValueChange={(value) => handleFieldChange(record.id, 'paid', value === 'yes')}
                           >
-                            <SelectTrigger className={`bg-card border-white/10 ${
-                              record.paid ? 'text-green-400 font-semibold' : 'text-red-400 font-semibold'
+                            <SelectTrigger className={`border-border bg-card ${
+                              record.paid ? 'text-success font-semibold' : 'text-danger font-semibold'
                             }`}>
                               <SelectValue />
                             </SelectTrigger>
@@ -467,7 +475,7 @@ export default function BitstopCommissions() {
                             type="date"
                             value={record.date_paid || ''}
                             onChange={(e) => handleFieldChange(record.id, 'date_paid', e.target.value || null)}
-                            className="bg-card border-white/10"
+                            className="border-border bg-card"
                           />
                         </TableCell>
                         <TableCell>
@@ -484,14 +492,14 @@ export default function BitstopCommissions() {
                               )
                             }
                             placeholder="—"
-                            className="bg-card border-white/10"
+                            className="border-border bg-card"
                           />
                           {/* Report total vs what Bitstop actually deposited. Part 2
                               subtracts expected clawbacks from the expected figure. */}
                           {record.amount_received != null &&
                             record.commission_amount != null &&
                             Math.abs(record.amount_received - record.commission_amount) > 0.01 && (
-                              <div className="text-xs text-amber-400 mt-1">
+                              <div className="mt-1 text-xs font-medium text-primary">
                                 {record.amount_received > record.commission_amount ? '+' : ''}
                                 {(record.amount_received - record.commission_amount).toLocaleString('en-US', {
                                   style: 'currency', currency: 'USD',
@@ -502,13 +510,13 @@ export default function BitstopCommissions() {
                         <TableCell>
                           {openCounts[record.id] > 0 ? (
                             <Badge
-                              className="bg-red-500/15 text-red-400 border-red-500/30 cursor-pointer"
+                              className="bg-danger/10 text-danger border-danger/30 hover:bg-danger/15 cursor-pointer"
                               onClick={() => setAuditFor(record)}
                             >
                               {openCounts[record.id]} open
                             </Badge>
                           ) : record.received_report ? (
-                            <span className="text-xs text-green-400">clear</span>
+                            <span className="text-xs text-success">clear</span>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
@@ -519,7 +527,7 @@ export default function BitstopCommissions() {
                             value={record.notes || ''}
                             onChange={(e) => handleFieldChange(record.id, 'notes', e.target.value || null)}
                             placeholder="Notes..."
-                            className="bg-card border-white/10 min-w-[200px]"
+                            className="border-border bg-card min-w-[200px]"
                             rows={2}
                           />
                         </TableCell>
@@ -549,7 +557,7 @@ export default function BitstopCommissions() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDeleteRecord(record.id)}
-                                className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                className="text-danger hover:text-danger hover:bg-danger/10"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
