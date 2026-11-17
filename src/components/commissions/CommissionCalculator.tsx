@@ -808,26 +808,26 @@ export default function CommissionCalculator() {
 
                         {/* Year Content - Table */}
                         {isExpanded && (
-                          // 15 columns: fixed layout + tighter cell padding/type so the
-                          // whole row fits ~1100px; scrolls only below lg as a fallback.
-                          <Table className="table-fixed text-[13px] max-lg:min-w-[1000px] [&_td]:px-1.5 [&_th]:px-1.5 [&_th]:whitespace-normal">
+                          // 15 columns: reserved Actions width + short headers so the
+                          // five icon buttons stay on one line and the row still fits ~1100px.
+                          <Table containerClassName="overflow-x-hidden" className="w-full table-fixed text-[13px] [&_td]:px-1 [&_th]:px-1 [&_th]:whitespace-nowrap">
                               <TableHeader>
                                 <TableRow>
-                                  <TableHead className="w-[8.5%]">Sales Rep</TableHead>
-                                  <TableHead className="w-[6%]">Month</TableHead>
-                                  <TableHead className="w-[7.5%] text-right">Total Sales</TableHead>
-                                  <TableHead className="w-[6.5%] text-right">Total Fees</TableHead>
-                                  <TableHead className="w-[6.5%] text-right">Bitstop Fees</TableHead>
-                                  <TableHead className="w-[6%] text-right">Rent</TableHead>
-                                  <TableHead className="w-[6%] text-right">Mgmt - RPS</TableHead>
-                                  <TableHead className="w-[6%] text-right">Mgmt - Rep</TableHead>
-                                  <TableHead className="w-[6.5%] text-right">Net Profit</TableHead>
-                                  <TableHead className="w-[7%] text-right">Commis&shy;sions</TableHead>
-                                  <TableHead className="w-[5.5%] text-right">Flat Fee</TableHead>
-                                  <TableHead className="w-[6.5%] text-right">Total</TableHead>
-                                  <TableHead className="w-[4%] text-center">ATMs</TableHead>
-                                  <TableHead className="w-[6.5%]">Status</TableHead>
-                                  <TableHead>Actions</TableHead>
+                                  <TableHead className="w-[9%]" title="Sales Rep">Sales Rep</TableHead>
+                                  <TableHead className="w-[5.5%]" title="Month">Month</TableHead>
+                                  <TableHead className="w-[7%] text-right" title="Total Sales">Sales</TableHead>
+                                  <TableHead className="w-[6%] text-right" title="Total Fees">Fees</TableHead>
+                                  <TableHead className="w-[6%] text-right" title="Bitstop Fees">BS fees</TableHead>
+                                  <TableHead className="w-[5.5%] text-right" title="Rent">Rent</TableHead>
+                                  <TableHead className="w-[5%] text-right" title="Management — RPS">RPS</TableHead>
+                                  <TableHead className="w-[5%] text-right" title="Management — Rep">Rep</TableHead>
+                                  <TableHead className="w-[6%] text-right" title="Net Profit">Net</TableHead>
+                                  <TableHead className="w-[6%] text-right" title="Commissions">Comm.</TableHead>
+                                  <TableHead className="w-[5%] text-right" title="Flat Fee">Flat</TableHead>
+                                  <TableHead className="w-[6.5%] text-right" title="Total">Total</TableHead>
+                                  <TableHead className="w-[3.5%] text-center" title="ATMs">ATMs</TableHead>
+                                  <TableHead className="w-[7%]" title="Status">Status</TableHead>
+                                  <TableHead className="w-[17%]" title="Actions">Actions</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -846,102 +846,102 @@ export default function CommissionCalculator() {
                                         {commission.sales_rep?.name || 'Unknown'}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap">{monthStr}</TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.total_sales).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.total_fees).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.bitstop_fees).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.rent).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.mgmt_rps).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.mgmt_rep).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.total_net_profit).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.commission_amount).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono">
+                                      <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                                         ${Math.round(commission.flat_fee_amount).toLocaleString('en-US')}
                                       </TableCell>
-                                      <TableCell className="text-right font-mono font-semibold">
+                                      <TableCell className="whitespace-nowrap text-right font-mono font-semibold tabular-nums">
                                         ${Math.round(commission.total_commission).toLocaleString('en-US')}
                                       </TableCell>
                                       <TableCell className="text-center">{commission.atm_count}</TableCell>
                                       <TableCell>
-                                        <Badge variant={commission.paid ? 'default' : 'secondary'} className="px-2">
+                                        <Badge variant={commission.paid ? 'default' : 'secondary'} className="px-1.5 text-[11px]">
                                           {commission.paid ? 'Paid' : 'Unpaid'}
                                         </Badge>
                                       </TableCell>
-                                      <TableCell>
-                                        <div className="flex flex-wrap gap-0.5">
+                                      <TableCell className="whitespace-nowrap">
+                                        <div className="flex flex-nowrap items-center justify-end gap-0">
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7"
+                                            className="h-6 w-6 shrink-0"
                                             onClick={() => handleViewDetails(commission)}
                                             title="View Summary"
                                           >
-                                            <Eye className="w-4 h-4" />
+                                            <Eye className="h-3.5 w-3.5" />
                                           </Button>
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7"
+                                            className="h-6 w-6 shrink-0"
                                             onClick={() => handleExportTransactionDetails(commission)}
                                             title="Download Transaction Details"
                                           >
-                                            <FileSpreadsheet className="w-4 h-4" />
+                                            <FileSpreadsheet className="h-3.5 w-3.5" />
                                           </Button>
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7"
+                                            className="h-6 w-6 shrink-0"
                                             onClick={() => handleExportCSV(commission)}
                                             title="Download Commission Summary"
                                           >
-                                            <Download className="w-4 h-4" />
+                                            <Download className="h-3.5 w-3.5" />
                                           </Button>
                                           {commission.paid ? (
                                             <Button
                                               variant="ghost"
                                               size="icon"
                                               onClick={() => handleMarkAsUnpaid(commission.id)}
-                                              className="h-7 w-7 text-yellow-500 hover:text-yellow-400"
+                                              className="h-6 w-6 shrink-0 text-yellow-500 hover:text-yellow-400"
                                               title="Mark Unpaid"
                                               aria-label="Mark Unpaid"
                                             >
-                                              <Undo2 className="w-4 h-4" />
+                                              <Undo2 className="h-3.5 w-3.5" />
                                             </Button>
                                           ) : (
                                             <Button
                                               variant="ghost"
                                               size="icon"
                                               onClick={() => handleMarkAsPaid(commission.id)}
-                                              className="h-7 w-7 text-green-500 hover:text-green-400"
+                                              className="h-6 w-6 shrink-0 text-green-500 hover:text-green-400"
                                               title="Mark Paid"
                                               aria-label="Mark Paid"
                                             >
-                                              <CheckCircle className="w-4 h-4" />
+                                              <CheckCircle className="h-3.5 w-3.5" />
                                             </Button>
                                           )}
                                           <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleDeleteCommission(commission.id)}
-                                            className="h-7 w-7 text-red-500 hover:text-red-400"
+                                            className="h-6 w-6 shrink-0 text-red-500 hover:text-red-400"
                                             title="Delete"
                                           >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="h-3.5 w-3.5" />
                                           </Button>
                                         </div>
                                       </TableCell>
@@ -1019,22 +1019,22 @@ export default function CommissionCalculator() {
                     {commissionDetails.map((detail) => (
                       <TableRow key={detail.id} className="border-white/5">
                         <TableCell className="truncate font-mono" title={detail.atm_id}>{detail.atm_id}</TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.total_sales).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.total_fees).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.rent).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.cash_management_rps).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.cash_management_rep).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                           ${Math.round(detail.net_profit).toLocaleString('en-US')}
                         </TableCell>
                       </TableRow>
