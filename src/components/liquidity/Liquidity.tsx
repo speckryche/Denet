@@ -23,22 +23,14 @@ import {
 import {
   Plus,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Wallet,
-  TrendingUp,
-  DollarSign,
-  Calendar,
   Settings2,
   FileSpreadsheet,
   Upload,
   Loader2,
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { LiquiditySnapshotTable } from './LiquiditySnapshotTable';
 import { AddSnapshotDialog } from './AddSnapshotDialog';
 import { ImportSnapshotsDialog } from './ImportSnapshotsDialog';
@@ -83,6 +75,53 @@ const formatDate = (dateStr: string): string => {
   return `${month}/${day}/${year.slice(2)}`;
 };
 
+const parseLocalDate = (dateStr: string) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const formatLongDate = (dateStr: string) =>
+  parseLocalDate(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+const PAGE_SIZE = 6;
+
+function LiquiditySparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const W = 140;
+  const H = 36;
+  const pad = 2;
+  const mn = Math.min(...values);
+  const mx = Math.max(...values);
+  const span = mx - mn || 1;
+  const pts = values.map((v, i) => {
+    const x = pad + ((W - 2 * pad) * i) / (values.length - 1);
+    const y = H - pad - ((H - 2 * pad) * (v - mn)) / span;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const line = pts.join(' ');
+  const area = `${pad},${H - pad} ${line} ${W - pad},${H - pad}`;
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="h-8 w-[110px] max-w-[48%] shrink-0 min-[1440px]:h-9 min-[1440px]:w-[140px] min-[1440px]:max-w-none"
+      aria-hidden="true"
+    >
+      <path d={`${area}Z`} className="fill-primary/15" />
+      <path
+        d={`M${line}`}
+        className="fill-none stroke-primary"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default function Liquidity() {
   const [categories, setCategories] = useState<LiquidityCategory[]>([]);
   const [snapshots, setSnapshots] = useState<LiquiditySnapshot[]>([]);
@@ -93,7 +132,7 @@ export default function Liquidity() {
   const [deleteSnapshotId, setDeleteSnapshotId] = useState<string | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [showCount, setShowCount] = useState<number | 'all'>(5);
+  const [fromEnd, setFromEnd] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -284,6 +323,45 @@ export default function Liquidity() {
     summaryGain = totals.gain;
     summaryDailyAvg = totals.dailyAvg;
   }
+
+  const snapshotTotals = snapshots.map((s) => computeSnapshotTotals(s).total);
+  let peakTotal = 0;
+  let peakDate = '';
+  snapshots.forEach((s) => {
+    const { total } = computeSnapshotTotals(s);
+    if (total >= peakTotal) {
+      peakTotal = total;
+      peakDate = s.snapshot_date;
+    }
+  });
+  const downFromPeak = peakTotal - summaryTotal;
+  const gainPercent =
+    STARTING_LIQUIDITY > 0
+      ? Math.round((summaryGain / STARTING_LIQUIDITY) * 100)
+      : 0;
+  const daysSinceStartDisplay = latestSnapshot
+    ? Math.max(
+        0,
+        Math.floor(
+          (parseLocalDate(latestSnapshot.snapshot_date).getTime() -
+            parseLocalDate('2022-05-01').getTime()) /
+            86400000
+        )
+      )
+    : 0;
+
+  const maxFromEnd = Math.max(0, snapshots.length - PAGE_SIZE);
+  const clampedFromEnd = Math.min(fromEnd, maxFromEnd);
+  const windowStart = Math.max(0, snapshots.length - PAGE_SIZE - clampedFromEnd);
+  const visibleSnapshots = snapshots.slice(windowStart, windowStart + PAGE_SIZE);
+  const canEarlier = windowStart > 0;
+  const canLater = clampedFromEnd > 0;
+  const rangeLabel =
+    snapshots.length === 0
+      ? '0 of 0'
+      : clampedFromEnd === 0
+        ? `Latest ${visibleSnapshots.length} of ${snapshots.length}`
+        : `${windowStart + 1}–${windowStart + visibleSnapshots.length} of ${snapshots.length}`;
 
   // ── Excel Export ──────────────────────────────────────────────
   const exportToExcel = (snapshotsToExport: LiquiditySnapshot[], filename: string) => {
@@ -612,37 +690,6 @@ export default function Liquidity() {
     exportToExcel([latestSnapshot], `denet-liquidity-${date}.xlsx`);
   };
 
-  const summaryCards = [
-    {
-      label: 'Current Total',
-      value: formatCurrency(summaryTotal),
-      icon: <Wallet className="w-4 h-4" />,
-      color: 'text-foreground',
-    },
-    {
-      label: 'Starting Liquidity',
-      value: formatCurrency(STARTING_LIQUIDITY),
-      icon: <DollarSign className="w-4 h-4" />,
-      color: 'text-muted-foreground',
-    },
-    {
-      label: 'Gain in Liquidity',
-      value: formatCurrency(summaryGain),
-      icon: <TrendingUp className="w-4 h-4" />,
-      color: summaryGain >= 0 ? 'text-green-400' : 'text-red-400',
-      highlight: true,
-    },
-    {
-      label: 'Daily Profit Avg',
-      value: formatCurrency(summaryDailyAvg),
-      icon: <Calendar className="w-4 h-4" />,
-      color: 'text-muted-foreground',
-      sub: latestSnapshot
-        ? `as of ${new Date(latestSnapshot.snapshot_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}`
-        : undefined,
-    },
-  ];
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground">
@@ -656,69 +703,117 @@ export default function Liquidity() {
     );
   }
 
+  const headerSubtitle = latestSnapshot
+    ? `As of ${parseLocalDate(latestSnapshot.snapshot_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · ${snapshots.length} snapshot${snapshots.length === 1 ? '' : 's'}`
+    : undefined;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <PageHeader title="Liquidity" />
+      <PageHeader title="Liquidity" subtitle={headerSubtitle} />
 
-      <main className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6 space-y-6">
+      <main className="w-full min-w-0 px-4 py-3 min-[1440px]:px-6 min-[1440px]:py-6 space-y-3 min-[1440px]:space-y-4">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 [&>*]:min-w-0">
-          {summaryCards.map((card) => (
-            <Card
-              key={card.label}
-              className={cn(
-                'bg-card/30 border-white/10',
-                card.highlight && 'bg-green-500/[0.04] border-green-400/20'
-              )}
-            >
-              <CardContent className="px-5 py-4">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  <span className={card.color}>{card.icon}</span>
-                  {card.label}
-                </div>
-                <div
-                  className={cn(
-                    'text-2xl font-bold font-mono tabular-nums',
-                    card.color
-                  )}
-                >
-                  {card.value}
-                </div>
-                {card.sub && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {card.sub}
-                  </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 min-[1440px]:gap-3.5 [&>*]:min-w-0">
+          <Card className="min-w-0 bg-card border-border shadow-sm">
+            <CardContent className="px-3.5 py-2.5 min-[1440px]:px-5 min-[1440px]:py-3.5">
+              <div className="mb-1 min-[1440px]:mb-1.5 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-dim">
+                <span className="whitespace-nowrap">Current total</span>
+                <LiquiditySparkline values={snapshotTotals} />
+              </div>
+              <div className="text-[22px] min-[1440px]:text-2xl font-bold tabular-nums tracking-tight text-foreground leading-tight">
+                {formatCurrency(summaryTotal)}
+              </div>
+              <div className="mt-1 text-[11.5px] text-dim">Net assets after liabilities</div>
+            </CardContent>
+          </Card>
+          <Card className="min-w-0 bg-card border-border shadow-sm">
+            <CardContent className="px-3.5 py-2.5 min-[1440px]:px-5 min-[1440px]:py-3.5">
+              <div className="mb-1 min-[1440px]:mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-dim">
+                Starting liquidity
+              </div>
+              <div className="text-[22px] min-[1440px]:text-2xl font-bold tabular-nums tracking-tight text-foreground leading-tight">
+                {formatCurrency(STARTING_LIQUIDITY)}
+              </div>
+              <div className="mt-1 text-[11.5px] text-dim">Baseline since May 2022</div>
+            </CardContent>
+          </Card>
+          <Card className="min-w-0 bg-card border-border shadow-sm">
+            <CardContent className="px-3.5 py-2.5 min-[1440px]:px-5 min-[1440px]:py-3.5">
+              <div className="mb-1 min-[1440px]:mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-dim">
+                Gain in liquidity
+              </div>
+              <div className="text-[22px] min-[1440px]:text-2xl font-bold tabular-nums tracking-tight text-foreground leading-tight">
+                {formatCurrency(summaryGain)}
+                {latestSnapshot && (
+                  <span className={cn('ml-1.5 text-[13px] font-semibold tracking-normal', summaryGain >= 0 ? 'text-success' : 'text-danger')}>
+                    {summaryGain >= 0 ? '+' : ''}{gainPercent}%
+                  </span>
                 )}
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+              <div className="mt-1 text-[11.5px] text-dim">
+                {latestSnapshot && downFromPeak > 0 && peakDate !== latestSnapshot.snapshot_date
+                  ? `Down ${formatCurrency(downFromPeak)} from the ${parseLocalDate(peakDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} peak`
+                  : latestSnapshot
+                    ? 'Current snapshot is the peak'
+                    : '—'}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="min-w-0 bg-card border-border shadow-sm">
+            <CardContent className="px-3.5 py-2.5 min-[1440px]:px-5 min-[1440px]:py-3.5">
+              <div className="mb-1 min-[1440px]:mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-dim">
+                Daily profit avg
+              </div>
+              <div className="text-[22px] min-[1440px]:text-2xl font-bold tabular-nums tracking-tight text-foreground leading-tight">
+                {formatCurrency(summaryDailyAvg)}
+              </div>
+              <div className="mt-1 text-[11.5px] text-dim">
+                {latestSnapshot
+                  ? `As of ${formatLongDate(latestSnapshot.snapshot_date)} · ${daysSinceStartDisplay.toLocaleString('en-US')} days`
+                  : '—'}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Liquidity Snapshots Table */}
-        <Card className="min-w-0 bg-card/30 border-white/10">
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2">
-              <Wallet className="w-5 h-5 text-primary" />
-              Liquidity Snapshots
+        <Card className="min-w-0 overflow-hidden bg-card border-border shadow-sm">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-3.5 py-2.5 min-[1440px]:px-4 min-[1440px]:py-3">
+            <CardTitle className="flex items-center gap-2 text-[15px]">
+              <Wallet className="w-[18px] h-[18px] text-primary" />
+              Liquidity snapshots
             </CardTitle>
             <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={String(showCount)}
-                onValueChange={(v) =>
-                  setShowCount(v === 'all' ? 'all' : parseInt(v))
-                }
+              <div
+                className="inline-flex h-[34px] items-center gap-1 rounded-lg border border-input-border bg-card px-1.5 text-[12.5px] font-medium text-foreground"
+                title="Page through earlier snapshots without widening the table"
               >
-                <SelectTrigger className="w-[130px] h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3">Last 3</SelectItem>
-                  <SelectItem value="5">Last 5</SelectItem>
-                  <SelectItem value="10">Last 10</SelectItem>
-                  <SelectItem value="20">Last 20</SelectItem>
-                  <SelectItem value="all">All</SelectItem>
-                </SelectContent>
-              </Select>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground"
+                  disabled={!canEarlier}
+                  aria-label="Earlier snapshots"
+                  onClick={() =>
+                    setFromEnd((n) => Math.min(maxFromEnd, n + PAGE_SIZE))
+                  }
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <span className="whitespace-nowrap px-1">{rangeLabel}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground"
+                  disabled={!canLater}
+                  aria-label="Later snapshots"
+                  onClick={() => setFromEnd((n) => Math.max(0, n - PAGE_SIZE))}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -751,10 +846,10 @@ export default function Liquidity() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="min-w-0">
+          <CardContent className="min-w-0 p-0">
             {missingPriceCount > 0 && (
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 bg-amber-400/10 border border-amber-400/20 rounded-md px-4 py-2.5">
-                <span className="text-sm text-amber-400">
+              <div className="mx-4 mt-3 mb-1 flex flex-wrap items-center justify-between gap-2 bg-primary/10 border border-primary/20 rounded-md px-4 py-2.5">
+                <span className="text-sm text-primary">
                   {missingPriceCount} snapshot{missingPriceCount !== 1 ? 's' : ''} missing price data
                 </span>
                 <Button
@@ -762,7 +857,7 @@ export default function Liquidity() {
                   size="sm"
                   onClick={handleBackfillPrices}
                   disabled={isBackfilling}
-                  className="border-amber-400/30 text-amber-400 hover:text-amber-300"
+                  className="border-primary/30 text-primary hover:text-primary"
                 >
                   {isBackfilling ? (
                     <>
@@ -776,11 +871,7 @@ export default function Liquidity() {
               </div>
             )}
             <LiquiditySnapshotTable
-              snapshots={
-                showCount === 'all'
-                  ? snapshots
-                  : snapshots.slice(-showCount)
-              }
+              snapshots={visibleSnapshots}
               categories={categories}
               onEdit={handleEditSnapshot}
               onDelete={(id) => setDeleteSnapshotId(id)}
@@ -793,12 +884,12 @@ export default function Liquidity() {
 
         {/* Asset Categories (Collapsible) */}
         <Collapsible open={categoriesOpen} onOpenChange={setCategoriesOpen}>
-          <Card className="min-w-0 bg-card/30 border-white/10">
+          <Card className="min-w-0 bg-card border-border shadow-sm">
             <CollapsibleTrigger asChild>
-              <CardHeader className="flex flex-row items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors rounded-t-xl">
-                <CardTitle className="flex items-center gap-2 text-base">
+              <CardHeader className="flex flex-row items-center justify-between cursor-pointer hover:bg-surface-2/60 transition-colors rounded-t-xl">
+                <CardTitle className="flex items-center gap-2 text-sm">
                   <Settings2 className="w-4 h-4 text-muted-foreground" />
-                  Asset Categories
+                  Asset categories
                 </CardTitle>
                 <ChevronDown
                   className={cn(

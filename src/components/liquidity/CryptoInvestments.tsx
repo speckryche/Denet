@@ -265,10 +265,10 @@ export function CryptoInvestments() {
 
   return (
     <>
-      <Card className="min-w-0 bg-card/30 border-white/10">
+      <Card className="min-w-0 overflow-hidden bg-card border-border shadow-sm">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2">
-            <Bitcoin className="w-5 h-5 text-amber-400" />
+            <Bitcoin className="w-5 h-5 text-primary" />
             Crypto Investments
           </CardTitle>
           <div className="flex flex-wrap items-center gap-2">
@@ -288,13 +288,13 @@ export function CryptoInvestments() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center px-4 py-8 text-muted-foreground">
               Loading...
             </div>
           ) : enriched.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center px-4 py-8 text-muted-foreground">
               <p>No crypto investments tracked yet.</p>
             </div>
           ) : (
@@ -352,7 +352,7 @@ export function CryptoInvestments() {
                   {enriched.map((inv) => (
                     <tr
                       key={inv.id}
-                      className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
+                      className="border-b border-table-row-border hover:bg-surface-2 transition-colors group"
                     >
                       <td className="truncate px-2 py-2.5 font-medium" title={inv.crypto_name}>{inv.crypto_name}</td>
                       <td className="px-2 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
@@ -381,8 +381,8 @@ export function CryptoInvestments() {
                         className={cn(
                           'px-2 py-2.5 text-right font-mono tabular-nums',
                           inv.unrealizedGain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(inv.unrealizedGain)}
@@ -391,8 +391,8 @@ export function CryptoInvestments() {
                         className={cn(
                           'px-2 py-2.5 text-right font-mono tabular-nums',
                           inv.realized_gain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(inv.realized_gain)}
@@ -401,8 +401,8 @@ export function CryptoInvestments() {
                         className={cn(
                           'px-2 py-2.5 text-right font-mono font-semibold tabular-nums',
                           inv.totalGain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(inv.totalGain)}
@@ -421,7 +421,7 @@ export function CryptoInvestments() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                            className="h-7 w-7 text-muted-foreground hover:text-danger"
                             onClick={() => setDeleteTarget(inv.id)}
                             title="Delete"
                           >
@@ -434,7 +434,7 @@ export function CryptoInvestments() {
                 </tbody>
                 {enriched.length > 1 && (
                   <tfoot>
-                    <tr className="border-t-2 border-primary/30 bg-white/[0.03]">
+                    <tr className="border-t-2 border-table-row-border bg-surface-2">
                       <td className="px-2 py-3 font-bold" colSpan={4}>
                         Totals
                       </td>
@@ -449,8 +449,8 @@ export function CryptoInvestments() {
                         className={cn(
                           'px-2 py-3 text-right font-mono font-bold tabular-nums',
                           totals.unrealizedGain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(totals.unrealizedGain)}
@@ -459,8 +459,8 @@ export function CryptoInvestments() {
                         className={cn(
                           'px-2 py-3 text-right font-mono font-bold tabular-nums',
                           totals.realized_gain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(totals.realized_gain)}
@@ -469,8 +469,8 @@ export function CryptoInvestments() {
                         className={cn(
                           'px-2 py-3 text-right font-mono font-bold tabular-nums',
                           totals.totalGain >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                            ? 'text-success'
+                            : 'text-danger'
                         )}
                       >
                         {formatCurrency(totals.totalGain)}
@@ -568,7 +568,7 @@ export function CryptoInvestments() {
             </div>
 
             {error && (
-              <div className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2">
+              <div className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-md px-3 py-2">
                 {error}
               </div>
             )}
