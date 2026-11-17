@@ -13,9 +13,9 @@ export function SettingsGuard({ children }: SettingsGuardProps) {
   return (
     <div className="space-y-4">
       {role !== 'admin' && (
-        <Alert className="bg-blue-500/10 border-blue-500/20">
-          <Lock className="h-4 w-4 text-blue-400" />
-          <AlertDescription className="text-blue-300">
+        <Alert variant="info">
+          <Lock className="h-4 w-4" />
+          <AlertDescription>
             <strong>View Only Mode</strong> - Admin access required to make changes
           </AlertDescription>
         </Alert>

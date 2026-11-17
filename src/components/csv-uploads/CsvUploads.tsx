@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UploadZone } from '../dashboard/UploadZone';
+import { UploadZone, type UploadOutcome } from '../dashboard/UploadZone';
 import { LastUploadDates } from '../dashboard/LastUploadDates';
 import { UploadHistory } from '../dashboard/UploadHistory';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { AlertCircle, X, Bell, ArrowRightLeft } from 'lucide-react';
+import { AlertCircle, CheckCircle2, X, Bell, ArrowRightLeft } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
@@ -110,6 +110,15 @@ export default function CsvUploads() {
   const navigate = useNavigate();
   const [showDedupeBanner, setShowDedupeBanner] = useState(false);
   const [uploadStats, setUploadStats] = useState({ processed: 0, inserted: 0, updated: 0, negativeSpreadCount: 0, commissionRateWarning: null as string | null, statusWarning: null as string | null, retiredATMWarning: null as string | null });
+  // Drives the UploadZone card. It follows the REAL import, not the zone's
+  // simulated progress bar: every exit from the import path must move it out
+  // of "importing" (done / error), or the card waits forever.
+  const [uploadOutcome, setUploadOutcome] = useState<UploadOutcome>({ status: 'idle' });
+  // Abort the import with a message shown in both the page alert and the card.
+  const abortImport = (message: string) => {
+    setError(message);
+    setUploadOutcome({ status: 'error', message });
+  };
   const [error, setError] = useState<string | null>(null);
   const [uploadHistoryKey, setUploadHistoryKey] = useState(0);
   const [newATMIds, setNewATMIds] = useState<string[]>([]);
@@ -320,6 +329,8 @@ export default function CsvUploads() {
         retiredATMWarning,
       });
       setShowDedupeBanner(true);
+      console.info('[csv-upload] import complete', { processed: mappedData.length, inserted: insertedCount, updated: updatedCount });
+      setUploadOutcome({ status: 'done', result: { processed: mappedData.length, inserted: insertedCount, updated: updatedCount } });
       setError(null);
       setUploadHistoryKey((prev) => prev + 1);
 
@@ -335,7 +346,7 @@ export default function CsvUploads() {
       await fetchAllTransactionDates();
     } catch (e) {
       console.error('Error uploading data:', e);
-      setError(e instanceof Error ? e.message : 'Failed to upload data to database');
+      abortImport(e instanceof Error ? e.message : 'Failed to upload data to database');
     }
   };
 
@@ -382,6 +393,7 @@ export default function CsvUploads() {
   const handleConfirmConversions = async () => {
     if (!pendingImport) return;
     setIsConfirmingConversions(true);
+    setUploadOutcome({ status: 'importing' });
     setConversionError(null);
     try {
       const results = await processConversions(pendingConversions);
@@ -395,6 +407,7 @@ export default function CsvUploads() {
           .map((f) => `${f.location_name || f.atm_id} (${f.atm_id}): ${f.message}`)
           .join('\n');
         setConversionError(`${summary}\n${detail}`);
+        setUploadOutcome({ status: 'error', message: summary });
         toast({
           title: 'Conversion failed — import aborted',
           description: summary,
@@ -410,6 +423,7 @@ export default function CsvUploads() {
       console.error('Unexpected error during conversion/import:', e);
       const msg = e instanceof Error ? e.message : 'Conversion failed unexpectedly.';
       setConversionError(msg);
+      setUploadOutcome({ status: 'error', message: msg });
       toast({ title: 'Conversion failed', description: msg, variant: 'destructive' });
     } finally {
       setIsConfirmingConversions(false);
@@ -417,16 +431,23 @@ export default function CsvUploads() {
   };
 
   const handleCancelConversions = () => {
+    setUploadOutcome({ status: 'error', message: 'Import cancelled. Nothing was written.' });
     setPendingConversions([]);
     setPendingImport(null);
     setConversionError(null);
   };
 
   const handleFileSelect = (file: File) => {
+    setError(null);
+    setShowDedupeBanner(false);
+    setUploadOutcome({ status: 'importing' });
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
+      // try/catch: an unexpected throw anywhere below must still move the
+      // card out of "importing" (it would otherwise be an unhandled rejection).
+      try {
         const allData = results.data as any[];
         console.log('CSV Headers:', results.meta.fields);
         console.log('First row raw:', allData[0]);
@@ -611,7 +632,7 @@ export default function CsvUploads() {
           if (!atmNameHeader) missingHeaders.push('Atm/Atm.Name');
 
           if (missingHeaders.length > 0) {
-            setError(`Bitstop CSV is missing required column(s): ${missingHeaders.join(', ')}. Please check the file format.`);
+            abortImport(`Bitstop CSV is missing required column(s): ${missingHeaders.join(', ')}. Please check the file format.`);
             return;
           }
 
@@ -697,7 +718,7 @@ export default function CsvUploads() {
         console.log('Mapped Data (first 2 rows):', mappedData.slice(0, 2));
 
         if (mappedData.length === 0) {
-          setError(`No valid records found in CSV. Please check column headers.`);
+          abortImport(`No valid records found in CSV. Please check column headers.`);
           return;
         }
 
@@ -740,7 +761,7 @@ export default function CsvUploads() {
           if (!last || iso > last) lastTxDateByAtmId.set(tx.atm_id, iso);
         });
         if (badDateSamples.length > 0) {
-          setError(
+          abortImport(
             `Unrecognized date format in CSV — expected M/D/YY or ISO (YYYY-MM-DD). ` +
               `Example value(s): ${badDateSamples.map((d) => `"${d}"`).join(', ')}. ` +
               `Import aborted so no rows are silently skipped.`,
@@ -823,14 +844,19 @@ export default function CsvUploads() {
           setConversionError(null);
           setPendingConversions(conversions);
           setPendingImport(importState);
+          setUploadOutcome({ status: 'awaiting' });
           return;
         }
 
         await runImport(importState);
+      } catch (e) {
+        console.error('Unexpected error during CSV import:', e);
+        abortImport(e instanceof Error ? e.message : 'Import failed unexpectedly.');
+      }
       },
       error: (error) => {
         console.error('Error parsing CSV:', error);
-        setError('Failed to parse CSV file: ' + error.message);
+        abortImport('Failed to parse CSV file: ' + error.message);
       }
     });
   };
@@ -851,8 +877,8 @@ export default function CsvUploads() {
 
         {/* Deduplication Banner */}
         {showDedupeBanner && (
-          <Alert className="bg-secondary/10 border-secondary/20 text-secondary animate-in slide-in-from-top-2">
-            <AlertCircle className="h-4 w-4" />
+          <Alert variant="success" className="animate-in slide-in-from-top-2">
+            <CheckCircle2 className="h-4 w-4" />
             <AlertTitle>Import Complete</AlertTitle>
             <AlertDescription className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -860,22 +886,22 @@ export default function CsvUploads() {
                   Processed {uploadStats.processed} records. <span className="font-bold">{uploadStats.inserted} new, {uploadStats.updated} updated.</span>
                 </span>
                 {uploadStats.negativeSpreadCount > 0 && (
-                  <div className="mt-1 text-amber-400">
+                  <div className="mt-1 text-amber-800 dark:text-amber-300">
                     Heads up: {uploadStats.negativeSpreadCount} row{uploadStats.negativeSpreadCount !== 1 ? 's' : ''} had a zero or negative spread — review for accuracy.
                   </div>
                 )}
                 {uploadStats.commissionRateWarning && (
-                  <div className="mt-1 text-amber-400">
+                  <div className="mt-1 text-amber-800 dark:text-amber-300">
                     {uploadStats.commissionRateWarning}
                   </div>
                 )}
                 {uploadStats.statusWarning && (
-                  <div className="mt-1 text-amber-400">
+                  <div className="mt-1 text-amber-800 dark:text-amber-300">
                     {uploadStats.statusWarning}
                   </div>
                 )}
                 {uploadStats.retiredATMWarning && (
-                  <div className="mt-1 text-amber-400">
+                  <div className="mt-1 text-amber-800 dark:text-amber-300">
                     {uploadStats.retiredATMWarning}
                   </div>
                 )}
@@ -883,7 +909,7 @@ export default function CsvUploads() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-auto p-0 text-secondary hover:text-secondary/80"
+                className="h-auto p-0 text-current hover:bg-transparent hover:text-current hover:opacity-70"
                 onClick={() => setShowDedupeBanner(false)}
               >
                 <X className="w-4 h-4" />
@@ -894,14 +920,14 @@ export default function CsvUploads() {
 
         {/* New ATM Alert */}
         {showNewATMAlert && (
-          <Alert className="bg-yellow-500/10 border-yellow-500/20 text-yellow-500 animate-in slide-in-from-top-2">
+          <Alert variant="warning" className="animate-in slide-in-from-top-2">
             <Bell className="h-4 w-4" />
             <AlertTitle>New ATM IDs Detected!</AlertTitle>
             <AlertDescription className="space-y-2">
               <p>
                 The following {newATMIds.length} new ATM ID{newATMIds.length > 1 ? 's were' : ' was'} detected and added to your system:
               </p>
-              <div className="break-words font-mono text-sm bg-black/20 p-2 rounded">
+              <div className="break-words font-mono text-sm bg-black/5 dark:bg-black/20 p-2 rounded">
                 {newATMIds.sort((a, b) => (parseInt(a) || 0) - (parseInt(b) || 0)).join(', ')}
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -915,7 +941,7 @@ export default function CsvUploads() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-auto p-0 text-yellow-500 hover:text-yellow-400"
+                  className="h-auto p-0 text-current hover:bg-transparent hover:text-current hover:opacity-70"
                   onClick={() => setShowNewATMAlert(false)}
                 >
                   <X className="w-4 h-4" />
@@ -927,7 +953,7 @@ export default function CsvUploads() {
 
         {/* New Ticker Alert */}
         {showNewTickerAlert && (
-          <Alert className="bg-purple-500/10 border-purple-500/20 text-purple-400 animate-in slide-in-from-top-2">
+          <Alert variant="info" className="animate-in slide-in-from-top-2">
             <Bell className="h-4 w-4" />
             <AlertTitle>New Ticker(s) Detected!</AlertTitle>
             <AlertDescription className="space-y-2">
@@ -945,7 +971,7 @@ export default function CsvUploads() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-auto p-0 text-purple-400 hover:text-purple-300"
+                  className="h-auto p-0 text-current hover:bg-transparent hover:text-current hover:opacity-70"
                   onClick={() => setShowNewTickerAlert(false)}
                 >
                   <X className="w-4 h-4" />
@@ -962,7 +988,7 @@ export default function CsvUploads() {
             <UploadHistory key={uploadHistoryKey} onUploadDeleted={() => fetchAllTransactionDates()} />
           </div>
           <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-6 [&>*]:min-w-0">
-            <UploadZone onFileSelect={handleFileSelect} />
+            <UploadZone onFileSelect={handleFileSelect} outcome={uploadOutcome} />
             <LastUploadDates
               denetFirstDate={transactionDates.denetFirst}
               denetLastDate={transactionDates.denetLast}

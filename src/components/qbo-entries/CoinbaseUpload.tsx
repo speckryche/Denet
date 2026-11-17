@@ -82,17 +82,17 @@ export function CoinbaseUpload({
       </div>
 
       {result && (
-        <Alert className="bg-green-500/10 border-green-500/20 text-green-500">
+        <Alert variant="success">
           <AlertDescription>{result}</AlertDescription>
         </Alert>
       )}
       {periodWarning && (
-        <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-400">
+        <Alert variant="warning">
           <AlertDescription>{periodWarning}</AlertDescription>
         </Alert>
       )}
       {error && (
-        <Alert className="bg-red-500/10 border-red-500/20 text-red-500">
+        <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}

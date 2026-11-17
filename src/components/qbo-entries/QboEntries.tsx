@@ -580,9 +580,7 @@ export default function QboEntries() {
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
           {attention && (
-            <Alert className={snapshot?.post_state === 'unknown'
-              ? 'bg-orange-500/10 border-orange-500/40 text-orange-300'
-              : 'bg-blue-500/10 border-blue-500/30 text-blue-300'}>
+            <Alert variant={snapshot?.post_state === 'unknown' ? 'warning' : 'info'}>
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>
                 {snapshot?.post_state === 'unknown' ? 'Check QuickBooks' : 'Posting…'}
@@ -639,12 +637,12 @@ export default function QboEntries() {
         </div>
 
         {error && (
-          <Alert className="bg-red-500/10 border-red-500/20 text-red-500">
+          <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
         {notice && (
-          <Alert className="bg-green-500/10 border-green-500/20 text-green-500">
+          <Alert variant="success">
             <AlertDescription>{notice}</AlertDescription>
           </Alert>
         )}
@@ -727,8 +725,8 @@ export default function QboEntries() {
                     onChangeTreatment={handleTreatmentChange}
                   />
                 ) : (
-                  <Alert className="bg-white/5 border-white/10">
-                    <AlertDescription className="text-muted-foreground">
+                  <Alert variant="muted">
+                    <AlertDescription>
                       No Coinbase statement imported for {monthText(selectedMonth)} yet.
                     </AlertDescription>
                   </Alert>

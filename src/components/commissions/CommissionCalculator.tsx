@@ -678,14 +678,14 @@ export default function CommissionCalculator() {
 
       <main className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6 space-y-6">
         {successMessage && (
-          <Alert className="bg-green-500/10 border-green-500/20 text-green-500">
+          <Alert variant="success">
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>{successMessage}</AlertDescription>
           </Alert>
         )}
 
         {error && (
-          <Alert className="bg-red-500/10 border-red-500/20 text-red-500">
+          <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>

@@ -220,7 +220,7 @@ export default function ReportUploadDialog({ monthRow, open, onOpenChange, onImp
         )}
 
         {result && (
-          <Alert className="bg-green-500/10 border-green-500/30 text-green-400">
+          <Alert variant="success">
             <CheckCircle2 className="h-4 w-4" />
             <AlertTitle>Imported</AlertTitle>
             <AlertDescription>{result}</AlertDescription>

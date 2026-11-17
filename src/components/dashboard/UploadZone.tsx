@@ -1,14 +1,32 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
-interface UploadZoneProps {
-  onFileSelect: (file: File) => void;
+export interface UploadZoneResult {
+  processed: number;
+  inserted: number;
+  updated: number;
 }
 
-export function UploadZone({ onFileSelect }: UploadZoneProps) {
+/**
+ * State of the REAL import, owned by the parent. The zone's own progress bar
+ * only covers reading the file; once it finishes, the card renders this.
+ */
+export type UploadOutcome =
+  | { status: 'idle' }
+  | { status: 'importing' }
+  | { status: 'awaiting' }
+  | { status: 'done'; result: UploadZoneResult }
+  | { status: 'error'; message: string };
+
+interface UploadZoneProps {
+  onFileSelect: (file: File) => void;
+  outcome?: UploadOutcome;
+}
+
+export function UploadZone({ onFileSelect, outcome = { status: 'importing' } }: UploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
@@ -129,23 +147,65 @@ export function UploadZone({ onFileSelect }: UploadZoneProps) {
 
       {uploadStatus === 'success' && (
         <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-500" />
-          </div>
+          {outcome.status === 'done' ? (
+            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-500" />
+            </div>
+          ) : outcome.status === 'error' ? (
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-500" />
+            </div>
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+          )}
           <h3 className="text-lg font-display font-bold text-foreground mb-2">
-            Upload Complete
+            {outcome.status === 'done'
+              ? 'Upload Complete'
+              : outcome.status === 'error'
+                ? 'Import Failed'
+                : outcome.status === 'awaiting'
+                  ? 'Confirm Platform Conversion'
+                  : 'Importing…'}
           </h3>
-          <p className="text-sm text-muted-foreground mb-6">
-            {file?.name} has been successfully processed
+          <p className="text-sm text-muted-foreground">
+            {file?.name}
           </p>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={resetUpload}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            Upload Another
-          </Button>
+          {outcome.status === 'done' ? (
+            <dl className="mt-3 mb-6 flex items-center justify-center gap-6 text-sm">
+              <div>
+                <dt className="text-xs text-muted-foreground">New</dt>
+                <dd className="font-semibold tabular-nums text-foreground">{outcome.result.inserted.toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Updated</dt>
+                <dd className="font-semibold tabular-nums text-foreground">{outcome.result.updated.toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Total</dt>
+                <dd className="font-semibold tabular-nums text-foreground">{outcome.result.processed.toLocaleString()}</dd>
+              </div>
+            </dl>
+          ) : outcome.status === 'error' ? (
+            <p className="mt-2 mb-6 max-w-sm mx-auto text-sm text-red-700 dark:text-red-300 break-words">
+              {outcome.message}
+            </p>
+          ) : outcome.status === 'awaiting' ? (
+            <p className="mt-1 mb-6 text-sm text-muted-foreground">Waiting for your confirmation in the dialog.</p>
+          ) : (
+            <p className="mt-1 mb-6 text-sm text-muted-foreground">Writing records to the database…</p>
+          )}
+          {(outcome.status === 'done' || outcome.status === 'error') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetUpload}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Upload Another
+            </Button>
+          )}
         </div>
       )}
 

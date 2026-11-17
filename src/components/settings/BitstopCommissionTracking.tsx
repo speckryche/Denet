@@ -288,13 +288,13 @@ export function BitstopCommissionTracking() {
         </div>
 
         {successMessage && (
-          <Alert className="mb-4 bg-green-500/10 border-green-500/20 text-green-500">
+          <Alert variant="success" className="mb-4">
             <AlertDescription>{successMessage}</AlertDescription>
           </Alert>
         )}
 
         {error && (
-          <Alert className="mb-4 bg-red-500/10 border-red-500/20 text-red-500">
+          <Alert variant="destructive" className="mb-4">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}

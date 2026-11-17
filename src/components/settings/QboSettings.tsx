@@ -214,12 +214,12 @@ export function QboSettings() {
 
           <CardContent className="space-y-8">
             {successMessage && (
-              <Alert className="bg-green-500/10 border-green-500/20 text-green-500">
+              <Alert variant="success">
                 <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
             )}
             {error && (
-              <Alert className="bg-red-500/10 border-red-500/20 text-red-500">
+              <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}

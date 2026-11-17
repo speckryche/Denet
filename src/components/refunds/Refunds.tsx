@@ -144,7 +144,7 @@ export default function Refunds() {
         )}
 
         {audit && audit.orphans.length > 0 && (
-          <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-400">
+          <Alert variant="warning">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>
               {audit.orphans.length} refund{audit.orphans.length === 1 ? '' : 's'} no longer

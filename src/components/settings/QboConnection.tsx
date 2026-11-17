@@ -309,7 +309,7 @@ export default function QboConnection() {
           <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>
         )}
         {notice && (
-          <Alert className="bg-green-500/10 border-green-500/20 text-green-400">
+          <Alert variant="success">
             <CheckCircle2 className="h-4 w-4" /><AlertDescription>{notice}</AlertDescription>
           </Alert>
         )}
@@ -346,7 +346,7 @@ export default function QboConnection() {
         )}
 
         {status?.status === 'needs_reconnect' && (
-          <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-400">
+          <Alert variant="warning">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Reconnect required</AlertTitle>
             <AlertDescription>

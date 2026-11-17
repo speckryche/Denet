@@ -277,13 +277,13 @@ export default function BitstopCommissions() {
           </CardHeader>
           <CardContent className="px-3 xl:px-5">
             {successMessage && (
-              <Alert className="mb-4 bg-success/10 border-success/20 text-success">
+              <Alert variant="success" className="mb-4">
                 <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
             )}
 
             {error && (
-              <Alert className="mb-4 bg-destructive/10 border-destructive/20 text-destructive">
+              <Alert variant="destructive" className="mb-4">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}

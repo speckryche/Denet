@@ -109,7 +109,7 @@ export function UserManagement() {
           <CardDescription>Manage user roles and permissions</CardDescription>
         </CardHeader>
         <CardContent>
-          <Alert className="bg-red-500/10 border-red-500/20 text-red-500">
+          <Alert variant="destructive">
             <ShieldAlert className="h-4 w-4" />
             <AlertDescription>
               <strong>Access Denied</strong> - Only administrators can access user management.
@@ -136,12 +136,12 @@ export function UserManagement() {
       </CardHeader>
       <CardContent className="space-y-6">
         {error && (
-          <Alert className="bg-red-500/10 border-red-500/20 text-red-500">
+          <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
         {notice && (
-          <Alert className="bg-green-500/10 border-green-500/20 text-green-400">
+          <Alert variant="success">
             <AlertDescription>{notice}</AlertDescription>
           </Alert>
         )}
