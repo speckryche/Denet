@@ -7,8 +7,25 @@ interface SidebarContextType {
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'denet-sidebar-collapsed';
+
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsedState] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const setIsCollapsed = (collapsed: boolean) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
+    } catch {
+      // Storage unavailable — keep in-memory state only.
+    }
+    setIsCollapsedState(collapsed);
+  };
 
   return (
     <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed }}>

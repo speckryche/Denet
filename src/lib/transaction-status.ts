@@ -205,17 +205,17 @@ export const formatStatusLabel = (status: string | null | undefined): string => 
   return STATUS_LABELS[status as TxStatus] ?? status;
 };
 
-// Tailwind pill classes per status for list-view tags (subtle, dark-theme).
+// Tailwind pill classes per status for list-view tags (subtle; readable in light and dark).
 const STATUS_BADGE_CLASSES: Record<TxStatus, string> = {
-  completed: 'bg-white/10 text-muted-foreground',
-  frozen: 'bg-sky-500/15 text-sky-300',
-  sending: 'bg-amber-500/15 text-amber-300',
-  refunded: 'bg-rose-500/15 text-rose-300',
-  expired: 'bg-zinc-500/15 text-zinc-300',
-  under_review: 'bg-violet-500/15 text-violet-300',
-  failed: 'bg-orange-500/15 text-orange-300',
-  partial: 'bg-teal-500/15 text-teal-300',
+  completed: 'bg-success/10 text-success',
+  frozen: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+  sending: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  refunded: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+  expired: 'bg-zinc-500/15 text-zinc-600 dark:text-zinc-300',
+  under_review: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
+  failed: 'bg-orange-500/15 text-orange-700 dark:text-orange-300',
+  partial: 'bg-teal-500/15 text-teal-700 dark:text-teal-300',
 };
 
 export const statusBadgeClass = (status: string | null | undefined): string =>
-  (status && STATUS_BADGE_CLASSES[status as TxStatus]) || 'bg-white/10 text-muted-foreground';
+  (status && STATUS_BADGE_CLASSES[status as TxStatus]) || 'bg-muted text-muted-foreground';

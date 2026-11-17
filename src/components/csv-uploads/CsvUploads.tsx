@@ -4,6 +4,7 @@ import { UploadZone } from '../dashboard/UploadZone';
 import { LastUploadDates } from '../dashboard/LastUploadDates';
 import { UploadHistory } from '../dashboard/UploadHistory';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { AlertCircle, X, Bell, ArrowRightLeft } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -835,23 +836,10 @@ export default function CsvUploads() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
-      <header className="border-b border-white/10 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-[95%] mx-auto px-6 h-16 flex items-center">
-          <div className="flex items-center gap-3">
-            <img
-              src="/images/DNET Logo (black).png"
-              alt="Denet Logo"
-              className="w-20 h-20 object-contain"
-            />
-            <h1 className="font-display font-bold text-xl tracking-tight">
-              CSV <span className="text-muted-foreground font-normal">Uploads</span>
-            </h1>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
+      <PageHeader title="CSV Uploads" />
 
-      <main className="max-w-[95%] mx-auto px-6 py-8 space-y-8">
+      <main className="px-6 pb-8 pt-6 lg:px-7 space-y-8">
         {/* Error Banner */}
         {error && (
           <Alert variant="destructive" className="mb-6 animate-in slide-in-from-top-2">

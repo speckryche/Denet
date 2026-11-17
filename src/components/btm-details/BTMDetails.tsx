@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import UpdateMachineStateModal from './UpdateMachineStateModal';
 import ProfileTimeline from './ProfileTimeline';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 interface SalesRep {
   id: string;
@@ -773,31 +774,32 @@ export default function BTMDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F1419] p-8">
-      <div className="max-w-[1800px] mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-[#F5F1E8]">BTM Machine Details</h1>
-          <div className="flex gap-4 items-center">
+    <div className="min-h-screen bg-background text-foreground">
+      <PageHeader
+        title="BTM Machine Details"
+        actions={
+          <>
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dim w-4 h-4" />
+              <Input
+                placeholder="Search ATM ID or Location..."
+                aria-label="Search ATM ID or Location"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-9 pl-8 bg-card"
+              />
+            </div>
             {isAdmin && (
-              <Button 
-                onClick={() => setAddingNew(!addingNew)}
-                className="bg-[#0066FF] hover:bg-[#0052CC]"
-              >
+              <Button onClick={() => setAddingNew(!addingNew)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add New Machine
               </Button>
             )}
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search ATM ID or Location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-[#1a1f2e] border-[#2a3142] text-[#F5F1E8]"
-              />
-            </div>
-          </div>
-        </div>
+          </>
+        }
+      />
+      <div className="px-6 pb-8 pt-6 lg:px-7">
+      <div className="max-w-[1800px] mx-auto">
 
         {/* Scorecards - Two Platform Sections Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -1166,6 +1168,7 @@ export default function BTMDetails() {
           }}
           onSuccess={() => fetchProfiles()}
         />
+      </div>
       </div>
     </div>
   );

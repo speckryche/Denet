@@ -1,97 +1,164 @@
 @tailwind base;
-  @tailwind components;
-  @tailwind utilities;
+@tailwind components;
+@tailwind utilities;
 
-  @layer base {
-    :root {
-      --background: 0 0% 100%;
-      --foreground: 215 25% 27%;
+/*
+ * Theme tokens. Values are bare HSL triplets consumed by tailwind.config.js as
+ * hsl(var(--token) / <alpha-value>). :root is the light theme; html.dark is the
+ * dark theme (toggled by ThemeContext, and before first paint by the inline
+ * script in index.html).
+ *
+ * Brand orange lives in --primary. --accent follows the shadcn convention of a
+ * subtle hover/selection surface (ghost buttons, menu items), so it is NOT the
+ * brand orange — use primary (e.g. bg-primary/15 text-primary) for orange tints.
+ */
+@layer base {
+  :root {
+    color-scheme: light;
 
-      --card: 0 0% 100%;
-      --card-foreground: 215 25% 27%;
+    --background: 216 26.3% 96.3%;       /* #F3F5F8 */
+    --foreground: 216 21.7% 9%;          /* #12161C */
 
-      --popover: 0 0% 100%;
-      --popover-foreground: 215 25% 27%;
+    --elevated: 0 0% 100%;               /* sidebar / header */
+    --card: 0 0% 100%;
+    --card-foreground: 216 21.7% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 21.7% 9%;
+    --surface-2: 220 23.1% 97.5%;        /* #F7F8FA */
 
-      /* Orange from logo */
-      --primary: 38 92% 50%;
-      --primary-foreground: 0 0% 100%;
+    --primary: 36 100% 38.8%;            /* #C67800 */
+    --primary-foreground: 0 0% 100%;
 
-      /* Light slate blue from logo */
-      --secondary: 210 20% 80%;
-      --secondary-foreground: 215 25% 27%;
+    --secondary: 214 25.9% 94.7%;        /* #EEF1F5 */
+    --secondary-foreground: 216 21.7% 9%;
 
-      --muted: 210 20% 95%;
-      --muted-foreground: 215 15% 50%;
+    --muted: 214 25.9% 94.7%;
+    --muted-foreground: 215 14.3% 35.7%; /* #4E5968 */
+    --dim: 217 8.9% 46.1%;               /* #6B7380 */
 
-      --accent: 38 92% 50%;
-      --accent-foreground: 0 0% 100%;
+    --accent: 214 25.9% 94.7%;
+    --accent-foreground: 216 21.7% 9%;
 
-      --destructive: 0 84.2% 60.2%;
-      --destructive-foreground: 0 0% 100%;
+    --destructive: 4 74.3% 48.8%;        /* #D92D20 */
+    --destructive-foreground: 0 0% 100%;
+    --danger: 4 74.3% 48.8%;
+    --success: 160 83.8% 33.9%;          /* #0E9F6E */
+    --success-foreground: 0 0% 100%;
 
-      --border: 210 20% 90%;
-      --input: 210 20% 90%;
-      --ring: 38 92% 50%;
+    --border: 214 20% 86.3%;             /* #D5DBE3 */
+    --border-strong: 215 15.9% 79%;      /* #C1C8D2 */
+    --input: 214 20% 86.3%;
+    --ring: 36 100% 38.8%;
 
-      --radius: 0.5rem;
-    }
-
-    .dark {
-      /* Dark slate background */
-      --background: 215 28% 17%;
-      --foreground: 210 20% 98%;
-
-      /* Slightly lighter dark slate for cards */
-      --card: 215 25% 20%;
-      --card-foreground: 210 20% 98%;
-
-      --popover: 215 25% 20%;
-      --popover-foreground: 210 20% 98%;
-
-      /* Orange from logo */
-      --primary: 38 92% 50%;
-      --primary-foreground: 0 0% 100%;
-
-      /* Muted slate blue */
-      --secondary: 210 18% 30%;
-      --secondary-foreground: 210 20% 98%;
-
-      --muted: 210 18% 25%;
-      --muted-foreground: 210 15% 65%;
-
-      --accent: 38 92% 50%;
-      --accent-foreground: 0 0% 100%;
-
-      --destructive: 0 62.8% 50%;
-      --destructive-foreground: 210 20% 98%;
-
-      --border: 210 18% 30%;
-      --input: 210 18% 30%;
-      --ring: 38 92% 50%;
-    }
+    --radius: 0.625rem;
   }
 
-  @layer base {
-    * {
-      @apply border-border;
-    }
-    body {
-      @apply bg-background text-foreground;
-    }
-    input[type="date"]::-webkit-calendar-picker-indicator,
-    input[type="month"]::-webkit-calendar-picker-indicator {
-      filter: invert(1);
-      cursor: pointer;
-    }
-    /* Remove number input spinner arrows app-wide */
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    input[type="number"] {
-      -moz-appearance: textfield;
-      appearance: textfield;
-    }
+  .dark {
+    color-scheme: dark;
+
+    --background: 220 21.4% 5.5%;        /* #0B0D11 */
+    --foreground: 210 20% 96.1%;         /* #F3F5F7 */
+
+    --elevated: 216 23.8% 8.2%;          /* #10141A */
+    --card: 217 22% 11.6%;               /* #171C24 */
+    --card-foreground: 210 20% 96.1%;
+    --popover: 217 22% 11.6%;
+    --popover-foreground: 210 20% 96.1%;
+    --surface-2: 216 20.5% 14.3%;        /* #1D232C */
+
+    --primary: 36 91.3% 54.9%;           /* #F5A023 */
+    --primary-foreground: 40 37.5% 6.3%; /* #16120A */
+
+    --secondary: 216 20.5% 14.3%;
+    --secondary-foreground: 210 20% 96.1%;
+
+    --muted: 216 20.5% 14.3%;
+    --muted-foreground: 216 15.4% 74.5%; /* #B4BCC8 */
+    --dim: 218 10.5% 58.8%;              /* #8B93A1 */
+
+    --accent: 216 20.5% 14.3%;
+    --accent-foreground: 210 20% 96.1%;
+
+    --destructive: 0 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --danger: 0 100% 71%;                /* #FF6B6B */
+    --success: 152 60.3% 52.5%;          /* #3DCF8A */
+    --success-foreground: 40 37.5% 6.3%;
+
+    --border: 216 17.9% 22%;             /* #2E3642 */
+    --border-strong: 217 15.9% 28.4%;    /* #3D4654 */
+    --input: 216 17.9% 22%;
+    --ring: 36 91.3% 54.9%;
   }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+  /* Remove number input spinner arrows app-wide */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+}
+
+/*
+ * PHASE-1 LIGHT-MODE COMPAT SHIM — remove in phase 2.
+ * Many pages not yet redesigned hardcode dark-only utilities (white-alpha
+ * borders/fills, the old charcoal/cream hexes, and -300/-400 status text that
+ * is unreadable on white). In light mode only, remap the most common ones to
+ * tokens / darker shades so those pages stay legible. Dark mode is untouched.
+ */
+html:not(.dark) .border-white\/5,
+html:not(.dark) .border-white\/10,
+html:not(.dark) .border-white\/20,
+html:not(.dark) .border-white\/\[0\.04\],
+html:not(.dark) .border-white\/\[0\.06\],
+html:not(.dark) .border-\[\#2a3142\] {
+  border-color: hsl(var(--border));
+}
+html:not(.dark) .bg-white\/\[0\.02\],
+html:not(.dark) .bg-white\/\[0\.03\],
+html:not(.dark) .bg-white\/\[0\.04\],
+html:not(.dark) .bg-white\/5,
+html:not(.dark) .hover\:bg-white\/5:hover,
+html:not(.dark) .hover\:bg-white\/10:hover {
+  background-color: hsl(var(--surface-2));
+}
+html:not(.dark) .bg-white\/10 {
+  background-color: hsl(var(--muted));
+}
+html:not(.dark) .bg-\[\#0F1419\] { background-color: hsl(var(--background)); }
+html:not(.dark) .bg-\[\#1a1f2e\] { background-color: hsl(var(--card)); }
+html:not(.dark) .text-\[\#F5F1E8\] { color: hsl(var(--foreground)); }
+html:not(.dark) .text-green-300,
+html:not(.dark) .text-green-400 { color: #047857; }
+html:not(.dark) .text-red-300,
+html:not(.dark) .text-red-400 { color: #B91C1C; }
+html:not(.dark) .text-amber-200\/90,
+html:not(.dark) .text-amber-300,
+html:not(.dark) .text-amber-400 { color: #A85F00; }
+html:not(.dark) .text-yellow-200,
+html:not(.dark) .text-yellow-400 { color: #A16207; }
+html:not(.dark) .text-orange-300 { color: #C2410C; }
+html:not(.dark) .text-purple-200,
+html:not(.dark) .text-purple-300 { color: #7E22CE; }
+html:not(.dark) .text-blue-300,
+html:not(.dark) .text-blue-400 { color: #1D4ED8; }
