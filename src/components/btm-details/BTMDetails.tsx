@@ -385,8 +385,8 @@ export default function BTMDetails() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#2a3142] text-xs uppercase tracking-wide text-gray-500">
+            <thead className="bg-table-header-bg text-table-header-fg">
+              <tr className="border-b border-table-header-bg text-xs uppercase tracking-wide text-table-header-fg">
                 <th
                   className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
                   onClick={() => handleSort('atm_id')}

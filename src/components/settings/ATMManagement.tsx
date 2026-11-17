@@ -681,8 +681,8 @@ export function ATMManagement() {
             ) : (
               <div className="rounded-md border border-white/10 overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-white/5">
-                    <TableRow className="border-white/10">
+                  <TableHeader>
+                    <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Commission %</TableHead>
@@ -822,12 +822,12 @@ export function ATMManagement() {
                     </h4>
                     <div className="rounded-md border border-white/10 overflow-x-auto">
                       <Table>
-                        <TableHeader className="bg-white/5">
-                          <TableRow className="border-white/10">
+                        <TableHeader>
+                          <TableRow>
                             <TableHead className="min-w-[70px]">
                               <button
                                 onClick={() => toggleAtmSort('atm_id')}
-                                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                className="flex items-center gap-1 hover:opacity-80 transition-opacity"
                               >
                                 ATM ID
                                 {atmSortField === 'atm_id' && (atmSortOrder === 'asc' ? (
@@ -841,7 +841,7 @@ export function ATMManagement() {
                             <TableHead className="min-w-[140px]">
                               <button
                                 onClick={() => toggleAtmSort('location_name')}
-                                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                className="flex items-center gap-1 hover:opacity-80 transition-opacity"
                               >
                                 Location Name
                                 {atmSortField === 'location_name' && (atmSortOrder === 'asc' ? (
@@ -1059,12 +1059,12 @@ export function ATMManagement() {
                   </h4>
                   <div className="rounded-md border border-white/10 overflow-x-auto">
                     <Table>
-                      <TableHeader className="bg-white/5">
-                        <TableRow className="border-white/10">
+                      <TableHeader>
+                        <TableRow>
                           <TableHead className="min-w-[70px]">
                             <button
                               onClick={() => toggleAtmSort('atm_id')}
-                              className="flex items-center gap-1 hover:text-foreground transition-colors"
+                              className="flex items-center gap-1 hover:opacity-80 transition-opacity"
                             >
                               ATM ID
                               {atmSortField === 'atm_id' && (atmSortOrder === 'asc' ? (
@@ -1078,7 +1078,7 @@ export function ATMManagement() {
                           <TableHead className="min-w-[140px]">
                             <button
                               onClick={() => toggleAtmSort('location_name')}
-                              className="flex items-center gap-1 hover:text-foreground transition-colors"
+                              className="flex items-center gap-1 hover:opacity-80 transition-opacity"
                             >
                               Location Name
                               {atmSortField === 'location_name' && (atmSortOrder === 'asc' ? (

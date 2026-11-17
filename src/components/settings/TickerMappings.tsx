@@ -236,12 +236,12 @@ export function TickerMappings() {
         ) : (
           <div className="rounded-md border border-white/10">
             <Table>
-              <TableHeader className="bg-white/5">
-                <TableRow className="border-white/10">
-                  <TableHead className="text-muted-foreground font-display">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="font-display">
                     Original Value (from CSV)
                   </TableHead>
-                  <TableHead className="text-muted-foreground font-display">
+                  <TableHead className="font-display">
                     Display Value (custom rename)
                   </TableHead>
                 </TableRow>

@@ -421,15 +421,15 @@ export function ImportSnapshotsDialog({
               </div>
               <div className="bg-white/[0.02] border border-white/10 rounded-md overflow-hidden">
                 <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-white/[0.03]">
-                      <th className="px-3 py-2 text-left text-muted-foreground font-medium">
+                  <thead className="bg-table-header-bg text-table-header-fg">
+                    <tr className="border-b border-table-header-bg">
+                      <th className="px-3 py-2 text-left text-table-header-fg font-medium">
                         Date
                       </th>
-                      <th className="px-3 py-2 text-right text-muted-foreground font-medium">
+                      <th className="px-3 py-2 text-right text-table-header-fg font-medium">
                         Cash/Liab Fields
                       </th>
-                      <th className="px-3 py-2 text-right text-muted-foreground font-medium">
+                      <th className="px-3 py-2 text-right text-table-header-fg font-medium">
                         Crypto Qty Fields
                       </th>
                     </tr>

@@ -256,14 +256,14 @@ export function DataTable({ data = [], columns = [], title, toolbar }: DataTable
       </div>
 
       <Table>
-        <TableHeader className="bg-surface-2">
-          <TableRow className="border-border hover:bg-transparent">
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
             {columns.map((col) => (
               visibleColumns[col] && (
                 <TableHead
                   key={col}
                   className={cn(
-                    "h-auto px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-dim whitespace-nowrap",
+                    "h-auto px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-table-header-fg whitespace-nowrap",
                     NUMERIC_COLUMNS.includes(col) && "text-right"
                   )}
                 >

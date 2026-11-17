@@ -1116,12 +1116,12 @@ export default function ATMProfitLoss() {
         {/* Table */}
         <div className="rounded-md border border-white/10 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-white/10">
+            <TableHeader>
+              <TableRow>
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('active')}
-                    className="flex items-center gap-1 hover:text-foreground/80"
+                    className="flex items-center gap-1 hover:opacity-80"
                   >
                     Status
                     {sortField === 'active' ? (
@@ -1134,7 +1134,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('installed_date')}
-                    className="flex items-center gap-1 hover:text-foreground/80"
+                    className="flex items-center gap-1 hover:opacity-80"
                   >
                     Install
                     {sortField === 'installed_date' ? (
@@ -1147,7 +1147,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('atm_id')}
-                    className="flex items-center gap-1 hover:text-foreground/80"
+                    className="flex items-center gap-1 hover:opacity-80"
                   >
                     ATM ID
                     {sortField === 'atm_id' ? (
@@ -1160,7 +1160,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('atm_name')}
-                    className="flex items-center gap-1 hover:text-foreground/80"
+                    className="flex items-center gap-1 hover:opacity-80"
                   >
                     ATM Name
                     {sortField === 'atm_name' ? (
@@ -1173,7 +1173,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('state')}
-                    className="flex items-center gap-1 hover:text-foreground/80"
+                    className="flex items-center gap-1 hover:opacity-80"
                   >
                     State
                     {sortField === 'state' ? (
@@ -1186,7 +1186,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('platform')}
-                    className="flex items-center gap-1 hover:text-foreground/80"
+                    className="flex items-center gap-1 hover:opacity-80"
                   >
                     Platform
                     {sortField === 'platform' ? (
@@ -1199,7 +1199,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('total_sales')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Total Sales
                     {sortField === 'total_sales' ? (
@@ -1212,7 +1212,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('total_fees')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Total Fees
                     {sortField === 'total_fees' ? (
@@ -1225,7 +1225,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('fee_pct')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Fee %
                     {sortField === 'fee_pct' ? (
@@ -1238,7 +1238,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('bitstop_fees')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Bitstop Fees
                     {sortField === 'bitstop_fees' ? (
@@ -1251,7 +1251,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('rent')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Rent
                     {sortField === 'rent' ? (
@@ -1264,7 +1264,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('mgmt_rps')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Mgmt - RPS
                     {sortField === 'mgmt_rps' ? (
@@ -1277,7 +1277,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('mgmt_rep')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Mgmt - Rep
                     {sortField === 'mgmt_rep' ? (
@@ -1291,7 +1291,7 @@ export default function ATMProfitLoss() {
                   <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={() => handleSort('commissions')}
-                      className="flex items-center gap-1 hover:text-foreground/80"
+                      className="flex items-center gap-1 hover:opacity-80"
                     >
                       Commissions
                       {sortField === 'commissions' ? (
@@ -1306,7 +1306,7 @@ export default function ATMProfitLoss() {
                           <button
                             type="button"
                             aria-label="About negative commission values"
-                            className="flex items-center text-muted-foreground hover:text-foreground/80"
+                            className="flex items-center hover:opacity-80"
                           >
                             <Info className="w-3.5 h-3.5" />
                           </button>
@@ -1321,7 +1321,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('net_profit')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Net Profit
                     {sortField === 'net_profit' ? (

@@ -608,12 +608,12 @@ export default function ATMSalesSummary() {
         {/* Table */}
         <div className="rounded-md border border-white/10 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-white/10">
+            <TableHeader>
+              <TableRow>
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('atm_id')}
-                    className="flex items-center gap-1 hover:text-foreground/80"
+                    className="flex items-center gap-1 hover:opacity-80"
                   >
                     ATM ID
                     {sortField === 'atm_id' ? (
@@ -626,7 +626,7 @@ export default function ATMSalesSummary() {
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('atm_name')}
-                    className="flex items-center gap-1 hover:text-foreground/80"
+                    className="flex items-center gap-1 hover:opacity-80"
                   >
                     ATM Name
                     {sortField === 'atm_name' ? (
@@ -639,7 +639,7 @@ export default function ATMSalesSummary() {
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('platform')}
-                    className="flex items-center gap-1 hover:text-foreground/80"
+                    className="flex items-center gap-1 hover:opacity-80"
                   >
                     Platform
                     {sortField === 'platform' ? (
@@ -652,7 +652,7 @@ export default function ATMSalesSummary() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('transaction_count')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Transactions
                     {sortField === 'transaction_count' ? (
@@ -665,7 +665,7 @@ export default function ATMSalesSummary() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('total_sales')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Total Sales
                     {sortField === 'total_sales' ? (
@@ -678,7 +678,7 @@ export default function ATMSalesSummary() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('total_fees')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Total Fees
                     {sortField === 'total_fees' ? (
@@ -691,7 +691,7 @@ export default function ATMSalesSummary() {
                 <TableHead className="text-right font-bold">
                   <button
                     onClick={() => handleSort('avg_transaction')}
-                    className="flex items-center gap-1 hover:text-foreground/80 ml-auto"
+                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
                   >
                     Avg Transaction
                     {sortField === 'avg_transaction' ? (

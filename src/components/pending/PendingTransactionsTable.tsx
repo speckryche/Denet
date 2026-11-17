@@ -37,8 +37,8 @@ export function PendingTransactionsTable({
   return (
     <div className="rounded-md border border-white/10 overflow-x-auto">
       <Table>
-        <TableHeader className="bg-white/5">
-          <TableRow className="border-white/10">
+        <TableHeader>
+          <TableRow>
             {/* The transaction's own id, abbreviated. Several rows can share an
                 ATM, a date and an amount — this is the only field that never
                 collides, so it is what you cross-check against the confirm

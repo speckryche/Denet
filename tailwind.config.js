@@ -38,6 +38,9 @@ module.exports = {
         "surface-2": "hsl(var(--surface-2) / <alpha-value>)",
         // Tertiary text: kickers, table header labels, footnotes
         dim: "hsl(var(--dim) / <alpha-value>)",
+        // Table header strip (black/white in light, surface-2/dim in dark)
+        "table-header-bg": "hsl(var(--table-header-bg) / <alpha-value>)",
+        "table-header-fg": "hsl(var(--table-header-fg) / <alpha-value>)",
         primary: {
           DEFAULT: "hsl(var(--primary) / <alpha-value>)",
           foreground: "hsl(var(--primary-foreground) / <alpha-value>)",

@@ -854,9 +854,9 @@ export default function PlatformComparison() {
                   <col style={{ width: '180px' }} />
                   <col style={{ width: '160px' }} />
                 </colgroup>
-                <thead>
-                  <tr className="border-b-2 border-white/10">
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <thead className="bg-table-header-bg text-table-header-fg">
+                  <tr className="border-b-2 border-table-header-bg">
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-table-header-fg">
                       &nbsp;
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-primary">
@@ -865,7 +865,7 @@ export default function PlatformComparison() {
                     <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-amber-400">
                       Projected (Bitstop)
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-table-header-fg">
                       Delta
                     </th>
                   </tr>

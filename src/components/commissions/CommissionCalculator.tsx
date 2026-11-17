@@ -810,8 +810,8 @@ export default function CommissionCalculator() {
                         {isExpanded && (
                           <div className="overflow-x-auto">
                             <Table>
-                              <TableHeader className="bg-white/5">
-                                <TableRow className="border-white/10">
+                              <TableHeader>
+                                <TableRow>
                                   <TableHead>Sales Rep</TableHead>
                                   <TableHead>Month</TableHead>
                                   <TableHead className="text-right">Total Sales</TableHead>
@@ -996,8 +996,8 @@ export default function CommissionCalculator() {
 
               <div className="rounded-md border border-white/10 overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-white/5">
-                    <TableRow className="border-white/10">
+                  <TableHeader>
+                    <TableRow>
                       <TableHead>ATM ID</TableHead>
                       <TableHead className="text-right">Total Sales</TableHead>
                       <TableHead className="text-right">Total Fees</TableHead>

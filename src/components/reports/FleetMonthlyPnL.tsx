@@ -477,9 +477,9 @@ export default function FleetMonthlyPnL() {
         {/* Table */}
         <div className="rounded-md border border-white/10 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-white/10">
-                <TableHead className="font-bold sticky left-0 bg-background z-10">Line Item</TableHead>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-bold sticky left-0 bg-table-header-bg z-10">Line Item</TableHead>
                 {months.map((ym) => {
                   const isPartial = ym === partialMonth;
                   const isMissing = commStatus[ym] === 'missing';

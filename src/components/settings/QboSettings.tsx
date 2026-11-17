@@ -229,7 +229,7 @@ export function QboSettings() {
               <div className="rounded-md border border-white/10">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-white/10">
+                    <TableRow>
                       <TableHead className="w-[280px]">Used for</TableHead>
                       <TableHead>QBO account name</TableHead>
                       <TableHead className="w-[200px]">QBO account ID (optional)</TableHead>
@@ -272,7 +272,7 @@ export function QboSettings() {
               <div className="rounded-md border border-white/10">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-white/10">
+                    <TableRow>
                       <TableHead className="w-[90px]">Symbol</TableHead>
                       <TableHead className="w-[140px]">Name</TableHead>
                       <TableHead className="w-[150px]">Default treatment</TableHead>

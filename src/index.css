@@ -36,6 +36,10 @@
     --muted-foreground: 215 14.3% 35.7%; /* #4E5968 */
     --dim: 217 8.9% 46.1%;               /* #6B7380 */
 
+    /* Table header strip: solid black with white labels in light mode */
+    --table-header-bg: 0 0% 0%;          /* #000000 */
+    --table-header-fg: 0 0% 100%;        /* #FFFFFF */
+
     --accent: 214 25.9% 94.7%;
     --accent-foreground: 216 21.7% 9%;
 
@@ -75,6 +79,10 @@
     --muted: 216 20.5% 14.3%;
     --muted-foreground: 216 15.4% 74.5%; /* #B4BCC8 */
     --dim: 218 10.5% 58.8%;              /* #8B93A1 */
+
+    /* Table header strip: same as surface-2 / dim (unchanged dark look) */
+    --table-header-bg: 216 20.5% 14.3%;  /* #1D232C */
+    --table-header-fg: 218 10.5% 58.8%;  /* #8B93A1 */
 
     --accent: 216 20.5% 14.3%;
     --accent-foreground: 210 20% 96.1%;

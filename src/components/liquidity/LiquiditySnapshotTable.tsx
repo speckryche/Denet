@@ -198,12 +198,12 @@ export function LiquiditySnapshotTable({
         </colgroup>
 
         <thead>
-          <tr className="border-b-2 border-white/10">
+          <tr className="border-b-2 border-table-header-bg bg-table-header-bg text-table-header-fg">
             <th
               className={cn(
                 'sticky left-0 z-20',
-                stickyBg,
-                'px-5 py-3 text-left text-sm font-bold uppercase tracking-widest text-white'
+                'bg-table-header-bg',
+                'px-5 py-3 text-left text-sm font-bold uppercase tracking-widest text-table-header-fg'
               )}
             >
               Asset
@@ -218,7 +218,7 @@ export function LiquiditySnapshotTable({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 text-muted-foreground/50 hover:text-foreground"
+                      className="h-6 w-6 text-table-header-fg/60 hover:bg-table-header-fg/10 hover:text-table-header-fg"
                       onClick={() => onEdit(snap)}
                     >
                       <Pencil className="h-3 w-3" />
@@ -226,7 +226,7 @@ export function LiquiditySnapshotTable({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 text-muted-foreground/50 hover:text-red-400"
+                      className="h-6 w-6 text-table-header-fg/60 hover:bg-table-header-fg/10 hover:text-red-400"
                       onClick={() => onDelete(snap.id)}
                     >
                       <Trash2 className="h-3 w-3" />

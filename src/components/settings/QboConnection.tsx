@@ -372,11 +372,11 @@ export default function QboConnection() {
             <div className="rounded-md border border-white/10 overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-white/10 hover:bg-transparent">
-                    <TableHead className="font-bold text-foreground">Used for</TableHead>
-                    <TableHead className="font-bold text-foreground">Our account name</TableHead>
-                    <TableHead className="font-bold text-foreground">QuickBooks account</TableHead>
-                    <TableHead className="font-bold text-foreground w-[120px]">Match</TableHead>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-bold">Used for</TableHead>
+                    <TableHead className="font-bold">Our account name</TableHead>
+                    <TableHead className="font-bold">QuickBooks account</TableHead>
+                    <TableHead className="font-bold w-[120px]">Match</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

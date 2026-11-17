@@ -726,8 +726,8 @@ export default function CTRReport() {
                                     Transactions on {formatDate(item.trigger_date)}
                                   </div>
                                   <table className="w-full text-sm">
-                                    <thead>
-                                      <tr className="text-xs text-muted-foreground">
+                                    <thead className="bg-table-header-bg text-table-header-fg">
+                                      <tr className="text-xs text-table-header-fg [&>th:first-child]:pl-2">
                                         <th className="text-left py-1.5 pr-4">Transaction ID</th>
                                         <th className="text-left py-1.5 pr-4">ATM</th>
                                         <th className="text-left py-1.5 pr-4">ATM Address</th>

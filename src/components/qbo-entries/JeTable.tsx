@@ -78,17 +78,17 @@ export function JeTable({ je, title }: { je: Je; title: string }) {
       <div className="rounded-md border border-white/10 overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="border-white/10 hover:bg-transparent">
-              <TableHead className="font-bold text-foreground">Account</TableHead>
-              <TableHead className="font-bold text-foreground text-right w-[180px]">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="font-bold">Account</TableHead>
+              <TableHead className="font-bold text-right w-[180px]">
                 Debit
                 <CopyButton value={columnValues('debit')} label="all debit amounts" />
               </TableHead>
-              <TableHead className="font-bold text-foreground text-right w-[180px]">
+              <TableHead className="font-bold text-right w-[180px]">
                 Credit
                 <CopyButton value={columnValues('credit')} label="all credit amounts" />
               </TableHead>
-              <TableHead className="font-bold text-foreground">Description</TableHead>
+              <TableHead className="font-bold">Description</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

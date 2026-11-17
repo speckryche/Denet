@@ -200,8 +200,8 @@ export default function TransactionsTable({
   return (
     <div className="rounded-md border border-white/10 overflow-x-auto">
       <Table>
-        <TableHeader className="bg-white/5">
-          <TableRow className="border-white/10">
+        <TableHeader>
+          <TableRow>
             <TableHead className="font-bold"><SortButton field="date" label="Date" /></TableHead>
             <TableHead className="font-bold"><SortButton field="atm_id" label="ATM ID" /></TableHead>
             <TableHead className="font-bold"><SortButton field="atm_name" label="ATM Name" /></TableHead>

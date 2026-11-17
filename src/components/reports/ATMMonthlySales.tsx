@@ -650,7 +650,7 @@ export default function ATMMonthlySales() {
     XLSX.writeFile(wb, `atm-monthly-sales-${selectedYear}-${exportFileSuffix(selectedPlatform)}.xlsx`);
   };
 
-  const stickyHead = 'sticky z-20 bg-muted text-foreground font-bold';
+  const stickyHead = 'sticky z-20 bg-table-header-bg text-table-header-fg font-bold';
 
   return (
     <Card>
@@ -727,7 +727,7 @@ export default function ATMMonthlySales() {
         <div className="rounded-md border border-white/10 overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-white/10 hover:bg-transparent">
+              <TableRow className="hover:bg-transparent">
                 <TableHead className={`${stickyHead} left-0 w-[90px] min-w-[90px]`}>Status</TableHead>
                 <TableHead className={`${stickyHead} left-[90px] w-[100px] min-w-[100px]`}>Install</TableHead>
                 <TableHead className={`${stickyHead} left-[190px] w-[100px] min-w-[100px]`}>Removed</TableHead>
@@ -739,7 +739,7 @@ export default function ATMMonthlySales() {
                 </TableHead>
                 <TableHead className={`${stickyHead} left-[640px] w-[100px] min-w-[100px] border-r-2 border-white/20`}>Platform</TableHead>
                 {visibleMonths.map(month => (
-                  <TableHead key={month.key} className="text-center font-bold text-foreground bg-muted w-[110px] min-w-[110px] max-w-[110px]">
+                  <TableHead key={month.key} className="text-center font-bold w-[110px] min-w-[110px] max-w-[110px]">
                     {month.label}
                   </TableHead>
                 ))}

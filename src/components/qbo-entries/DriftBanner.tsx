@@ -51,7 +51,7 @@ export function DriftBanner({
       <div className="rounded-md border border-amber-500/20 overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="border-amber-500/20 hover:bg-transparent">
+            <TableRow className="hover:bg-transparent">
               <TableHead className="text-amber-300">Change</TableHead>
               <TableHead className="text-amber-300">Account</TableHead>
               <TableHead className="text-amber-300 text-right">Debit was → now</TableHead>

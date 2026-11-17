@@ -95,14 +95,14 @@ export function CoinbaseBuysTable({
     <div className="rounded-md border border-white/10 overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="border-white/10 hover:bg-transparent">
-            <TableHead className="font-bold text-foreground w-[120px]">Date</TableHead>
-            <TableHead className="font-bold text-foreground w-[80px]">Coin</TableHead>
-            <TableHead className="font-bold text-foreground text-right w-[140px]">Quantity</TableHead>
-            <TableHead className="font-bold text-foreground text-right w-[140px]">USD amount</TableHead>
-            <TableHead className="font-bold text-foreground text-right w-[110px]">Fee</TableHead>
-            <TableHead className="font-bold text-foreground w-[90px]">Status</TableHead>
-            <TableHead className="font-bold text-foreground w-[230px]">Treatment</TableHead>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="font-bold w-[120px]">Date</TableHead>
+            <TableHead className="font-bold w-[80px]">Coin</TableHead>
+            <TableHead className="font-bold text-right w-[140px]">Quantity</TableHead>
+            <TableHead className="font-bold text-right w-[140px]">USD amount</TableHead>
+            <TableHead className="font-bold text-right w-[110px]">Fee</TableHead>
+            <TableHead className="font-bold w-[90px]">Status</TableHead>
+            <TableHead className="font-bold w-[230px]">Treatment</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

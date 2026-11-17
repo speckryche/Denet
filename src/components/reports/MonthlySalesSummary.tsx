@@ -377,8 +377,8 @@ export default function MonthlySalesSummary() {
         </CardHeader>
         <CardContent className="p-0">
           <Table>
-            <TableHeader className="bg-surface-2">
-              <TableRow className="border-border hover:bg-transparent">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
                 <TableHead className={`${headCell} pl-4 pr-[7px]`}>Platform</TableHead>
                 {months.map(month => (
                   <TableHead key={month} className={`${headCell} px-[7px] text-right`}>{month}</TableHead>

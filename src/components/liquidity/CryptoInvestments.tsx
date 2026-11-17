@@ -313,36 +313,36 @@ export function CryptoInvestments() {
                   <col style={{ width: '9%' }} />
                   <col style={{ width: '4%' }} />
                 </colgroup>
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <thead className="bg-table-header-bg text-table-header-fg">
+                  <tr className="border-b border-table-header-bg">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       Crypto
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       Current Price
                     </th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       As Of
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       Quantity
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       Total Cost
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       Current Value
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       Avg Cost Each
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       Unrealized
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       Realized
                     </th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-table-header-fg">
                       Total Gain
                     </th>
                     <th className="px-3 py-2.5 w-[80px]" />
