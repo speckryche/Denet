@@ -200,6 +200,26 @@ html:not(.dark) .text-purple-300 { color: #7E22CE; }
 html:not(.dark) .text-blue-300,
 html:not(.dark) .text-blue-400 { color: #1D4ED8; }
 
+/* Dark leftover row fills / hovers (#252b3d, #323C49). The zebra shim
+   (bg-white/[0.02] -> surface-2) is more specific than a plain hover
+   utility, so every other row stayed light while its neighbor went
+   charcoal — and dark-on-dark body text became unreadable. */
+html:not(.dark) .hover\:bg-\[\#252b3d\]:hover,
+html:not(.dark) .bg-\[\#252b3d\],
+html:not(.dark) .hover\:bg-\[\#323C49\]:hover,
+html:not(.dark) .group:hover .group-hover\:bg-\[\#323C49\] {
+  background-color: #F3F4F6;
+}
+
+/* Light-gray body text written for dark surfaces (e.g. Pay / Installed). */
+html:not(.dark) .text-gray-300,
+html:not(.dark) .text-gray-400 {
+  color: #374151;
+}
+html:not(.dark) .text-gray-500 {
+  color: #4B5563;
+}
+
 /*
  * Compact, fluid form controls inside table cells. Scoped to td/th so
  * standalone fields (Login, dialogs, page filters) keep their normal sizing.
