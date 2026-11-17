@@ -782,23 +782,23 @@ export default function CommissionCalculator() {
                       <div key={year} className="rounded-md border border-white/10 overflow-hidden">
                         {/* Year Header */}
                         <div
-                          className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-700/40 cursor-pointer hover:bg-slate-600/50 transition-colors"
+                          className="flex flex-wrap items-center justify-between gap-3 p-4 bg-table-header-bg text-table-header-fg cursor-pointer hover:bg-neutral-900 dark:bg-surface-2 dark:text-foreground dark:hover:bg-muted/80 transition-colors"
                           onClick={() => toggleYear(year)}
                         >
                           <div className="flex items-center gap-4">
                             {isExpanded ? (
-                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                              <ChevronDown className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                             ) : (
-                              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                              <ChevronRight className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                             )}
                             <span className="font-semibold text-xl">{year}</span>
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-table-header-fg/70 dark:text-muted-foreground">
                               ({totalRecords} record{totalRecords !== 1 ? 's' : ''})
                             </span>
                           </div>
                           <div className="flex items-center gap-6">
                             <div className="text-right">
-                              <div className="text-xs text-muted-foreground">Total Commissions</div>
+                              <div className="text-xs text-table-header-fg/70 dark:text-muted-foreground">Total Commissions</div>
                               <div className="text-lg font-mono font-semibold text-green-500">
                                 ${Math.round(totalCommissionAmount).toLocaleString('en-US')}
                               </div>

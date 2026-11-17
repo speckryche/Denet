@@ -388,13 +388,13 @@ export default function BTMDetails() {
             <thead className="bg-table-header-bg text-table-header-fg">
               <tr className="border-b border-table-header-bg text-xs uppercase tracking-wide text-table-header-fg">
                 <th
-                  className="w-[12%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
+                  className="w-[12%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-primary"
                   onClick={() => handleSort('atm_id')}
                 >
                   Machine {getSortIcon('atm_id')}
                 </th>
                 <th
-                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
+                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-primary"
                   onClick={() => handleSort('location_name')}
                 >
                   Location {getSortIcon('location_name')}
@@ -403,7 +403,7 @@ export default function BTMDetails() {
                 <th className="w-[8%] text-right px-3 py-2 font-mono font-normal">Rent</th>
                 <th className="w-[12%] text-right px-3 py-2 font-mono font-normal">Mgmt</th>
                 <th
-                  className="w-[9%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
+                  className="w-[9%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-primary"
                   onClick={() => handleSort('rent_payment_method')}
                 >
                   Pay {getSortIcon('rent_payment_method')}
@@ -638,7 +638,7 @@ export default function BTMDetails() {
                       {/* Pay */}
                       <td className="px-3 py-3 align-top">
                         {profile.rent_payment_method ? (
-                          <span className="inline-flex max-w-full items-center truncate rounded-md border border-[#2a3142] bg-[#0F1419] px-2 py-0.5 text-xs font-medium text-gray-300" title={profile.rent_payment_method}>
+                          <span className="inline-flex max-w-full items-center truncate rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-foreground dark:border-[#2a3142] dark:bg-[#0F1419] dark:text-gray-300" title={profile.rent_payment_method}>
                             {profile.rent_payment_method}
                           </span>
                         ) : (
@@ -815,18 +815,18 @@ export default function BTMDetails() {
                   <CardTitle className="text-sm font-medium text-muted-foreground text-center">Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 divide-x divide-white/10">
-                    <div className="text-center pr-2">
-                      <div className="text-xs text-green-400 mb-1">Active</div>
-                      <div className="text-xl font-bold font-mono text-green-400">{activeDenet.length}</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-green-400">Active</div>
+                      <div className="font-mono text-lg font-bold leading-none text-green-400 min-[1440px]:text-xl">{activeDenet.length}</div>
                     </div>
-                    <div className="text-center px-2">
-                      <div className="text-xs text-amber-500 mb-1">Pending</div>
-                      <div className="text-xl font-bold font-mono text-amber-500">{pendingDenet.length}</div>
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-amber-500">Pending</div>
+                      <div className="font-mono text-lg font-bold leading-none text-amber-500 min-[1440px]:text-xl">{pendingDenet.length}</div>
                     </div>
-                    <div className="text-center pl-2">
-                      <div className="text-xs text-red-500 mb-1">Inactive</div>
-                      <div className="text-xl font-bold font-mono text-red-500">{inactiveDenet.length}</div>
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-red-500">Inactive</div>
+                      <div className="font-mono text-lg font-bold leading-none text-red-500 min-[1440px]:text-xl">{inactiveDenet.length}</div>
                     </div>
                   </div>
                 </CardContent>
@@ -838,14 +838,14 @@ export default function BTMDetails() {
                   <CardTitle className="text-sm font-medium text-muted-foreground text-center">Costs</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 divide-x divide-white/10">
-                    <div className="text-center pr-2">
-                      <div className="text-xs text-muted-foreground mb-1">Total Rent</div>
-                      <div className="text-xl font-bold font-mono">${totalRentDenet.toLocaleString()}</div>
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-[10px] leading-tight text-muted-foreground" title="Total Rent">Rent</div>
+                      <div className="font-mono text-base font-bold tabular-nums leading-none min-[1440px]:text-lg">${totalRentDenet.toLocaleString()}</div>
                     </div>
-                    <div className="text-center pl-2">
-                      <div className="text-xs text-muted-foreground mb-1">Management</div>
-                      <div className="text-xl font-bold font-mono">${totalMgmtDenet.toLocaleString()}</div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-[10px] leading-tight text-muted-foreground" title="Management">Mgmt</div>
+                      <div className="font-mono text-base font-bold tabular-nums leading-none min-[1440px]:text-lg">${totalMgmtDenet.toLocaleString()}</div>
                     </div>
                   </div>
                 </CardContent>
@@ -884,18 +884,18 @@ export default function BTMDetails() {
                   <CardTitle className="text-sm font-medium text-muted-foreground text-center">Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 divide-x divide-white/10">
-                    <div className="text-center pr-2">
-                      <div className="text-xs text-green-400 mb-1">Active</div>
-                      <div className="text-xl font-bold font-mono text-green-400">{activeBitstop.length}</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-green-400">Active</div>
+                      <div className="font-mono text-lg font-bold leading-none text-green-400 min-[1440px]:text-xl">{activeBitstop.length}</div>
                     </div>
-                    <div className="text-center px-2">
-                      <div className="text-xs text-amber-500 mb-1">Pending</div>
-                      <div className="text-xl font-bold font-mono text-amber-500">{pendingBitstop.length}</div>
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-amber-500">Pending</div>
+                      <div className="font-mono text-lg font-bold leading-none text-amber-500 min-[1440px]:text-xl">{pendingBitstop.length}</div>
                     </div>
-                    <div className="text-center pl-2">
-                      <div className="text-xs text-red-500 mb-1">Inactive</div>
-                      <div className="text-xl font-bold font-mono text-red-500">{inactiveBitstop.length}</div>
+                    <div className="min-w-0 text-center px-0.5">
+                      <div className="mb-1 text-[10px] leading-tight text-red-500">Inactive</div>
+                      <div className="font-mono text-lg font-bold leading-none text-red-500 min-[1440px]:text-xl">{inactiveBitstop.length}</div>
                     </div>
                   </div>
                 </CardContent>
@@ -907,14 +907,14 @@ export default function BTMDetails() {
                   <CardTitle className="text-sm font-medium text-muted-foreground text-center">Costs</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 divide-x divide-white/10">
-                    <div className="text-center pr-2">
-                      <div className="text-xs text-muted-foreground mb-1">Total Rent</div>
-                      <div className="text-xl font-bold font-mono">${totalRentBitstop.toLocaleString()}</div>
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-[10px] leading-tight text-muted-foreground" title="Total Rent">Rent</div>
+                      <div className="font-mono text-base font-bold tabular-nums leading-none min-[1440px]:text-lg">${totalRentBitstop.toLocaleString()}</div>
                     </div>
-                    <div className="text-center pl-2">
-                      <div className="text-xs text-muted-foreground mb-1">Management</div>
-                      <div className="text-xl font-bold font-mono">${totalMgmtBitstop.toLocaleString()}</div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-[10px] leading-tight text-muted-foreground" title="Management">Mgmt</div>
+                      <div className="font-mono text-base font-bold tabular-nums leading-none min-[1440px]:text-lg">${totalMgmtBitstop.toLocaleString()}</div>
                     </div>
                   </div>
                 </CardContent>

@@ -1114,14 +1114,14 @@ export default function ATMProfitLoss() {
         />
 
         {/* Table */}
-        <div className="rounded-md border border-white/10 min-w-0">
-          <Table className="table-fixed text-xs min-w-[1080px]">
+        <div className="rounded-md border border-white/10 min-w-0 overflow-x-hidden">
+          <Table className="table-fixed text-xs w-full max-w-full">
             <TableHeader>
               <TableRow>
                 <TableHead className="font-bold w-[60px]">
                   <button
                     onClick={() => handleSort('active')}
-                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
+                    className="flex items-center gap-0.5 text-left leading-tight whitespace-nowrap hover:opacity-80"
                   >
                     Status
                     {sortField === 'active' ? (
@@ -1134,7 +1134,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold w-[68px]">
                   <button
                     onClick={() => handleSort('installed_date')}
-                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
+                    className="flex items-center gap-0.5 text-left leading-tight whitespace-nowrap hover:opacity-80"
                   >
                     Install
                     {sortField === 'installed_date' ? (
@@ -1147,7 +1147,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold w-[72px]">
                   <button
                     onClick={() => handleSort('atm_id')}
-                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
+                    className="flex items-center gap-0.5 text-left leading-tight whitespace-nowrap hover:opacity-80"
                   >
                     ATM ID
                     {sortField === 'atm_id' ? (
@@ -1160,7 +1160,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('atm_name')}
-                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
+                    className="flex items-center gap-0.5 text-left leading-tight whitespace-nowrap hover:opacity-80"
                   >
                     ATM Name
                     {sortField === 'atm_name' ? (
@@ -1173,7 +1173,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold w-[48px]">
                   <button
                     onClick={() => handleSort('state')}
-                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
+                    className="flex items-center gap-0.5 text-left leading-tight whitespace-nowrap hover:opacity-80"
                   >
                     State
                     {sortField === 'state' ? (
@@ -1186,7 +1186,7 @@ export default function ATMProfitLoss() {
                 <TableHead className="font-bold w-[68px]">
                   <button
                     onClick={() => handleSort('platform')}
-                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
+                    className="flex items-center gap-0.5 text-left leading-tight whitespace-nowrap hover:opacity-80"
                   >
                     Platform
                     {sortField === 'platform' ? (
@@ -1196,12 +1196,13 @@ export default function ATMProfitLoss() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold w-[84px]">
+                <TableHead className="text-right font-bold w-[72px]" title="Total Sales">
                   <button
+                    title="Total Sales"
                     onClick={() => handleSort('total_sales')}
-                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
+                    className="flex items-center gap-0.5 text-right leading-tight whitespace-nowrap hover:opacity-80 ml-auto"
                   >
-                    Total Sales
+                    Sales
                     {sortField === 'total_sales' ? (
                       sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
@@ -1209,12 +1210,13 @@ export default function ATMProfitLoss() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold w-[84px]">
+                <TableHead className="text-right font-bold w-[64px]" title="Total Fees">
                   <button
+                    title="Total Fees"
                     onClick={() => handleSort('total_fees')}
-                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
+                    className="flex items-center gap-0.5 text-right leading-tight whitespace-nowrap hover:opacity-80 ml-auto"
                   >
-                    Total Fees
+                    Fees
                     {sortField === 'total_fees' ? (
                       sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
@@ -1222,10 +1224,11 @@ export default function ATMProfitLoss() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold w-[60px]">
+                <TableHead className="text-right font-bold w-[56px]" title="Fee %">
                   <button
+                    title="Fee %"
                     onClick={() => handleSort('fee_pct')}
-                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
+                    className="flex items-center gap-0.5 text-right leading-tight whitespace-nowrap hover:opacity-80 ml-auto"
                   >
                     Fee %
                     {sortField === 'fee_pct' ? (
@@ -1235,12 +1238,13 @@ export default function ATMProfitLoss() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold w-[72px]">
+                <TableHead className="text-right font-bold w-[64px]" title="Bitstop Fees">
                   <button
+                    title="Bitstop Fees"
                     onClick={() => handleSort('bitstop_fees')}
-                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
+                    className="flex items-center gap-0.5 text-right leading-tight whitespace-nowrap hover:opacity-80 ml-auto"
                   >
-                    Bitstop Fees
+                    BS fees
                     {sortField === 'bitstop_fees' ? (
                       sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
@@ -1248,10 +1252,11 @@ export default function ATMProfitLoss() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold w-[64px]">
+                <TableHead className="text-right font-bold w-[56px]" title="Rent">
                   <button
+                    title="Rent"
                     onClick={() => handleSort('rent')}
-                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
+                    className="flex items-center gap-0.5 text-right leading-tight whitespace-nowrap hover:opacity-80 ml-auto"
                   >
                     Rent
                     {sortField === 'rent' ? (
@@ -1261,12 +1266,13 @@ export default function ATMProfitLoss() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold w-[64px]">
+                <TableHead className="text-right font-bold w-[52px]" title="Management — RPS">
                   <button
+                    title="Management — RPS"
                     onClick={() => handleSort('mgmt_rps')}
-                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
+                    className="flex items-center gap-0.5 text-right leading-tight whitespace-nowrap hover:opacity-80 ml-auto"
                   >
-                    Mgmt - RPS
+                    RPS
                     {sortField === 'mgmt_rps' ? (
                       sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
@@ -1274,12 +1280,13 @@ export default function ATMProfitLoss() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold w-[64px]">
+                <TableHead className="text-right font-bold w-[52px]" title="Management — Rep">
                   <button
+                    title="Management — Rep"
                     onClick={() => handleSort('mgmt_rep')}
-                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
+                    className="flex items-center gap-0.5 text-right leading-tight whitespace-nowrap hover:opacity-80 ml-auto"
                   >
-                    Mgmt - Rep
+                    Rep
                     {sortField === 'mgmt_rep' ? (
                       sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
@@ -1287,13 +1294,13 @@ export default function ATMProfitLoss() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold w-[88px]">
+                <TableHead className="text-right font-bold w-[64px]" title="Commissions">
                   <div className="flex flex-wrap items-center justify-end gap-1">
                     <button
                       onClick={() => handleSort('commissions')}
-                      className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
+                      className="flex items-center gap-0.5 text-left leading-tight whitespace-nowrap hover:opacity-80"
                     >
-                      Commissions
+                      Comm.
                       {sortField === 'commissions' ? (
                         sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                       ) : (
@@ -1318,12 +1325,13 @@ export default function ATMProfitLoss() {
                     </TooltipProvider>
                   </div>
                 </TableHead>
-                <TableHead className="text-right font-bold w-[80px]">
+                <TableHead className="text-right font-bold w-[56px]" title="Net Profit">
                   <button
+                    title="Net Profit"
                     onClick={() => handleSort('net_profit')}
-                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
+                    className="flex items-center gap-0.5 text-right leading-tight whitespace-nowrap hover:opacity-80 ml-auto"
                   >
-                    Net Profit
+                    Net
                     {sortField === 'net_profit' ? (
                       sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (

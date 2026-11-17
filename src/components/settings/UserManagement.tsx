@@ -41,6 +41,20 @@ const callAdminUsers = async (body: Record<string, unknown>): Promise<any> => {
   return res.data;
 };
 
+const friendlyLoadError = (message: string) => {
+  const m = message.toLowerCase();
+  if (
+    m.includes('not_found') ||
+    m.includes('not found') ||
+    m.includes('404') ||
+    m.includes('failed to send') ||
+    m.includes('failed to fetch')
+  ) {
+    return "Couldn't load the user list right now. Refresh to try again, or invite people from the Supabase dashboard if no one has been added yet.";
+  }
+  return message;
+};
+
 export function UserManagement() {
   const { user, role } = useAuth();
   const isAdmin = role === 'admin';
@@ -58,7 +72,7 @@ export function UserManagement() {
       const data = await callAdminUsers({ action: 'list' });
       setUsers(data.users ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load users');
+      setError(friendlyLoadError(e instanceof Error ? e.message : 'Failed to load users'));
     } finally {
       setLoading(false);
     }
@@ -151,8 +165,10 @@ export function UserManagement() {
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    No users found.
+                  <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
+                    {error
+                      ? 'The user list could not be loaded.'
+                      : 'No users to show yet. Invite someone from the Supabase dashboard, then refresh this list.'}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -195,28 +211,28 @@ export function UserManagement() {
           </Table>
         </div>
 
-        <div className="p-4 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-sm text-yellow-200">
+        <div className="p-4 rounded-md border border-border bg-surface-2 text-sm text-foreground">
           <strong>Role changes need a fresh sign-in.</strong> The user must sign out and back in for a
           new role to apply. Until then their session keeps its old permissions for up to an hour.
         </div>
 
         {/* Role Permissions Info */}
-        <div className="p-4 rounded-md bg-blue-500/10 border border-blue-500/20">
-          <h4 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2">
-            <Info className="w-4 h-4" />
+        <div className="p-4 rounded-md border border-border bg-muted/50">
+          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Info className="w-4 h-4 text-muted-foreground" />
             Role Permissions
           </h4>
-          <div className="space-y-2 text-sm text-blue-300">
+          <div className="space-y-2 text-sm text-muted-foreground">
             <div className="flex items-start gap-2">
-              <Shield className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+              <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div>
-                <strong className="text-yellow-400">Admin:</strong> Full access to every page and setting.
+                <strong className="text-foreground">Admin:</strong> Full access to every page and setting.
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <Shield className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div>
-                <strong className="text-blue-400">Standard:</strong> Full use of Home, CSV Uploads (no deleting uploads), Pending
+                <strong className="text-foreground">Standard:</strong> Full use of Home, CSV Uploads (no deleting uploads), Pending
                 Resolution, Commissions, Cash Management and Liquidity. Everything else is view-only, and
                 QBO Entries and Refunds are hidden.
               </div>
@@ -224,8 +240,8 @@ export function UserManagement() {
           </div>
         </div>
 
-        <div className="p-4 rounded-md bg-purple-500/10 border border-purple-500/20 text-sm text-purple-300">
-          <strong className="text-purple-200">Adding a user:</strong> invite them from Supabase Dashboard →
+        <div className="p-4 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
+          <strong className="text-foreground">Adding a user:</strong> invite them from Supabase Dashboard →
           Authentication → Users. New users start as Standard; promote them here.
         </div>
       </CardContent>

@@ -552,17 +552,17 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                 <div key={monthKey} className="rounded-md border border-white/10 overflow-hidden">
                   {/* Month Header */}
                   <div
-                    className="flex items-center justify-between p-4 bg-slate-700/40 cursor-pointer hover:bg-slate-600/50 transition-colors"
+                    className="flex flex-wrap items-center justify-between gap-3 p-4 bg-table-header-bg text-table-header-fg cursor-pointer hover:bg-neutral-900 dark:bg-surface-2 dark:text-foreground dark:hover:bg-muted/80 transition-colors"
                     onClick={() => toggleMonth(monthKey)}
                   >
                     <div className="flex items-center gap-2">
                       {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                        <ChevronDown className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                       ) : (
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                        <ChevronRight className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
                       )}
                       <span className="font-semibold text-lg">{getMonthLabel(monthKey)}</span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-table-header-fg/70 dark:text-muted-foreground">
                         ({monthPickups.length} pickup{monthPickups.length !== 1 ? 's' : ''})
                       </span>
                     </div>
