@@ -360,7 +360,7 @@ export default function Dashboard() {
         }
       />
 
-      <main className="px-6 pb-8 pt-6 lg:px-7 space-y-[18px]">
+      <main className="min-w-0 px-4 pb-6 pt-5 xl:px-6 xl:pb-8 xl:pt-6 space-y-[18px]">
 
         {/* Error Banner */}
         {error && (

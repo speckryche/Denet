@@ -419,7 +419,7 @@ export function ImportSnapshotsDialog({
                 Preview: {parsedRows.length} snapshot
                 {parsedRows.length !== 1 ? 's' : ''} found
               </div>
-              <div className="bg-white/[0.02] border border-white/10 rounded-md overflow-hidden">
+              <div className="w-full min-w-0 overflow-x-auto bg-white/[0.02] border border-white/10 rounded-md">
                 <table className="w-full text-xs">
                   <thead className="bg-table-header-bg text-table-header-fg">
                     <tr className="border-b border-table-header-bg">

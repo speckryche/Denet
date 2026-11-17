@@ -191,10 +191,10 @@ export function QboSettings() {
           approach did not hold: `[&_input]:read-only` is a Tailwind variant
           used as a class name and applied nothing, so inputs stayed editable,
           and `pointer-events-none` only blocks the mouse. */}
-      <fieldset disabled={isReadOnly} className={isReadOnly ? 'opacity-70' : ''}>
-        <Card className="bg-card/30 border-white/10">
+      <fieldset disabled={isReadOnly} className={`min-w-0 ${isReadOnly ? 'opacity-70' : ''}`}>
+        <Card className="bg-card/30 border-white/10 min-w-0">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5" />
@@ -227,23 +227,27 @@ export function QboSettings() {
             <div>
               <h3 className="text-sm font-semibold mb-2">Fixed accounts</h3>
               <div className="rounded-md border border-white/10">
-                <Table>
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[280px]">Used for</TableHead>
+                      <TableHead className="w-[30%]">Used for</TableHead>
                       <TableHead>QBO account name</TableHead>
-                      <TableHead className="w-[200px]">QBO account ID (optional)</TableHead>
+                      <TableHead className="w-[22%] whitespace-normal leading-tight">QBO account ID (optional)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {accounts.map((account) => (
                       <TableRow key={account.key} className="border-white/5">
-                        <TableCell className="text-muted-foreground">
+                        <TableCell
+                          className="text-muted-foreground truncate"
+                          title={ACCOUNT_LABELS[account.key as AccountKey] || account.key}
+                        >
                           {ACCOUNT_LABELS[account.key as AccountKey] || account.key}
                         </TableCell>
                         <TableCell>
                           <Input
                             value={account.account_name}
+                            title={account.account_name || undefined}
                             onChange={(e) => updateAccount(account.key, 'account_name', e.target.value)}
                           />
                         </TableCell>
@@ -262,7 +266,7 @@ export function QboSettings() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <h3 className="text-sm font-semibold">Crypto assets</h3>
                 <Button variant="outline" size="sm" onClick={() => setNewAsset(emptyAsset())}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -270,21 +274,21 @@ export function QboSettings() {
                 </Button>
               </div>
               <div className="rounded-md border border-white/10">
-                <Table>
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[90px]">Symbol</TableHead>
-                      <TableHead className="w-[140px]">Name</TableHead>
-                      <TableHead className="w-[150px]">Default treatment</TableHead>
+                      <TableHead className="w-[9%]">Symbol</TableHead>
+                      <TableHead className="w-[14%]">Name</TableHead>
+                      <TableHead className="w-[14%] whitespace-normal leading-tight">Default treatment</TableHead>
                       <TableHead>Inventory account</TableHead>
                       <TableHead>Investment account</TableHead>
-                      <TableHead className="w-[90px]">Active</TableHead>
+                      <TableHead className="w-[12%]">Active</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {assets.map((asset) => (
                       <TableRow key={asset.id} className="border-white/5">
-                        <TableCell className="font-mono font-semibold">{asset.symbol}</TableCell>
+                        <TableCell className="font-mono font-semibold truncate" title={asset.symbol}>{asset.symbol}</TableCell>
                         <TableCell>
                           <Input value={asset.name} onChange={(e) => updateAsset(asset.id, 'name', e.target.value)} />
                         </TableCell>
@@ -305,12 +309,14 @@ export function QboSettings() {
                         <TableCell>
                           <Input
                             value={asset.inventory_account_name}
+                            title={asset.inventory_account_name || undefined}
                             onChange={(e) => updateAsset(asset.id, 'inventory_account_name', e.target.value)}
                           />
                         </TableCell>
                         <TableCell>
                           <Input
                             value={asset.investment_account_name}
+                            title={asset.investment_account_name || undefined}
                             onChange={(e) => updateAsset(asset.id, 'investment_account_name', e.target.value)}
                           />
                         </TableCell>
@@ -370,11 +376,11 @@ export function QboSettings() {
                           />
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="sm" onClick={handleAddAsset} disabled={isSaving}>
+                          <div className="flex flex-wrap gap-1">
+                            <Button size="sm" className="h-7 px-2" onClick={handleAddAsset} disabled={isSaving}>
                               Add
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setNewAsset(null)}>
+                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setNewAsset(null)}>
                               Cancel
                             </Button>
                           </div>

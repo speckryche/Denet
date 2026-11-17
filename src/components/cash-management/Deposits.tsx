@@ -556,9 +556,9 @@ export function Deposits({ onUpdate }: DepositsProps) {
   };
 
   return (
-    <Card className="bg-card/30 border-white/10">
+    <Card className="min-w-0 bg-card/30 border-white/10">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>Deposits</CardTitle>
             <CardDescription>Track bank deposits</CardDescription>
@@ -700,25 +700,25 @@ export function Deposits({ onUpdate }: DepositsProps) {
 
                   {/* Month Content */}
                   {isExpanded && (
-                    <Table>
+                    <Table className="table-fixed">
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Deposit ID</TableHead>
-                          <TableHead>Person</TableHead>
-                          <TableHead className="text-right">Deposit Amount</TableHead>
-                          <TableHead className="text-right">Linked Pickups</TableHead>
-                          <TableHead className="text-right">Difference</TableHead>
+                          <TableHead className="w-[9%]">Date</TableHead>
+                          <TableHead className="w-[9%]">Deposit ID</TableHead>
+                          <TableHead className="w-[11%]">Person</TableHead>
+                          <TableHead className="w-[12%] whitespace-normal text-right">Deposit Amount</TableHead>
+                          <TableHead className="w-[12%] whitespace-normal text-right">Linked Pickups</TableHead>
+                          <TableHead className="w-[12%] text-right">Difference</TableHead>
                           <TableHead>Notes</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                          <TableHead className="w-[6.5rem] text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {monthDeposits.map((deposit) => (
                           <TableRow key={deposit.id}>
                             <TableCell>{new Date(deposit.deposit_date + 'T00:00:00').toLocaleDateString()}</TableCell>
-                            <TableCell className="font-semibold">{deposit.deposit_id}</TableCell>
-                            <TableCell>{deposit.person_name}</TableCell>
+                            <TableCell className="truncate font-semibold" title={deposit.deposit_id}>{deposit.deposit_id}</TableCell>
+                            <TableCell className="truncate" title={deposit.person_name}>{deposit.person_name}</TableCell>
                             <TableCell className="text-right font-mono">
                               ${deposit.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
@@ -741,12 +741,13 @@ export function Deposits({ onUpdate }: DepositsProps) {
                               {deposit.difference !== 0 && <AlertCircle className="w-4 h-4 inline mr-1" />}
                               ${deposit.difference.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
-                            <TableCell className="max-w-xs truncate">{deposit.notes || '-'}</TableCell>
+                            <TableCell className="truncate" title={deposit.notes || undefined}>{deposit.notes || '-'}</TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
+                              <div className="flex justify-end gap-1">
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-7 w-7"
                                   onClick={() => handleOpenLinkDialog(deposit)}
                                   title="Link Pickups"
                                 >
@@ -754,15 +755,19 @@ export function Deposits({ onUpdate }: DepositsProps) {
                                 </Button>
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-7 w-7"
                                   onClick={() => handleEdit(deposit)}
+                                  title="Edit"
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-7 w-7"
                                   onClick={() => handleDelete(deposit.id)}
+                                  title="Delete"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -845,14 +850,14 @@ export function Deposits({ onUpdate }: DepositsProps) {
                             key={pickup.id}
                             className="flex items-center gap-3 p-3 rounded-lg bg-card/30 border border-white/5"
                           >
-                            <div className="flex-1 grid grid-cols-5 gap-4 items-center">
+                            <div className="min-w-0 flex-1 grid grid-cols-5 gap-4 items-center">
                               <div>
                                 <div className="text-xs text-muted-foreground">Date</div>
                                 <div className="text-sm">{new Date(pickup.pickup_date + 'T00:00:00').toLocaleDateString()}</div>
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <div className="text-xs text-muted-foreground">ATM</div>
-                                <div className="text-sm">{pickup.atm_name}</div>
+                                <div className="truncate text-sm" title={pickup.atm_name}>{pickup.atm_name}</div>
                               </div>
                               <div className="text-right">
                                 <div className="text-xs text-muted-foreground">Total</div>
@@ -945,15 +950,15 @@ export function Deposits({ onUpdate }: DepositsProps) {
           ) : detailPickups.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">No linked pickups found.</div>
           ) : (
-            <div className="overflow-auto max-h-[400px]">
-              <Table>
+            <div className="min-w-0 overflow-y-auto max-h-[400px]">
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Pickup Date</TableHead>
-                    <TableHead>Person</TableHead>
+                    <TableHead className="w-[18%] whitespace-normal">Pickup Date</TableHead>
+                    <TableHead className="w-[18%]">Person</TableHead>
                     <TableHead>ATM</TableHead>
-                    <TableHead className="text-right">Amount Linked</TableHead>
-                    <TableHead className="text-right w-[160px]">Actions</TableHead>
+                    <TableHead className="w-[19%] whitespace-normal text-right">Amount Linked</TableHead>
+                    <TableHead className="w-[9.5rem] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -965,8 +970,8 @@ export function Deposits({ onUpdate }: DepositsProps) {
                         <TableCell>
                           {new Date(p.pickup_date + 'T00:00:00').toLocaleDateString()}
                         </TableCell>
-                        <TableCell>{p.person_name}</TableCell>
-                        <TableCell>{p.atm_name}</TableCell>
+                        <TableCell className="truncate" title={p.person_name}>{p.person_name}</TableCell>
+                        <TableCell className="truncate" title={p.atm_name}>{p.atm_name}</TableCell>
                         <TableCell className="text-right font-mono">
                           ${p.link_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
@@ -975,12 +980,13 @@ export function Deposits({ onUpdate }: DepositsProps) {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {isConfirming ? (
-                            <div className="flex justify-end items-center gap-2">
-                              <span className="text-xs text-muted-foreground">Remove this link?</span>
+                            <div className="flex justify-end items-center gap-1">
+                              <span className="text-xs leading-tight text-muted-foreground">Remove this link?</span>
                               <Button
                                 type="button"
                                 variant="destructive"
-                                size="sm"
+                                size="icon"
+                                className="h-7 w-7 shrink-0"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -994,7 +1000,8 @@ export function Deposits({ onUpdate }: DepositsProps) {
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
+                                className="h-7 w-7 shrink-0"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1010,7 +1017,8 @@ export function Deposits({ onUpdate }: DepositsProps) {
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
+                              size="icon"
+                              className="h-7 w-7"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();

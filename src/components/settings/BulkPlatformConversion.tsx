@@ -160,9 +160,9 @@ export function BulkPlatformConversion() {
   const successes = results?.filter((r) => r.ok) ?? [];
 
   return (
-    <Card className="bg-card/30 border-white/10">
+    <Card className="bg-card/30 border-white/10 min-w-0">
       <CardHeader>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
               <ArrowRightLeft className="w-5 h-5 text-primary" />
@@ -230,7 +230,7 @@ export function BulkPlatformConversion() {
         ) : step === 'select' ? (
           <>
             {/* Cutover date */}
-            <div className="flex items-end gap-4 mb-4">
+            <div className="flex flex-wrap items-end gap-4 mb-4">
               <div className="w-56">
                 <Label htmlFor="cutover">Batch cutover date</Label>
                 <Input
@@ -256,15 +256,15 @@ export function BulkPlatformConversion() {
                 No active Denet machines.
               </div>
             ) : (
-              <div className="rounded-md border border-white/10 overflow-hidden">
-                <Table>
+              <div className="rounded-md border border-white/10 overflow-hidden min-w-0">
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10"></TableHead>
-                      <TableHead>ATM</TableHead>
+                      <TableHead className="w-[16%]">ATM</TableHead>
                       <TableHead>Location</TableHead>
-                      <TableHead>Last Denet tx</TableHead>
-                      <TableHead className="text-right">Rent</TableHead>
+                      <TableHead className="w-[16%]">Last Denet tx</TableHead>
+                      <TableHead className="w-[14%] text-right">Rent</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -278,8 +278,8 @@ export function BulkPlatformConversion() {
                             onChange={() => toggle(m.atm_id)}
                           />
                         </TableCell>
-                        <TableCell className="font-mono">{m.atm_id}</TableCell>
-                        <TableCell>{m.location_name || '—'}</TableCell>
+                        <TableCell className="font-mono truncate" title={m.atm_id}>{m.atm_id}</TableCell>
+                        <TableCell className="truncate" title={m.location_name || undefined}>{m.location_name || '—'}</TableCell>
                         <TableCell
                           className={
                             m.last_denet_tx && cutoverValid && m.last_denet_tx >= cutover
@@ -308,16 +308,16 @@ export function BulkPlatformConversion() {
               installs on <span className="font-mono">{cutover}</span>. Rent and address carry forward.
             </div>
 
-            <div className="rounded-md border border-white/10 overflow-hidden mb-4">
-              <Table>
+            <div className="rounded-md border border-white/10 overflow-hidden mb-4 min-w-0">
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ATM</TableHead>
+                    <TableHead className="w-[11%]">ATM</TableHead>
                     <TableHead>Location</TableHead>
-                    <TableHead>Denet close</TableHead>
-                    <TableHead>Bitstop install</TableHead>
-                    <TableHead className="text-right">Rent (carry)</TableHead>
-                    <TableHead>Address (carry)</TableHead>
+                    <TableHead className="w-[12%]">Denet close</TableHead>
+                    <TableHead className="w-[12%]">Bitstop install</TableHead>
+                    <TableHead className="w-[11%] text-right">Rent (carry)</TableHead>
+                    <TableHead className="w-[26%]">Address (carry)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -325,11 +325,11 @@ export function BulkPlatformConversion() {
                     const warn = !!m.last_denet_tx && m.last_denet_tx >= cutover;
                     return (
                       <TableRow key={m.atm_id}>
-                        <TableCell className="font-mono">{m.atm_id}</TableCell>
+                        <TableCell className="font-mono truncate" title={m.atm_id}>{m.atm_id}</TableCell>
                         <TableCell>
-                          {m.location_name || '—'}
+                          <div className="truncate" title={m.location_name || undefined}>{m.location_name || '—'}</div>
                           {warn && (
-                            <span className="ml-2 text-xs text-yellow-500">
+                            <span className="block text-xs text-yellow-500">
                               ⚠ Denet tx on/after cutover ({m.last_denet_tx})
                             </span>
                           )}
@@ -337,7 +337,10 @@ export function BulkPlatformConversion() {
                         <TableCell className="font-mono">{isoMinusOneDay(cutover)}</TableCell>
                         <TableCell className="font-mono">{cutover}</TableCell>
                         <TableCell className="text-right font-mono">${fmtMoney(m.monthly_rent)}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
+                        <TableCell
+                          className="text-xs text-muted-foreground truncate"
+                          title={[m.street_address, m.city, m.state, m.zip_code].filter(Boolean).join(', ') || undefined}
+                        >
                           {[m.street_address, m.city, m.state, m.zip_code].filter(Boolean).join(', ') || '—'}
                         </TableCell>
                       </TableRow>
@@ -347,7 +350,7 @@ export function BulkPlatformConversion() {
               </Table>
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={() => setStep('select')} disabled={running}>
                 ← Back
               </Button>

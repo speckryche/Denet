@@ -123,7 +123,7 @@ export default function Refunds() {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <PageHeader title="Refunds" />
-        <div className="max-w-[95%] mx-auto px-6 py-8">
+        <div className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6">
           <Card><CardContent className="py-10 text-center text-muted-foreground">
             Admin access required.
           </CardContent></Card>
@@ -135,7 +135,7 @@ export default function Refunds() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <PageHeader title="Refunds" />
-      <div className="max-w-[95%] mx-auto px-6 py-8 space-y-6">
+      <div className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6 space-y-6">
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -160,7 +160,7 @@ export default function Refunds() {
           </Alert>
         )}
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Refund overrides</CardTitle>
             <CardDescription>
@@ -176,18 +176,18 @@ export default function Refunds() {
                 No refunds recorded. Mark one from any transactions table.
               </p>
             ) : (
-              <Table>
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ATM</TableHead>
-                    <TableHead>Sale date</TableHead>
-                    <TableHead className="text-right">Sale</TableHead>
-                    <TableHead className="text-right">Fee</TableHead>
-                    <TableHead>Refunded</TableHead>
-                    <TableHead>Source</TableHead>
+                    <TableHead className="w-[14%]">ATM</TableHead>
+                    <TableHead className="w-[9%]">Sale date</TableHead>
+                    <TableHead className="w-[9%] text-right">Sale</TableHead>
+                    <TableHead className="w-[8%] text-right">Fee</TableHead>
+                    <TableHead className="w-[9%]">Refunded</TableHead>
+                    <TableHead className="w-[15%]">Source</TableHead>
                     <TableHead>Note</TableHead>
-                    <TableHead>By</TableHead>
-                    <TableHead className="w-[90px]">Actions</TableHead>
+                    <TableHead className="w-[13%]">By</TableHead>
+                    <TableHead className="w-16">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -196,10 +196,10 @@ export default function Refunds() {
                     return (
                       <TableRow key={o.id} className={orphan ? 'bg-amber-500/5' : undefined}>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span>{o.atm_id ?? '—'}</span>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate" title={o.atm_id ?? undefined}>{o.atm_id ?? '—'}</span>
                             {orphan && (
-                              <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30">
+                              <Badge className="shrink-0 bg-amber-500/15 text-amber-400 border-amber-500/30">
                                 orphaned
                               </Badge>
                             )}
@@ -209,13 +209,14 @@ export default function Refunds() {
                         <TableCell className="text-right">{money(o.sale)}</TableCell>
                         <TableCell className="text-right">{money(o.fee)}</TableCell>
                         <TableCell>{o.refund_date}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{o.source ?? '—'}</TableCell>
-                        <TableCell className="max-w-[240px] truncate">{o.note ?? '—'}</TableCell>
-                        <TableCell className="max-w-[160px] truncate">{(o as any).created_by ?? '—'}</TableCell>
+                        <TableCell className="truncate" title={o.source ?? undefined}>{o.source ?? '—'}</TableCell>
+                        <TableCell className="truncate" title={o.note ?? undefined}>{o.note ?? '—'}</TableCell>
+                        <TableCell className="truncate" title={(o as any).created_by ?? undefined}>{(o as any).created_by ?? '—'}</TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
+                            className="h-7 w-7"
                             onClick={() => undo(o)}
                             disabled={undoing === o.id}
                             title="Remove this override"

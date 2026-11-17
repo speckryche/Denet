@@ -2,18 +2,24 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  /** Extra classes for the scroll wrapper (e.g. to let overlays escape it). */
+  containerClassName?: string
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, containerClassName, ...props }, ref) => (
+  // Wrapper scroll is a last-resort fallback only (very narrow screens or
+  // month matrices that genuinely cannot fit). Tables are sized to fit.
+  <div className={cn("relative w-full min-w-0 overflow-x-auto", containerClassName)}>
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
       {...props}
     />
   </div>
-))
+  )
+)
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef<
@@ -80,7 +86,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-10 px-2 text-left align-middle font-medium text-table-header-fg [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&_[role=checkbox]]:border-current",
+      "h-10 px-2 py-1.5 text-left align-middle font-medium leading-tight text-table-header-fg [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&_[role=checkbox]]:border-current",
       className
     )}
     {...props}
@@ -95,7 +101,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "px-2 py-1.5 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props}

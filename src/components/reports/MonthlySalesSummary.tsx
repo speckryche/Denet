@@ -324,9 +324,9 @@ export default function MonthlySalesSummary() {
     allPlatformsTotal > 0 ? `${((value / allPlatformsTotal) * 100).toFixed(1)}% of ${selectedYear} sales` : undefined;
 
   const headCell = "h-auto py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-dim";
-  const numCell = "px-[7px] py-[9px] text-right text-[12.5px] tabular-nums whitespace-nowrap";
+  const numCell = "px-1 py-[9px] text-right text-[12.5px] tabular-nums truncate";
   const firstCol = "pl-4 pr-[7px] py-[9px] text-[12.5px]";
-  const lastCol = "pl-[7px] pr-4 py-[9px] text-right text-[12.5px] font-semibold tabular-nums whitespace-nowrap";
+  const lastCol = "pl-[7px] pr-4 py-[9px] text-right text-[12.5px] font-semibold tabular-nums truncate";
 
   return (
     <div className="space-y-[18px]">
@@ -344,7 +344,7 @@ export default function MonthlySalesSummary() {
         </section>
       )}
 
-      <Card className="overflow-hidden rounded-[14px]">
+      <Card className="min-w-0 overflow-hidden rounded-[14px]">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b border-border px-[18px] py-3.5">
           <div>
             <CardTitle className="text-[15px] tracking-tight">Sales by month — totals</CardTitle>
@@ -376,14 +376,14 @@ export default function MonthlySalesSummary() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className={`${headCell} pl-4 pr-[7px]`}>Platform</TableHead>
+                <TableHead className={`${headCell} w-[9%] pl-4 pr-[7px]`}>Platform</TableHead>
                 {months.map(month => (
-                  <TableHead key={month} className={`${headCell} px-[7px] text-right`}>{month}</TableHead>
+                  <TableHead key={month} className={`${headCell} w-[6.75%] px-1 text-right`}>{month}</TableHead>
                 ))}
-                <TableHead className={`${headCell} pl-[7px] pr-4 text-right`}>Total</TableHead>
+                <TableHead className={`${headCell} w-[10%] pl-[7px] pr-4 text-right`}>Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -409,12 +409,12 @@ export default function MonthlySalesSummary() {
                       {months.map((_, monthIdx) => {
                         const value = row.monthlyTotals[monthKeyFor(monthIdx)];
                         return (
-                          <TableCell key={monthIdx} className={numCell}>
+                          <TableCell key={monthIdx} className={numCell} title={value === undefined ? undefined : formatUsd(value)}>
                             {value === undefined ? <span className="text-dim">—</span> : formatUsd(value)}
                           </TableCell>
                         );
                       })}
-                      <TableCell className={lastCol}>
+                      <TableCell className={lastCol} title={formatUsd(row.yearTotal)}>
                         {formatUsd(row.yearTotal)}
                       </TableCell>
                     </TableRow>
@@ -425,12 +425,12 @@ export default function MonthlySalesSummary() {
                       {months.map((_, monthIdx) => {
                         const value = allPlatformsMonth(monthIdx);
                         return (
-                          <TableCell key={monthIdx} className={numCell}>
+                          <TableCell key={monthIdx} className={numCell} title={value === undefined ? undefined : formatUsd(value)}>
                             {value === undefined ? <span className="text-dim">—</span> : formatUsd(value)}
                           </TableCell>
                         );
                       })}
-                      <TableCell className={lastCol}>{formatUsd(allPlatformsTotal)}</TableCell>
+                      <TableCell className={lastCol} title={formatUsd(allPlatformsTotal)}>{formatUsd(allPlatformsTotal)}</TableCell>
                     </TableRow>
                   )}
                 </>

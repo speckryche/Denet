@@ -647,7 +647,7 @@ export default function Liquidity() {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <PageHeader title="Liquidity" />
-        <div className="max-w-[95%] mx-auto px-6 py-8">
+        <div className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6">
           <div className="text-center py-16 text-muted-foreground">
             Loading...
           </div>
@@ -660,9 +660,9 @@ export default function Liquidity() {
     <div className="min-h-screen bg-background text-foreground">
       <PageHeader title="Liquidity" />
 
-      <main className="max-w-[95%] mx-auto px-6 py-8 space-y-6">
+      <main className="w-full min-w-0 px-4 py-5 xl:px-6 xl:py-6 space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 [&>*]:min-w-0">
           {summaryCards.map((card) => (
             <Card
               key={card.label}
@@ -695,13 +695,13 @@ export default function Liquidity() {
         </div>
 
         {/* Liquidity Snapshots Table */}
-        <Card className="bg-card/30 border-white/10">
-          <CardHeader className="flex flex-row items-center justify-between">
+        <Card className="min-w-0 bg-card/30 border-white/10">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2">
               <Wallet className="w-5 h-5 text-primary" />
               Liquidity Snapshots
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={String(showCount)}
                 onValueChange={(v) =>
@@ -751,9 +751,9 @@ export default function Liquidity() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0">
             {missingPriceCount > 0 && (
-              <div className="mb-4 flex items-center justify-between bg-amber-400/10 border border-amber-400/20 rounded-md px-4 py-2.5">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 bg-amber-400/10 border border-amber-400/20 rounded-md px-4 py-2.5">
                 <span className="text-sm text-amber-400">
                   {missingPriceCount} snapshot{missingPriceCount !== 1 ? 's' : ''} missing price data
                 </span>
@@ -793,7 +793,7 @@ export default function Liquidity() {
 
         {/* Asset Categories (Collapsible) */}
         <Collapsible open={categoriesOpen} onOpenChange={setCategoriesOpen}>
-          <Card className="bg-card/30 border-white/10">
+          <Card className="min-w-0 bg-card/30 border-white/10">
             <CollapsibleTrigger asChild>
               <CardHeader className="flex flex-row items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors rounded-t-xl">
                 <CardTitle className="flex items-center gap-2 text-base">

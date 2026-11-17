@@ -75,16 +75,16 @@ export function JeTable({ je, title }: { je: Je; title: string }) {
         </div>
       </div>
 
-      <div className="rounded-md border border-white/10 overflow-x-auto">
-        <Table>
+      <div className="min-w-0 overflow-hidden rounded-md border border-white/10">
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="font-bold">Account</TableHead>
-              <TableHead className="font-bold text-right w-[180px]">
+              <TableHead className="w-[30%] font-bold">Account</TableHead>
+              <TableHead className="w-[17%] font-bold text-right">
                 Debit
                 <CopyButton value={columnValues('debit')} label="all debit amounts" />
               </TableHead>
-              <TableHead className="font-bold text-right w-[180px]">
+              <TableHead className="w-[17%] font-bold text-right">
                 Credit
                 <CopyButton value={columnValues('credit')} label="all credit amounts" />
               </TableHead>
@@ -101,7 +101,7 @@ export function JeTable({ je, title }: { je: Je; title: string }) {
             ) : (
               je.lines.map((line, idx) => (
                 <TableRow key={`${line.account}-${idx}`} className="border-white/5">
-                  <TableCell className="font-medium">{line.account}</TableCell>
+                  <TableCell className="truncate font-medium" title={line.account}>{line.account}</TableCell>
                   <TableCell className="text-right font-mono">
                     {line.debit === 0 ? (
                       <span className="text-muted-foreground">–</span>
@@ -122,7 +122,7 @@ export function JeTable({ je, title }: { je: Je; title: string }) {
                       </>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{line.description}</TableCell>
+                  <TableCell className="truncate text-muted-foreground" title={line.description}>{line.description}</TableCell>
                 </TableRow>
               ))
             )}

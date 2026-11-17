@@ -35,7 +35,7 @@ export function PendingTransactionsTable({
   const colSpan = showActions ? 9 : 8;
 
   return (
-    <div className="rounded-md border border-white/10 overflow-x-auto">
+    <div className="min-w-0 rounded-md border border-white/10">
       <Table>
         <TableHeader>
           <TableRow>
@@ -45,7 +45,7 @@ export function PendingTransactionsTable({
                 dialog before approving a write. */}
             <TableHead className="font-bold">ID</TableHead>
             <TableHead className="font-bold">Status</TableHead>
-            <TableHead className="font-bold">Transaction Date</TableHead>
+            <TableHead className="font-bold leading-tight">Transaction Date</TableHead>
             <TableHead className="font-bold">First Seen</TableHead>
             <TableHead className="text-right font-bold">Age</TableHead>
             <TableHead className="font-bold">ATM</TableHead>
@@ -94,8 +94,8 @@ export function PendingTransactionsTable({
                       {formatStatusLabel(row.status)}
                     </span>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{formatDateOnly(row.date)}</TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">
+                  <TableCell className="font-mono text-sm whitespace-nowrap">{formatDateOnly(row.date)}</TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground whitespace-nowrap">
                     {formatDateOnly(row.created_at)}
                   </TableCell>
                   <TableCell
@@ -106,10 +106,10 @@ export function PendingTransactionsTable({
                   >
                     {age === null ? '—' : `${age}d`}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{row.atm_id}</span>
-                      <span className="text-xs text-muted-foreground">{row.atm_name || '—'}</span>
+                  <TableCell className="max-w-0 w-[24%]">
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate font-medium" title={row.atm_id}>{row.atm_id}</span>
+                      <span className="truncate text-xs text-muted-foreground" title={row.atm_name || undefined}>{row.atm_name || '—'}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -128,7 +128,7 @@ export function PendingTransactionsTable({
                   </TableCell>
                   {showActions && (
                     <TableCell>
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex flex-wrap gap-1.5 justify-end">
                         {/* Buttons come from the config, never a literal list —
                             add one by flipping manualTarget in STATUS_RULES. */}
                         {MANUAL_RESOLUTION_TARGETS.filter((t) => t !== row.status).map((target) => (

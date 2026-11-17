@@ -15,7 +15,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, actions, children }: PageHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-elevated">
-      <div className="flex min-h-16 items-center justify-between gap-4 px-6 py-2 lg:px-7">
+      <div className="flex min-h-16 items-center justify-between gap-4 px-4 py-2 xl:px-6">
         <div className="min-w-0">
           <h1 className="truncate text-lg font-bold leading-tight tracking-tight text-foreground">
             {title}

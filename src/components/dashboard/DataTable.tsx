@@ -59,6 +59,18 @@ const NUMERIC_COLUMNS = ['sale', 'fee', 'sent', 'bitstop_fee'];
 
 const columnLabel = (col: string) => COLUMN_LABELS[col] ?? col;
 
+// Relative column widths for the fixed-layout table. Visible columns share
+// 100% of the panel width in proportion to these weights, so all 17 default
+// columns fit a laptop without horizontal scroll; long values truncate with a
+// tooltip. Unknown columns get the default weight.
+const COLUMN_WEIGHTS: Record<string, number> = {
+  id: 6, platform: 6.5, customer_id: 6.5, customer_first_name: 5.5, customer_last_name: 5.5,
+  customer_city: 6, customer_state: 4, atm_id: 5, atm_name: 7.5, location_name: 8.5,
+  ticker: 4.5, sale: 7, fee: 6, sent: 7, bitstop_fee: 6, date: 8, status: 8.5,
+};
+const DEFAULT_COLUMN_WEIGHT = 6;
+const columnWeight = (col: string) => COLUMN_WEIGHTS[col] ?? DEFAULT_COLUMN_WEIGHT;
+
 export function DataTable({ data = [], columns = [], title, toolbar }: DataTableProps) {
   const refundedIds = useRefundedIds();
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({});
@@ -201,9 +213,12 @@ export function DataTable({ data = [], columns = [], title, toolbar }: DataTable
   }
 
   const visibleCount = columns.filter((col) => visibleColumns[col]).length;
+  const totalWeight = columns
+    .filter((col) => visibleColumns[col])
+    .reduce((sum, col) => sum + columnWeight(col), 0) || 1;
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-border bg-card shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-[14px] border border-border bg-card shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-[18px] py-3.5">
         {title && (
           <h2 className="text-[15px] font-semibold tracking-tight text-card-foreground">{title}</h2>
@@ -215,7 +230,7 @@ export function DataTable({ data = [], columns = [], title, toolbar }: DataTable
             <Input
               placeholder="Search transactions…"
               aria-label="Search transactions"
-              className="h-[34px] w-[220px] dark:bg-background pl-8 text-[13px]"
+              className="h-[34px] w-[180px] xl:w-[220px] dark:bg-background pl-8 text-[13px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -255,15 +270,18 @@ export function DataTable({ data = [], columns = [], title, toolbar }: DataTable
         </div>
       </div>
 
-      <Table>
+      {/* table-fixed + weighted % widths; wrapper scroll is only a fallback. */}
+      <Table className="table-fixed max-md:min-w-[900px]">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             {columns.map((col) => (
               visibleColumns[col] && (
                 <TableHead
                   key={col}
+                  title={columnLabel(col)}
+                  style={{ width: `${(columnWeight(col) / totalWeight) * 100}%` }}
                   className={cn(
-                    "h-auto px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-table-header-fg whitespace-nowrap",
+                    "h-auto px-1.5 py-2 xl:px-3 text-[10px] xl:text-[11px] font-semibold uppercase tracking-[0.04em] xl:tracking-[0.06em] text-table-header-fg leading-tight whitespace-normal [overflow-wrap:anywhere]",
                     NUMERIC_COLUMNS.includes(col) && "text-right"
                   )}
                 >
@@ -299,9 +317,11 @@ export function DataTable({ data = [], columns = [], title, toolbar }: DataTable
                   // Status column: render a tag instead of the raw value.
                   if (col === 'status') {
                     return visibleColumns[col] && (
-                      <TableCell key={`${i}-${col}`} className="px-3.5 py-2.5">
-                        <span className={cn(
-                          "inline-flex h-[22px] items-center whitespace-nowrap rounded-full px-2 text-[11.5px] font-semibold",
+                      <TableCell key={`${i}-${col}`} className="px-1.5 py-2.5 xl:px-3">
+                        <span
+                          title={formatStatusLabel(row.status) || undefined}
+                          className={cn(
+                          "inline-flex h-[22px] max-w-full items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-full px-2 text-[11.5px] font-semibold",
                           statusBadgeClass(row.status)
                         )}>
                           {formatStatusLabel(row.status) || '—'}
@@ -341,11 +361,11 @@ export function DataTable({ data = [], columns = [], title, toolbar }: DataTable
                   return visibleColumns[col] && (
                     <TableCell
                       key={`${i}-${col}`}
+                      title={cellValue != null && cellValue !== '' ? String(cellValue) : undefined}
                       className={cn(
-                        "px-3.5 py-2.5 text-[13px] tabular-nums",
-                        isNumeric && "text-right whitespace-nowrap",
+                        "truncate px-1.5 py-2.5 xl:px-3 text-xs xl:text-[13px] tabular-nums",
+                        isNumeric && "text-right",
                         (col === 'date' || col === 'fee' || col === 'bitstop_fee') && !muted && "text-muted-foreground",
-                        col === 'date' && "whitespace-nowrap",
                         col === 'platform' && "capitalize"
                       )}
                     >

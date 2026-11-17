@@ -107,9 +107,9 @@ export function UserManagement() {
   }
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>User Management</CardTitle>
             <CardDescription>Manage user roles and permissions</CardDescription>
@@ -133,12 +133,12 @@ export function UserManagement() {
         )}
 
         <div className="rounded-md border border-white/10">
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead>Email</TableHead>
-                <TableHead>Last sign-in</TableHead>
-                <TableHead className="w-[180px]">Role</TableHead>
+                <TableHead className="w-[30%]">Last sign-in</TableHead>
+                <TableHead className="w-[18%]">Role</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -160,11 +160,11 @@ export function UserManagement() {
                   const isSelf = u.id === user?.id;
                   return (
                     <TableRow key={u.id} className="border-white/5">
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium truncate" title={u.email ?? u.id}>
                         {u.email ?? u.id}
                         {isSelf && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
+                      <TableCell className="text-muted-foreground text-sm truncate">
                         {u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString() : 'Never'}
                       </TableCell>
                       <TableCell>

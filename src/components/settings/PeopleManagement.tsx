@@ -166,9 +166,9 @@ export function PeopleManagement() {
     {/* A disabled fieldset natively disables every input and button inside it,
         including the Add Person dialog trigger and each row's actions. */}
     <fieldset disabled={isReadOnly} className="m-0 min-w-0 border-0 p-0">
-    <Card className="bg-card/30 border-white/10">
+    <Card className="bg-card/30 border-white/10 min-w-0">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>People Management</CardTitle>
             <CardDescription>
@@ -231,14 +231,14 @@ export function PeopleManagement() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border border-white/10">
-          <Table>
+        <div className="rounded-md border border-white/10 min-w-0">
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-[18%]">Status</TableHead>
+                <TableHead className="w-[18%]">Created</TableHead>
+                <TableHead className="w-[14%] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -257,7 +257,7 @@ export function PeopleManagement() {
               ) : (
                 people.map((person) => (
                   <TableRow key={person.id}>
-                    <TableCell className="font-medium">{person.name}</TableCell>
+                    <TableCell className="font-medium truncate" title={person.name}>{person.name}</TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
                         person.active
@@ -279,10 +279,11 @@ export function PeopleManagement() {
                     </TableCell>
                     <TableCell>{new Date(person.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-0.5">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-7 w-7"
                           onClick={() => handleToggleActive(person)}
                           title={person.active ? 'Deactivate' : 'Activate'}
                         >
@@ -294,15 +295,19 @@ export function PeopleManagement() {
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-7 w-7"
                           onClick={() => handleEdit(person)}
+                          title="Edit"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-7 w-7"
                           onClick={() => handleDelete(person.id)}
+                          title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

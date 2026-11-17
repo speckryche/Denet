@@ -123,14 +123,14 @@ export function UploadHistory({ onUploadDeleted }: UploadHistoryProps) {
               No uploads found.
             </div>
           ) : (
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[11.5rem]">Date</TableHead>
                   <TableHead>Filename</TableHead>
-                  <TableHead>Platform</TableHead>
-                  <TableHead className="text-right">Records</TableHead>
-                  {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                  <TableHead className="w-[7rem]">Platform</TableHead>
+                  <TableHead className="w-[5.5rem] text-right">Records</TableHead>
+                  {isAdmin && <TableHead className="w-[4.5rem] text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -142,7 +142,7 @@ export function UploadHistory({ onUploadDeleted }: UploadHistoryProps) {
                         {format(new Date(upload.created_at), 'MMM d, yyyy HH:mm')}
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{upload.filename}</TableCell>
+                    <TableCell className="truncate font-medium" title={upload.filename}>{upload.filename}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="capitalize">
                         {upload.platform}
@@ -154,7 +154,7 @@ export function UploadHistory({ onUploadDeleted }: UploadHistoryProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                           onClick={() => handleDelete(upload.id)}
                           disabled={isDeleting === upload.id}
                         >

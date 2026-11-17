@@ -176,16 +176,16 @@ export function TickerMappings() {
   return (
     <SettingsGuard>
     <div>
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>Ticker Mappings</CardTitle>
             <CardDescription>
               Customize how ticker values are displayed. Leave blank to show original value.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -234,11 +234,11 @@ export function TickerMappings() {
             <p className="text-sm mt-2">Ticker values will appear here automatically when you upload CSV files.</p>
           </div>
         ) : (
-          <div className="rounded-md border border-white/10">
-            <Table>
+          <div className="rounded-md border border-white/10 min-w-0">
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="font-display">
+                  <TableHead className="font-display w-1/2">
                     Original Value (from CSV)
                   </TableHead>
                   <TableHead className="font-display">
@@ -249,7 +249,7 @@ export function TickerMappings() {
               <TableBody>
                 {mappings.map((mapping) => (
                   <TableRow key={mapping.id} className="border-white/5">
-                    <TableCell className="font-mono text-sm">
+                    <TableCell className="font-mono text-sm truncate" title={mapping.original_value}>
                       {mapping.original_value}
                     </TableCell>
                     <TableCell>

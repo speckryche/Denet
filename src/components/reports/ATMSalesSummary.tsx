@@ -552,7 +552,7 @@ export default function ATMSalesSummary() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <CardTitle>ATM Sales Summary</CardTitle>
             <CardDescription>
@@ -606,98 +606,98 @@ export default function ATMSalesSummary() {
         </div>
 
         {/* Table */}
-        <div className="rounded-md border border-white/10 overflow-x-auto">
-          <Table>
+        <div className="rounded-md border border-white/10 min-w-0">
+          <Table className="table-fixed min-w-[720px]">
             <TableHeader>
               <TableRow>
-                <TableHead className="font-bold">
+                <TableHead className="font-bold w-[110px]">
                   <button
                     onClick={() => handleSort('atm_id')}
-                    className="flex items-center gap-1 hover:opacity-80"
+                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                   >
                     ATM ID
                     {sortField === 'atm_id' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 shrink-0" /> : <ArrowDown className="w-4 h-4 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-4 h-4 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('atm_name')}
-                    className="flex items-center gap-1 hover:opacity-80"
+                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                   >
                     ATM Name
                     {sortField === 'atm_name' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 shrink-0" /> : <ArrowDown className="w-4 h-4 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-4 h-4 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="font-bold">
+                <TableHead className="font-bold w-[100px]">
                   <button
                     onClick={() => handleSort('platform')}
-                    className="flex items-center gap-1 hover:opacity-80"
+                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                   >
                     Platform
                     {sortField === 'platform' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 shrink-0" /> : <ArrowDown className="w-4 h-4 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-4 h-4 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[130px]">
                   <button
                     onClick={() => handleSort('transaction_count')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Transactions
                     {sortField === 'transaction_count' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 shrink-0" /> : <ArrowDown className="w-4 h-4 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-4 h-4 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[130px]">
                   <button
                     onClick={() => handleSort('total_sales')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Total Sales
                     {sortField === 'total_sales' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 shrink-0" /> : <ArrowDown className="w-4 h-4 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-4 h-4 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[120px]">
                   <button
                     onClick={() => handleSort('total_fees')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Total Fees
                     {sortField === 'total_fees' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 shrink-0" /> : <ArrowDown className="w-4 h-4 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-4 h-4 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[140px]">
                   <button
                     onClick={() => handleSort('avg_transaction')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Avg Transaction
                     {sortField === 'avg_transaction' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 shrink-0" /> : <ArrowDown className="w-4 h-4 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-4 h-4 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
@@ -720,10 +720,10 @@ export default function ATMSalesSummary() {
                 <>
                   {sortedData.map((row, idx) => (
                     <TableRow key={idx} className="border-white/5">
-                      <TableCell className="font-medium">{row.atm_id}</TableCell>
-                      <TableCell>{row.atm_name}</TableCell>
+                      <TableCell className="font-medium truncate" title={row.atm_id}>{row.atm_id}</TableCell>
+                      <TableCell className="truncate" title={row.atm_name}>{row.atm_name}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded text-xs ${
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${
                           row.platform === 'bitstop'
                             ? 'bg-blue-500/20 text-blue-300'
                             : 'bg-green-500/20 text-green-300'
@@ -731,16 +731,16 @@ export default function ATMSalesSummary() {
                           {row.platform === 'bitstop' ? 'Bitstop' : 'Denet'}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         {row.transaction_count.toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         ${Math.round(row.total_sales).toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         ${Math.round(row.total_fees).toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         ${Math.round(row.avg_transaction).toLocaleString('en-US')}
                       </TableCell>
                     </TableRow>
@@ -748,16 +748,16 @@ export default function ATMSalesSummary() {
                   {/* Totals Row */}
                   <TableRow className="border-white/10 bg-white/5 font-bold">
                     <TableCell colSpan={3}>TOTAL</TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       {totals.transaction_count.toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(totals.total_sales).toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(totals.total_fees).toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(avgTransaction).toLocaleString('en-US')}
                     </TableCell>
                   </TableRow>

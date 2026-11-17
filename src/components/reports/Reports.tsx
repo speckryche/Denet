@@ -62,7 +62,7 @@ export default function Reports() {
     <div className="min-h-screen bg-background text-foreground">
       <PageHeader title="Reports" subtitle="Sales, P&L, CTR, and platform comparison" />
 
-      <main className="px-6 pb-8 pt-2 lg:px-7 space-y-[18px] overflow-x-hidden">
+      <main className="min-w-0 px-4 pb-6 pt-2 xl:px-6 xl:pb-8 space-y-[18px] overflow-x-hidden">
         <div
           role="tablist"
           aria-label="Report"

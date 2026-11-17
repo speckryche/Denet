@@ -983,7 +983,7 @@ export default function ATMProfitLoss() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <CardTitle>ATM Profit & Loss Report</CardTitle>
             <CardDescription>
@@ -1045,7 +1045,7 @@ export default function ATMProfitLoss() {
 
         {/* Scorecards */}
         {!isLoading && data.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 2xl:grid-cols-7 gap-4">
             <Card className="bg-white/5 border-white/10">
               <CardContent className="pt-6">
                 <div className="text-sm text-muted-foreground">Total Sales</div>
@@ -1114,190 +1114,190 @@ export default function ATMProfitLoss() {
         />
 
         {/* Table */}
-        <div className="rounded-md border border-white/10 overflow-x-auto">
-          <Table>
+        <div className="rounded-md border border-white/10 min-w-0">
+          <Table className="table-fixed text-xs min-w-[1080px]">
             <TableHeader>
               <TableRow>
-                <TableHead className="font-bold">
+                <TableHead className="font-bold w-[60px]">
                   <button
                     onClick={() => handleSort('active')}
-                    className="flex items-center gap-1 hover:opacity-80"
+                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                   >
                     Status
                     {sortField === 'active' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="font-bold">
+                <TableHead className="font-bold w-[68px]">
                   <button
                     onClick={() => handleSort('installed_date')}
-                    className="flex items-center gap-1 hover:opacity-80"
+                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                   >
                     Install
                     {sortField === 'installed_date' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="font-bold">
+                <TableHead className="font-bold w-[72px]">
                   <button
                     onClick={() => handleSort('atm_id')}
-                    className="flex items-center gap-1 hover:opacity-80"
+                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                   >
                     ATM ID
                     {sortField === 'atm_id' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
                 <TableHead className="font-bold">
                   <button
                     onClick={() => handleSort('atm_name')}
-                    className="flex items-center gap-1 hover:opacity-80"
+                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                   >
                     ATM Name
                     {sortField === 'atm_name' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="font-bold">
+                <TableHead className="font-bold w-[48px]">
                   <button
                     onClick={() => handleSort('state')}
-                    className="flex items-center gap-1 hover:opacity-80"
+                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                   >
                     State
                     {sortField === 'state' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="font-bold">
+                <TableHead className="font-bold w-[68px]">
                   <button
                     onClick={() => handleSort('platform')}
-                    className="flex items-center gap-1 hover:opacity-80"
+                    className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                   >
                     Platform
                     {sortField === 'platform' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[84px]">
                   <button
                     onClick={() => handleSort('total_sales')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Total Sales
                     {sortField === 'total_sales' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[84px]">
                   <button
                     onClick={() => handleSort('total_fees')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Total Fees
                     {sortField === 'total_fees' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[60px]">
                   <button
                     onClick={() => handleSort('fee_pct')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Fee %
                     {sortField === 'fee_pct' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[72px]">
                   <button
                     onClick={() => handleSort('bitstop_fees')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Bitstop Fees
                     {sortField === 'bitstop_fees' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[64px]">
                   <button
                     onClick={() => handleSort('rent')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Rent
                     {sortField === 'rent' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[64px]">
                   <button
                     onClick={() => handleSort('mgmt_rps')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Mgmt - RPS
                     {sortField === 'mgmt_rps' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[64px]">
                   <button
                     onClick={() => handleSort('mgmt_rep')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Mgmt - Rep
                     {sortField === 'mgmt_rep' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="text-right font-bold">
-                  <div className="flex items-center justify-end gap-1">
+                <TableHead className="text-right font-bold w-[88px]">
+                  <div className="flex flex-wrap items-center justify-end gap-1">
                     <button
                       onClick={() => handleSort('commissions')}
-                      className="flex items-center gap-1 hover:opacity-80"
+                      className="flex items-center gap-1 text-left leading-tight hover:opacity-80"
                     >
                       Commissions
                       {sortField === 'commissions' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                       ) : (
-                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                        <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                       )}
                     </button>
                     <TooltipProvider delayDuration={150}>
@@ -1318,16 +1318,16 @@ export default function ATMProfitLoss() {
                     </TooltipProvider>
                   </div>
                 </TableHead>
-                <TableHead className="text-right font-bold">
+                <TableHead className="text-right font-bold w-[80px]">
                   <button
                     onClick={() => handleSort('net_profit')}
-                    className="flex items-center gap-1 hover:opacity-80 ml-auto"
+                    className="flex items-center gap-1 text-right leading-tight hover:opacity-80 ml-auto"
                   >
                     Net Profit
                     {sortField === 'net_profit' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-4 h-4 opacity-50" />
+                      <ArrowUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
                     )}
                   </button>
                 </TableHead>
@@ -1353,14 +1353,14 @@ export default function ATMProfitLoss() {
                       <TableCell className={`font-semibold ${row.active === false ? 'text-red-500' : 'text-green-500'}`}>
                         {row.active === false ? 'Inactive' : 'Active'}
                       </TableCell>
-                      <TableCell>{formatDate(row.installed_date)}</TableCell>
-                      <TableCell className="font-medium">{row.atm_id}</TableCell>
-                      <TableCell className="max-w-[200px] truncate whitespace-nowrap overflow-hidden" title={row.atm_name}>
+                      <TableCell className="whitespace-nowrap tabular-nums">{formatDate(row.installed_date)}</TableCell>
+                      <TableCell className="font-medium truncate" title={row.atm_id}>{row.atm_id}</TableCell>
+                      <TableCell className="truncate" title={row.atm_name}>
                         {row.atm_name}
                       </TableCell>
-                      <TableCell>{row.state}</TableCell>
+                      <TableCell className="truncate" title={row.state}>{row.state}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded text-xs ${
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${
                           row.platform?.toLowerCase() === 'bitstop'
                             ? 'bg-blue-500/20 text-blue-300'
                             : 'bg-green-500/20 text-green-300'
@@ -1368,7 +1368,7 @@ export default function ATMProfitLoss() {
                           {row.platform}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         {row.total_sales > 0 ? (
                           <button
                             type="button"
@@ -1382,14 +1382,14 @@ export default function ATMProfitLoss() {
                           <>${Math.round(row.total_sales).toLocaleString('en-US')}</>
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         {row.platform?.toLowerCase() === 'bitstop' && isSingleMonth && isAdmin ? (
                           editingCell === String(idx) ? (
                             <div className="flex items-center gap-1 justify-end">
                               <span className="text-muted-foreground">$</span>
                               <input
                                 type="number"
-                                className="w-24 bg-input-bg dark:bg-background border border-input-border rounded px-2 py-1 text-right text-sm font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="bg-input-bg dark:bg-background border border-input-border rounded px-2 py-1 text-right text-sm font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
                                 onKeyDown={(e) => {
@@ -1436,25 +1436,25 @@ export default function ATMProfitLoss() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         {row.fee_pct.toFixed(2)}%
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         ${Math.round(row.bitstop_fees).toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         ${Math.round(row.rent).toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         ${Math.round(row.mgmt_rps).toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         ${Math.round(row.mgmt_rep).toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                         ${Math.round(row.commissions).toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className={`text-right font-mono font-semibold ${row.net_profit < 0 ? 'text-red-400' : row.net_profit > 0 ? 'text-green-400' : ''}`}>
+                      <TableCell className={`text-right font-mono font-semibold tabular-nums whitespace-nowrap ${row.net_profit < 0 ? 'text-red-400' : row.net_profit > 0 ? 'text-green-400' : ''}`}>
                         ${Math.round(row.net_profit).toLocaleString('en-US')}
                       </TableCell>
                     </TableRow>
@@ -1462,31 +1462,31 @@ export default function ATMProfitLoss() {
                   {/* Totals Row */}
                   <TableRow className="border-white/10 bg-white/5 font-bold">
                     <TableCell colSpan={6}>TOTAL</TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(totals.total_sales).toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(totals.total_fees).toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       {totals.total_sales > 0 ? ((totals.total_fees / totals.total_sales) * 100).toFixed(2) : '0.00'}%
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(totals.bitstop_fees).toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(totals.rent).toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(totals.mgmt_rps).toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(totals.mgmt_rep).toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       ${Math.round(totals.commissions).toLocaleString('en-US')}
                     </TableCell>
-                    <TableCell className={`text-right font-mono ${totals.net_profit < 0 ? 'text-red-400' : ''}`}>
+                    <TableCell className={`text-right font-mono tabular-nums whitespace-nowrap ${totals.net_profit < 0 ? 'text-red-400' : ''}`}>
                       ${Math.round(totals.net_profit).toLocaleString('en-US')}
                     </TableCell>
                   </TableRow>

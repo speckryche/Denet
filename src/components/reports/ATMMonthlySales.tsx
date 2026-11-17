@@ -445,6 +445,8 @@ export default function ATMMonthlySales() {
   );
 
   const columnCount = FIXED_COL_COUNT + visibleMonths.length + 1;
+  // Layout only: sticky cols (64+68+68+72+160+72) + 72px per month + 88px total.
+  const tableWidth = 504 + visibleMonths.length * 72 + 88;
 
   const handleSort = (key: SortKey) => {
     if (key === sortKey) {
@@ -676,7 +678,7 @@ export default function ATMMonthlySales() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filters */}
-        <div className="flex gap-4 items-center">
+        <div className="flex flex-wrap gap-4 items-center">
           <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select Year" />
@@ -701,7 +703,7 @@ export default function ATMMonthlySales() {
             </SelectContent>
           </Select>
 
-          <div className="relative w-64">
+          <div className="relative w-64 max-w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
             <Input
               placeholder="Search ATM ID or name"
@@ -724,26 +726,28 @@ export default function ATMMonthlySales() {
         </div>
 
         {/* Table */}
-        <div className="rounded-md border border-white/10 overflow-x-auto">
-          <Table>
+        <div className="rounded-md border border-white/10 min-w-0">
+          {/* Fixed layout sized to the sum of column widths so the sticky
+              left offsets below always line up (no width redistribution). */}
+          <Table className="table-fixed text-xs" style={{ width: tableWidth }}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className={`${stickyHead} left-0 w-[90px] min-w-[90px]`}>Status</TableHead>
-                <TableHead className={`${stickyHead} left-[90px] w-[100px] min-w-[100px]`}>Install</TableHead>
-                <TableHead className={`${stickyHead} left-[190px] w-[100px] min-w-[100px]`}>Removed</TableHead>
-                <TableHead className={`${stickyHead} left-[290px] w-[100px] min-w-[100px]`}>
+                <TableHead className={`${stickyHead} left-0 w-[64px] px-1.5`}>Status</TableHead>
+                <TableHead className={`${stickyHead} left-[64px] w-[68px] px-1.5`}>Install</TableHead>
+                <TableHead className={`${stickyHead} left-[132px] w-[68px] px-1.5`}>Removed</TableHead>
+                <TableHead className={`${stickyHead} left-[200px] w-[72px] px-1.5`}>
                   {renderSortLabel('ATM ID', 'atm_id')}
                 </TableHead>
-                <TableHead className={`${stickyHead} left-[390px] w-[250px] min-w-[250px]`}>
+                <TableHead className={`${stickyHead} left-[272px] w-[160px] px-1.5`}>
                   {renderSortLabel('ATM Name', 'atm_name')}
                 </TableHead>
-                <TableHead className={`${stickyHead} left-[640px] w-[100px] min-w-[100px] border-r-2 border-white/20`}>Platform</TableHead>
+                <TableHead className={`${stickyHead} left-[432px] w-[72px] px-1.5 border-r-2 border-white/20`}>Platform</TableHead>
                 {visibleMonths.map(month => (
-                  <TableHead key={month.key} className="text-center font-bold w-[110px] min-w-[110px] max-w-[110px]">
+                  <TableHead key={month.key} className="text-center font-bold w-[72px] px-1.5">
                     {month.label}
                   </TableHead>
                 ))}
-                <TableHead className={`text-center w-[120px] min-w-[120px] ${TOTAL_COL_EDGE}`}>
+                <TableHead className={`text-center w-[88px] px-1.5 ${TOTAL_COL_EDGE}`}>
                   {renderSortLabel('Totals', 'total', 'center')}
                 </TableHead>
               </TableRow>
@@ -781,15 +785,15 @@ export default function ATMMonthlySales() {
                     const sticky = `sticky z-20 ${band}`;
                     return (
                       <TableRow key={idx} className="group border-white/5">
-                        <TableCell className={`font-semibold ${sticky} left-0 w-[90px] min-w-[90px] ${row.active === false ? 'text-red-500' : 'text-green-500'}`}>
+                        <TableCell className={`font-semibold ${sticky} left-0 w-[64px] px-1.5 ${row.active === false ? 'text-red-500' : 'text-green-500'}`}>
                           {row.active === false ? 'Inactive' : 'Active'}
                         </TableCell>
-                        <TableCell className={`${sticky} left-[90px] w-[100px] min-w-[100px]`}>{formatDate(row.installed_date)}</TableCell>
-                        <TableCell className={`${sticky} left-[190px] w-[100px] min-w-[100px]`}>{formatDate(row.removed_date)}</TableCell>
-                        <TableCell className={`font-medium ${sticky} left-[290px] w-[100px] min-w-[100px]`}>{row.atm_id}</TableCell>
-                        <TableCell className={`whitespace-nowrap ${sticky} left-[390px] w-[250px] min-w-[250px]`}>{row.atm_name}</TableCell>
-                        <TableCell className={`${sticky} left-[640px] w-[100px] min-w-[100px] border-r-2 border-white/20`}>
-                          <span className={`px-2 py-1 rounded text-xs ${
+                        <TableCell className={`${sticky} left-[64px] w-[68px] px-1.5 tabular-nums`}>{formatDate(row.installed_date)}</TableCell>
+                        <TableCell className={`${sticky} left-[132px] w-[68px] px-1.5 tabular-nums`}>{formatDate(row.removed_date)}</TableCell>
+                        <TableCell className={`font-medium truncate ${sticky} left-[200px] w-[72px] px-1.5`} title={row.atm_id}>{row.atm_id}</TableCell>
+                        <TableCell className={`truncate ${sticky} left-[272px] w-[160px] px-1.5`} title={row.atm_name}>{row.atm_name}</TableCell>
+                        <TableCell className={`${sticky} left-[432px] w-[72px] px-1.5 border-r-2 border-white/20`}>
+                          <span className={`px-1.5 py-0.5 rounded text-xs ${
                             row.platform === 'bitstop'
                               ? 'bg-blue-500/20 text-blue-300'
                               : 'bg-green-500/20 text-green-300'
@@ -817,7 +821,7 @@ export default function ATMMonthlySales() {
                           return (
                             <TableCell
                               key={month.key}
-                              className={`text-center font-mono w-[110px] min-w-[110px] max-w-[110px] ${band}`}
+                              className={`text-center font-mono tabular-nums whitespace-nowrap w-[72px] px-1.5 ${band}`}
                             >
                               <span className={isRemovalMonth ? 'text-red-600 font-semibold' : isInstallMonth ? 'text-green-600 font-semibold' : isZero(value) ? 'text-muted-foreground' : ''}>
                                 {formatMoney(value)}
@@ -825,7 +829,7 @@ export default function ATMMonthlySales() {
                             </TableCell>
                           );
                         })}
-                        <TableCell className={`text-center font-mono font-bold text-white w-[120px] min-w-[120px] border-l-2 border-slate-400 ${TOTAL_COL_BAND[idx % 2]} ${TOTAL_COL_HOVER}`}>
+                        <TableCell className={`text-center font-mono font-bold tabular-nums whitespace-nowrap text-white w-[88px] px-1.5 border-l-2 border-slate-400 ${TOTAL_COL_BAND[idx % 2]} ${TOTAL_COL_HOVER}`}>
                           {formatMoney(row.yearTotal)}
                         </TableCell>
                       </TableRow>
@@ -833,13 +837,13 @@ export default function ATMMonthlySales() {
                   })}
                   {/* Totals Row */}
                   <TableRow className="border-t-2 border-white/20 font-bold hover:bg-transparent">
-                    <TableCell colSpan={FIXED_COL_COUNT} className="sticky left-0 z-20 bg-muted border-r-2 border-white/20">TOTAL</TableCell>
+                    <TableCell colSpan={FIXED_COL_COUNT} className="sticky left-0 z-20 bg-muted px-1.5 border-r-2 border-white/20">TOTAL</TableCell>
                     {visibleMonths.map(month => (
-                      <TableCell key={month.key} className="text-center font-mono bg-muted w-[110px] min-w-[110px] max-w-[110px]">
+                      <TableCell key={month.key} className="text-center font-mono tabular-nums whitespace-nowrap bg-muted w-[72px] px-1.5">
                         {formatMoney(totals.monthlyTotals[month.key] || 0)}
                       </TableCell>
                     ))}
-                    <TableCell className={`text-center font-mono w-[120px] min-w-[120px] ${TOTAL_COL_EDGE}`}>
+                    <TableCell className={`text-center font-mono tabular-nums whitespace-nowrap w-[88px] px-1.5 ${TOTAL_COL_EDGE}`}>
                       {formatMoney(totals.yearTotal)}
                     </TableCell>
                   </TableRow>

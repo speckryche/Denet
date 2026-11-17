@@ -369,8 +369,8 @@ export default function BTMDetails() {
     const colCount = isInactive ? 9 : 8;
 
     return (
-      <Card className="p-6 mb-8 bg-[#1a1f2e] border-[#2a3142]">
-        <div className="flex justify-between items-center mb-4">
+      <Card className="min-w-0 p-6 mb-8 bg-[#1a1f2e] border-[#2a3142]">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <h2 className="text-2xl font-bold text-[#F5F1E8]">{title}</h2>
           <Button
             onClick={() => exportToCSV(sorted, `${title.replace(/ /g, '_')}.csv`)}
@@ -383,12 +383,12 @@ export default function BTMDetails() {
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="w-full min-w-0 overflow-x-auto">
+          <table className="w-full table-fixed text-sm">
             <thead className="bg-table-header-bg text-table-header-fg">
               <tr className="border-b border-table-header-bg text-xs uppercase tracking-wide text-table-header-fg">
                 <th
-                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
+                  className="w-[12%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
                   onClick={() => handleSort('atm_id')}
                 >
                   Machine {getSortIcon('atm_id')}
@@ -399,17 +399,17 @@ export default function BTMDetails() {
                 >
                   Location {getSortIcon('location_name')}
                 </th>
-                <th className="text-center px-3 py-2 font-mono font-normal">Listed</th>
-                <th className="text-right px-3 py-2 font-mono font-normal">Rent</th>
-                <th className="text-right px-3 py-2 font-mono font-normal">Mgmt</th>
+                <th className="w-[7%] text-center px-3 py-2 font-mono font-normal">Listed</th>
+                <th className="w-[8%] text-right px-3 py-2 font-mono font-normal">Rent</th>
+                <th className="w-[12%] text-right px-3 py-2 font-mono font-normal">Mgmt</th>
                 <th
-                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
+                  className="w-[9%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-[#0066FF]"
                   onClick={() => handleSort('rent_payment_method')}
                 >
                   Pay {getSortIcon('rent_payment_method')}
                 </th>
-                <th className="text-left px-3 py-2 font-mono font-normal">Installed</th>
-                {isInactive && <th className="text-left px-3 py-2 font-mono font-normal">Removed</th>}
+                <th className="w-[10%] text-left px-3 py-2 font-mono font-normal">Installed</th>
+                {isInactive && <th className="w-[10%] text-left px-3 py-2 font-mono font-normal">Removed</th>}
                 <th className="w-10 px-3 py-2" aria-label="Expand" />
               </tr>
             </thead>
@@ -611,13 +611,13 @@ export default function BTMDetails() {
                     >
                       {/* Machine */}
                       <td className="px-3 py-3 align-top">
-                        <div className="font-mono font-bold text-[#F5F1E8]">{profile.atm_id || 'N/A'}</div>
-                        <div className="font-mono text-xs text-gray-500">{profile.serial_number || 'N/A'}</div>
+                        <div className="truncate font-mono font-bold text-[#F5F1E8]" title={profile.atm_id || undefined}>{profile.atm_id || 'N/A'}</div>
+                        <div className="truncate font-mono text-xs text-gray-500" title={profile.serial_number || undefined}>{profile.serial_number || 'N/A'}</div>
                       </td>
                       {/* Location */}
                       <td className="px-3 py-3 align-top">
-                        <div className="font-semibold text-[#F5F1E8]">{profile.location_name}</div>
-                        <div className="text-xs text-gray-500">{address || '—'}</div>
+                        <div className="truncate font-semibold text-[#F5F1E8]" title={profile.location_name}>{profile.location_name}</div>
+                        <div className="truncate text-xs text-gray-500" title={address || undefined}>{address || '—'}</div>
                       </td>
                       {/* Listed (Bitstop OR CoinRadar) */}
                       <td className="px-3 py-3 text-center align-top">
@@ -632,13 +632,13 @@ export default function BTMDetails() {
                         ${profile.monthly_rent}
                       </td>
                       {/* Mgmt (RPS | Rep) */}
-                      <td className="px-3 py-3 text-right align-top font-mono tabular-nums text-[#F5F1E8] whitespace-nowrap">
+                      <td className="px-3 py-3 text-right align-top font-mono tabular-nums text-[#F5F1E8]">
                         ${profile.cash_management_rps} | ${profile.cash_management_rep}
                       </td>
                       {/* Pay */}
                       <td className="px-3 py-3 align-top">
                         {profile.rent_payment_method ? (
-                          <span className="inline-flex items-center rounded-md border border-[#2a3142] bg-[#0F1419] px-2 py-0.5 text-xs font-medium text-gray-300">
+                          <span className="inline-flex max-w-full items-center truncate rounded-md border border-[#2a3142] bg-[#0F1419] px-2 py-0.5 text-xs font-medium text-gray-300" title={profile.rent_payment_method}>
                             {profile.rent_payment_method}
                           </span>
                         ) : (
@@ -673,7 +673,7 @@ export default function BTMDetails() {
                             <div className="space-y-1.5 text-sm">
                               <div>
                                 <span className="text-gray-500">Address: </span>
-                                <span className="text-[#F5F1E8]">{address || '—'}</span>
+                                <span className="break-words text-[#F5F1E8]">{address || '—'}</span>
                               </div>
                               <div>
                                 <span className="text-gray-500">Bitstop listed: </span>
@@ -692,7 +692,7 @@ export default function BTMDetails() {
                             </div>
                             <div className="text-sm">
                               <div className="text-gray-500 mb-1">Notes</div>
-                              <div className="text-[#F5F1E8] whitespace-pre-wrap">{profile.notes || '—'}</div>
+                              <div className="text-[#F5F1E8] whitespace-pre-wrap break-words">{profile.notes || '—'}</div>
                             </div>
                           </div>
 
@@ -798,8 +798,8 @@ export default function BTMDetails() {
           </>
         }
       />
-      <div className="px-6 pb-8 pt-6 lg:px-7">
-      <div className="max-w-[1800px] mx-auto">
+      <div className="min-w-0 px-4 pb-6 pt-5 xl:px-6 xl:pb-8 xl:pt-6">
+      <div className="max-w-[1800px] mx-auto min-w-0">
 
         {/* Scorecards - Two Platform Sections Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

@@ -292,7 +292,7 @@ export default function PerMachineMonthlyPnL() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <CardTitle>Per-Machine Monthly P&amp;L</CardTitle>
             <CardDescription>Net P&amp;L by machine, by month</CardDescription>
@@ -346,11 +346,11 @@ export default function PerMachineMonthlyPnL() {
         <CommissionBanners missingMonths={missingMonths} pendingMonths={pendingMonths} />
 
         {/* Table */}
-        <div className="rounded-md border border-white/10 overflow-x-auto">
-          <Table>
+        <div className="rounded-md border border-white/10 min-w-0">
+          <Table className="text-xs">
             <TableHeader>
               <TableRow>
-                <TableHead className="font-bold sticky left-0 bg-table-header-bg z-10">Machine</TableHead>
+                <TableHead className="font-bold sticky left-0 bg-table-header-bg z-10 px-1.5">Machine</TableHead>
                 {months.map((ym) => {
                   const isPartial = ym === partialMonth;
                   const isMissing = commStatus[ym] === 'missing';
@@ -358,7 +358,7 @@ export default function PerMachineMonthlyPnL() {
                     <TableHead
                       key={ym}
                       className={cn(
-                        'text-right font-bold whitespace-nowrap',
+                        'text-right font-bold whitespace-nowrap px-1.5',
                         (isPartial || isMissing) && 'text-amber-400',
                       )}
                       title={
@@ -376,7 +376,7 @@ export default function PerMachineMonthlyPnL() {
                     </TableHead>
                   );
                 })}
-                <TableHead className="text-right font-bold whitespace-nowrap">Total</TableHead>
+                <TableHead className="text-right font-bold whitespace-nowrap px-1.5">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -396,35 +396,37 @@ export default function PerMachineMonthlyPnL() {
                 <>
                   {rows.map((r) => (
                     <TableRow key={r.atm_id} className="border-white/5">
-                      <TableCell className="sticky left-0 bg-background z-10 font-medium whitespace-nowrap">
-                        <span>{r.atm_name}</span>
-                        <span className="text-muted-foreground text-xs ml-1.5 font-mono">{r.atm_id}</span>
+                      <TableCell className="sticky left-0 bg-background z-10 font-medium px-1.5">
+                        <div className="w-[170px] truncate" title={`${r.atm_name} ${r.atm_id}`}>
+                          <span>{r.atm_name}</span>
+                          <span className="text-muted-foreground text-xs ml-1.5 font-mono">{r.atm_id}</span>
+                        </div>
                       </TableCell>
                       {months.map((ym) => {
                         const v = r.netByMonth[ym];
                         return (
-                          <TableCell key={ym} className={cn('text-right font-mono', netCellClass(v))}>
+                          <TableCell key={ym} className={cn('text-right font-mono tabular-nums whitespace-nowrap px-1.5', netCellClass(v))}>
                             {v === undefined ? '—' : fmtCurrency(v)}
                           </TableCell>
                         );
                       })}
-                      <TableCell className={cn('text-right font-mono font-semibold', netCellClass(r.total))}>
+                      <TableCell className={cn('text-right font-mono font-semibold tabular-nums whitespace-nowrap px-1.5', netCellClass(r.total))}>
                         {fmtCurrency(r.total)}
                       </TableCell>
                     </TableRow>
                   ))}
                   {/* Fleet net total row */}
                   <TableRow className="border-t-2 border-t-white/20 bg-white/5 font-bold">
-                    <TableCell className="sticky left-0 bg-background z-10 font-bold">Fleet net</TableCell>
+                    <TableCell className="sticky left-0 bg-background z-10 font-bold px-1.5">Fleet net</TableCell>
                     {months.map((ym) => {
                       const v = fleetNetByMonth[ym] || 0;
                       return (
-                        <TableCell key={ym} className={cn('text-right font-mono', netCellClass(v))}>
+                        <TableCell key={ym} className={cn('text-right font-mono tabular-nums whitespace-nowrap px-1.5', netCellClass(v))}>
                           {fmtCurrency(v)}
                         </TableCell>
                       );
                     })}
-                    <TableCell className={cn('text-right font-mono', netCellClass(fleetTotal))}>
+                    <TableCell className={cn('text-right font-mono tabular-nums whitespace-nowrap px-1.5', netCellClass(fleetTotal))}>
                       {fmtCurrency(fleetTotal)}
                     </TableCell>
                   </TableRow>

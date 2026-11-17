@@ -131,32 +131,32 @@ export default function AuditItemsDialog({ monthRow, open, onOpenChange, onChang
             No discrepancies — every report line matched.
           </p>
         ) : (
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>ATM</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">App</TableHead>
-                <TableHead className="text-right">Report</TableHead>
-                <TableHead className="w-[170px]">Status</TableHead>
+                <TableHead className="w-[14%]">Type</TableHead>
+                <TableHead className="w-[10%]">ATM</TableHead>
+                <TableHead className="w-[10%]">Date</TableHead>
+                <TableHead className="w-[12%] text-right" title="App fiat / app commission">App</TableHead>
+                <TableHead className="w-[12%] text-right" title="Report fiat / report commission">Report</TableHead>
+                <TableHead className="w-[16%]">Status</TableHead>
                 <TableHead>Note</TableHead>
-                <TableHead>Resolved</TableHead>
+                <TableHead className="w-[10%]">Resolved</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((i) => (
                 <TableRow key={i.id} className={i.status === 'open' ? undefined : 'opacity-60'}>
                   <TableCell>
-                    <Badge className={KIND_CLASS[i.kind] || ''}>{KIND_LABEL[i.kind] || i.kind}</Badge>
+                    <Badge className={`whitespace-normal leading-tight ${KIND_CLASS[i.kind] || ''}`}>{KIND_LABEL[i.kind] || i.kind}</Badge>
                   </TableCell>
-                  <TableCell>{i.atm_id ?? '—'}</TableCell>
-                  <TableCell className="whitespace-nowrap">{i.tx_date ?? '—'}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    {money(i.app_fiat)}<span className="text-muted-foreground"> / {money(i.app_commission)}</span>
+                  <TableCell className="truncate" title={i.atm_id ?? undefined}>{i.atm_id ?? '—'}</TableCell>
+                  <TableCell className="truncate">{i.tx_date ?? '—'}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap overflow-hidden text-ellipsis" title={`${money(i.app_fiat)} / ${money(i.app_commission)}`}>
+                    {money(i.app_fiat)}<span className="block text-xs text-muted-foreground">/ {money(i.app_commission)}</span>
                   </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    {money(i.report_fiat)}<span className="text-muted-foreground"> / {money(i.report_commission)}</span>
+                  <TableCell className="text-right whitespace-nowrap overflow-hidden text-ellipsis" title={`${money(i.report_fiat)} / ${money(i.report_commission)}`}>
+                    {money(i.report_fiat)}<span className="block text-xs text-muted-foreground">/ {money(i.report_commission)}</span>
                   </TableCell>
                   <TableCell>
                     <Select
@@ -175,6 +175,7 @@ export default function AuditItemsDialog({ monthRow, open, onOpenChange, onChang
                   <TableCell>
                     <Input
                       defaultValue={i.note ?? ''}
+                      title={i.note ?? undefined}
                       placeholder="Add a note…"
                       onBlur={(e) => {
                         const v = e.target.value.trim() || null;
@@ -183,7 +184,7 @@ export default function AuditItemsDialog({ monthRow, open, onOpenChange, onChang
                       disabled={!isAdmin || savingId === i.id}
                     />
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">{i.resolved_date ?? '—'}</TableCell>
+                  <TableCell className="truncate">{i.resolved_date ?? '—'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

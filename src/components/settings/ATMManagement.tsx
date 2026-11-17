@@ -570,7 +570,7 @@ export function ATMManagement() {
   return (
     <SettingsGuard>
     <div>
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <CardTitle>ATM & Sales Rep Management</CardTitle>
         <CardDescription>
@@ -597,9 +597,9 @@ export function ATMManagement() {
           </TabsList>
 
           <TabsContent value="sales-reps" className="mt-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
               <h3 className="text-lg font-semibold">Sales Representatives</h3>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Dialog open={isAddRepOpen} onOpenChange={setIsAddRepOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" disabled={isReadOnly}>
@@ -679,16 +679,16 @@ export function ATMManagement() {
                 <p>No sales reps yet. Click "Add Sales Rep" to get started.</p>
               </div>
             ) : (
-              <div className="rounded-md border border-white/10 overflow-x-auto">
-                <Table>
+              <div className="rounded-md border border-white/10 min-w-0">
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Commission %</TableHead>
-                      <TableHead>Flat Monthly Fee</TableHead>
-                      <TableHead>Active</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
+                      <TableHead className="w-[24%]">Name</TableHead>
+                      <TableHead className="w-[30%]">Email</TableHead>
+                      <TableHead className="w-[13%] whitespace-normal leading-tight">Commission %</TableHead>
+                      <TableHead className="w-[13%] whitespace-normal leading-tight">Flat Monthly Fee</TableHead>
+                      <TableHead className="w-[13%]">Active</TableHead>
+                      <TableHead className="w-[7%]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -708,6 +708,7 @@ export function ATMManagement() {
                             value={rep.email || ''}
                             onChange={(e) => handleRepFieldChange(rep.id, 'email', e.target.value)}
                             placeholder="email@example.com"
+                            title={rep.email || undefined}
                             className="dark:bg-card dark:border-white/10"
                             disabled={isReadOnly}
                           />
@@ -753,7 +754,7 @@ export function ATMManagement() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteRep(rep.id)}
-                            className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            className="h-7 w-7 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -767,8 +768,8 @@ export function ATMManagement() {
           </TabsContent>
 
           <TabsContent value="atms" className="mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <div>
                   <h3 className="text-lg font-semibold">ATM Profiles</h3>
                   {hasUnsavedChanges && (
@@ -791,7 +792,7 @@ export function ATMManagement() {
                   </Select>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setIsAddATMOpen(true)} disabled={isReadOnly}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add ATM
@@ -820,11 +821,11 @@ export function ATMManagement() {
                     <h4 className="text-md font-semibold text-green-500 mb-3">
                       Active ATMs ({profiles.filter(p => p.active !== false && (platformFilter === 'all' || p.platform === platformFilter)).length})
                     </h4>
-                    <div className="rounded-md border border-white/10 overflow-x-auto">
-                      <Table>
+                    <div className="rounded-md border border-white/10 min-w-0">
+                      <Table className="table-fixed min-w-[1040px]">
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="min-w-[70px]">
+                            <TableHead className="w-[5.5%]">
                               <button
                                 onClick={() => toggleAtmSort('atm_id')}
                                 className="flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -838,7 +839,7 @@ export function ATMManagement() {
                                 {atmSortField !== 'atm_id' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                               </button>
                             </TableHead>
-                            <TableHead className="min-w-[140px]">
+                            <TableHead className="w-[10%]">
                               <button
                                 onClick={() => toggleAtmSort('location_name')}
                                 className="flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -852,29 +853,30 @@ export function ATMManagement() {
                                 {atmSortField !== 'location_name' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                               </button>
                             </TableHead>
-                            <TableHead className="min-w-[90px]">City</TableHead>
-                            <TableHead className="min-w-[50px]">State</TableHead>
-                            <TableHead className="min-w-[70px]">Platform</TableHead>
-                            <TableHead className="min-w-[120px]">Sales Rep</TableHead>
-                            <TableHead className="min-w-[100px]">Rent ($)</TableHead>
-                            <TableHead className="min-w-[100px]">CM RPS ($)</TableHead>
-                            <TableHead className="min-w-[100px]">CM Rep ($)</TableHead>
-                            <TableHead className="min-w-[90px]">Rent Pymt</TableHead>
-                            <TableHead className="min-w-[100px]">Installed</TableHead>
-                            <TableHead className="min-w-[100px]">Removed</TableHead>
-                            <TableHead className="min-w-[90px]">Status</TableHead>
-                            <TableHead className="min-w-[200px]">Notes</TableHead>
-                            <TableHead className="w-[60px]">Delete</TableHead>
+                            <TableHead className="w-[7%] whitespace-normal leading-tight">City</TableHead>
+                            <TableHead className="w-[4%] whitespace-normal leading-tight">State</TableHead>
+                            <TableHead className="w-[7%] whitespace-normal leading-tight">Platform</TableHead>
+                            <TableHead className="w-[8%] whitespace-normal leading-tight">Sales Rep</TableHead>
+                            <TableHead className="w-[6%] whitespace-normal leading-tight">Rent ($)</TableHead>
+                            <TableHead className="w-[6%] whitespace-normal leading-tight">CM RPS ($)</TableHead>
+                            <TableHead className="w-[6%] whitespace-normal leading-tight">CM Rep ($)</TableHead>
+                            <TableHead className="w-[6.5%] whitespace-normal leading-tight">Rent Pymt</TableHead>
+                            <TableHead className="w-[9%] whitespace-normal leading-tight">Installed</TableHead>
+                            <TableHead className="w-[9%] whitespace-normal leading-tight">Removed</TableHead>
+                            <TableHead className="w-[7%] whitespace-normal leading-tight">Status</TableHead>
+                            <TableHead className="w-[5.5%] whitespace-normal leading-tight">Notes</TableHead>
+                            <TableHead className="w-[3.5%]" title="Delete"><span className="sr-only">Delete</span></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {profiles.filter(p => p.active !== false && (platformFilter === 'all' || p.platform === platformFilter)).map((profile) => (
                       <TableRow key={profile.id} className="border-white/5">
-                        <TableCell className="font-mono text-sm">{profile.atm_id}</TableCell>
+                        <TableCell className="font-mono text-sm truncate" title={profile.atm_id}>{profile.atm_id}</TableCell>
                         <TableCell>
                           <Input
                             disabled={isReadOnly}
                             value={profile.location_name || ''}
+                            title={profile.location_name || undefined}
                             onChange={(e) => handleATMFieldChange(profile.id, 'location_name', e.target.value)}
                             placeholder="Location name"
                             className="dark:bg-card dark:border-white/10"
@@ -896,7 +898,7 @@ export function ATMManagement() {
                             onChange={(e) => handleATMFieldChange(profile.id, 'state', e.target.value)}
                             placeholder="ST"
                             maxLength={2}
-                            className="dark:bg-card dark:border-white/10 uppercase w-16"
+                            className="dark:bg-card dark:border-white/10 uppercase"
                             style={{ textTransform: 'uppercase' }}
                           />
                         </TableCell>
@@ -1027,6 +1029,7 @@ export function ATMManagement() {
                           <Input
                             disabled={isReadOnly}
                             value={profile.notes || ''}
+                            title={profile.notes || undefined}
                             onChange={(e) => handleATMFieldChange(profile.id, 'notes', e.target.value || null)}
                             placeholder="Notes"
                             className="dark:bg-card dark:border-white/10"
@@ -1037,7 +1040,7 @@ export function ATMManagement() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteATMClick(profile)}
-                            className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            className="h-7 w-7 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                             disabled={isReadOnly}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1057,11 +1060,11 @@ export function ATMManagement() {
                   <h4 className="text-md font-semibold text-red-500 mb-3">
                     Inactive ATMs ({profiles.filter(p => p.active === false && (platformFilter === 'all' || p.platform === platformFilter)).length})
                   </h4>
-                  <div className="rounded-md border border-white/10 overflow-x-auto">
-                    <Table>
+                  <div className="rounded-md border border-white/10 min-w-0">
+                    <Table className="table-fixed min-w-[1040px]">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="min-w-[70px]">
+                          <TableHead className="w-[5.5%]">
                             <button
                               onClick={() => toggleAtmSort('atm_id')}
                               className="flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -1075,7 +1078,7 @@ export function ATMManagement() {
                               {atmSortField !== 'atm_id' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                             </button>
                           </TableHead>
-                          <TableHead className="min-w-[140px]">
+                          <TableHead className="w-[10%]">
                             <button
                               onClick={() => toggleAtmSort('location_name')}
                               className="flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -1089,29 +1092,30 @@ export function ATMManagement() {
                               {atmSortField !== 'location_name' && <ArrowUpDown className="w-4 h-4 opacity-50" />}
                             </button>
                           </TableHead>
-                          <TableHead className="min-w-[90px]">City</TableHead>
-                          <TableHead className="min-w-[50px]">State</TableHead>
-                          <TableHead className="min-w-[70px]">Platform</TableHead>
-                          <TableHead className="min-w-[120px]">Sales Rep</TableHead>
-                          <TableHead className="min-w-[60px]">Rent ($)</TableHead>
-                          <TableHead className="min-w-[60px]">CM RPS ($)</TableHead>
-                          <TableHead className="min-w-[60px]">CM Rep ($)</TableHead>
-                          <TableHead className="min-w-[90px]">Rent Pymt</TableHead>
-                          <TableHead className="min-w-[100px]">Installed</TableHead>
-                          <TableHead className="min-w-[100px]">Removed</TableHead>
-                          <TableHead className="min-w-[90px]">Status</TableHead>
-                          <TableHead className="min-w-[200px]">Notes</TableHead>
-                          <TableHead className="w-[60px]">Delete</TableHead>
+                          <TableHead className="w-[7%] whitespace-normal leading-tight">City</TableHead>
+                          <TableHead className="w-[4%] whitespace-normal leading-tight">State</TableHead>
+                          <TableHead className="w-[7%] whitespace-normal leading-tight">Platform</TableHead>
+                          <TableHead className="w-[8%] whitespace-normal leading-tight">Sales Rep</TableHead>
+                          <TableHead className="w-[6%] whitespace-normal leading-tight">Rent ($)</TableHead>
+                          <TableHead className="w-[6%] whitespace-normal leading-tight">CM RPS ($)</TableHead>
+                          <TableHead className="w-[6%] whitespace-normal leading-tight">CM Rep ($)</TableHead>
+                          <TableHead className="w-[6.5%] whitespace-normal leading-tight">Rent Pymt</TableHead>
+                          <TableHead className="w-[9%] whitespace-normal leading-tight">Installed</TableHead>
+                          <TableHead className="w-[9%] whitespace-normal leading-tight">Removed</TableHead>
+                          <TableHead className="w-[7%] whitespace-normal leading-tight">Status</TableHead>
+                          <TableHead className="w-[5.5%] whitespace-normal leading-tight">Notes</TableHead>
+                          <TableHead className="w-[3.5%]" title="Delete"><span className="sr-only">Delete</span></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {profiles.filter(p => p.active === false && (platformFilter === 'all' || p.platform === platformFilter)).map((profile) => (
                           <TableRow key={profile.id} className="border-white/5">
-                            <TableCell className="font-mono text-sm">{profile.atm_id}</TableCell>
+                            <TableCell className="font-mono text-sm truncate" title={profile.atm_id}>{profile.atm_id}</TableCell>
                             <TableCell>
                               <Input
                                 disabled={isReadOnly}
                                 value={profile.location_name || ''}
+                            title={profile.location_name || undefined}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'location_name', e.target.value)}
                                 placeholder="Location name"
                                 className="dark:bg-card dark:border-white/10"
@@ -1133,7 +1137,7 @@ export function ATMManagement() {
                                 onChange={(e) => handleATMFieldChange(profile.id, 'state', e.target.value)}
                                 placeholder="ST"
                                 maxLength={2}
-                                className="dark:bg-card dark:border-white/10 uppercase w-16"
+                                className="dark:bg-card dark:border-white/10 uppercase"
                                 style={{ textTransform: 'uppercase' }}
                               />
                             </TableCell>
@@ -1264,6 +1268,7 @@ export function ATMManagement() {
                               <Input
                                 disabled={isReadOnly}
                                 value={profile.notes || ''}
+                            title={profile.notes || undefined}
                                 onChange={(e) => handleATMFieldChange(profile.id, 'notes', e.target.value || null)}
                                 placeholder="Notes"
                                 className="dark:bg-card dark:border-white/10"
@@ -1274,7 +1279,7 @@ export function ATMManagement() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDeleteATMClick(profile)}
-                                className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                className="h-7 w-7 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                                 disabled={isReadOnly}
                               >
                                 <Trash2 className="w-4 h-4" />
