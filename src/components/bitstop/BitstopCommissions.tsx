@@ -51,6 +51,10 @@ const MONTH_ORDER: { [key: string]: number } = {
   'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
 };
 
+/** timestamptz → MM/DD/YYYY in the viewer's local time. */
+const formatUploadDate = (ts: string): string =>
+  new Date(ts).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+
 // Column header style (matches the Dashboard DataTable). Bitstop variant: labels may wrap to two lines so 12 columns fit a laptop.
 const BTH = 'px-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-table-header-fg leading-tight whitespace-normal';
 // Compact cell padding for this dense, form-heavy table.
@@ -62,6 +66,9 @@ export default function BitstopCommissions() {
   const [records, setRecords] = useState<BitstopCommission[]>([]);
   // Open-audit counts per month row, for the badge in the Audit column.
   const [openCounts, setOpenCounts] = useState<Record<string, number>>({});
+  // Latest bitstop_report_lines.created_at per month row. Presence = a report
+  // was actually uploaded (unlike the manual "Rcvd Report" field).
+  const [uploadedAt, setUploadedAt] = useState<Record<string, string>>({});
   const [uploadFor, setUploadFor] = useState<BitstopCommission | null>(null);
   const [auditFor, setAuditFor] = useState<BitstopCommission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +104,33 @@ export default function BitstopCommissions() {
           counts[r.commission_id] = (counts[r.commission_id] || 0) + 1;
         });
         setOpenCounts(counts);
+      }
+
+      // Upload dates. PostgREST aggregates are disabled on this project and
+      // responses cap at 1000 rows, so page through the two narrow columns and
+      // keep the max per month. ~100 lines per uploaded month keeps this small.
+      try {
+        const latest: Record<string, string> = {};
+        const PAGE = 1000;
+        for (let from = 0; ; from += PAGE) {
+          const { data: lines, error: linesError } = await supabase
+            .from('bitstop_report_lines')
+            .select('commission_id, created_at')
+            .order('id')
+            .range(from, from + PAGE - 1);
+          if (linesError) throw linesError;
+          (lines || []).forEach((l: any) => {
+            if (!latest[l.commission_id] || l.created_at > latest[l.commission_id]) {
+              latest[l.commission_id] = l.created_at;
+            }
+          });
+          if (!lines || lines.length < PAGE) break;
+        }
+        setUploadedAt(latest);
+      } catch (linesErr) {
+        // Like the badge counts: an indicator failing must not blank the page.
+        console.error('Error fetching report upload dates:', linesErr);
+        setUploadedAt({});
       }
 
       // Sort by year (desc) then by month (desc)
@@ -523,10 +557,18 @@ export default function BitstopCommissions() {
                             >
                               {openCounts[record.id]} open
                             </Badge>
-                          ) : record.received_report ? (
+                          ) : uploadedAt[record.id] ? (
                             <span className="text-xs text-success">clear</span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">not uploaded</span>
+                          )}
+                          {uploadedAt[record.id] && (
+                            <div
+                              className="mt-0.5 text-[11px] leading-tight text-muted-foreground whitespace-nowrap"
+                              title="Bitstop report uploaded"
+                            >
+                              {formatUploadDate(uploadedAt[record.id])}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell className={`${BTD} relative`}>
@@ -549,10 +591,27 @@ export default function BitstopCommissions() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setUploadFor(record)}
-                                title="Upload Bitstop report (.xlsx)"
-                                className="h-7 w-7"
+                                title={
+                                  uploadedAt[record.id]
+                                    ? `Report uploaded ${formatUploadDate(uploadedAt[record.id])} — click to re-upload`
+                                    : 'Upload Bitstop report (.xlsx)'
+                                }
+                                aria-label={
+                                  uploadedAt[record.id]
+                                    ? `Report uploaded ${formatUploadDate(uploadedAt[record.id])}, click to re-upload`
+                                    : 'Upload Bitstop report'
+                                }
+                                className="relative h-7 w-7"
                               >
                                 <Upload className="w-4 h-4" />
+                                {uploadedAt[record.id] && (
+                                  // ring-card separates the dot from the icon on
+                                  // both themes' card background.
+                                  <span
+                                    aria-hidden
+                                    className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-success ring-2 ring-card"
+                                  />
+                                )}
                               </Button>
                             )}
                             <Button
@@ -626,11 +685,10 @@ export default function BitstopCommissions() {
             <div className="mt-4 text-sm text-muted-foreground">
               <p><strong>How it works:</strong></p>
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Add a new month record using "Add Month" button</li>
-                <li>Mark "Received Comm Report" as Yes when Bitstop sends the report (usually by 10th)</li>
-                <li>Enter Total Sales and Commissions $ from the report - Comm % will auto-calculate</li>
-                <li>Mark "Paid" as Yes and enter Date Paid when commission is received (usually by 15th)</li>
-                <li>Add notes for any special circumstances or details</li>
+                <li>Add Month, then upload Bitstop's .xlsx with the upload icon. Totals and Comm % fill in automatically</li>
+                <li>Reload the page after uploading. Don't click Save Changes on a page loaded before an upload</li>
+                <li>Review the Audit badge and triage open items (dispute missing sales with Bitstop)</li>
+                <li>Mark Paid, Date Paid and Amount Received when the payment arrives (usually by 15th)</li>
               </ul>
             </div>
           </CardContent>

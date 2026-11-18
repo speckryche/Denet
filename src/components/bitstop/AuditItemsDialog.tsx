@@ -159,30 +159,41 @@ export default function AuditItemsDialog({ monthRow, open, onOpenChange, onChang
                     {money(i.report_fiat)}<span className="block text-xs text-muted-foreground">/ {money(i.report_commission)}</span>
                   </TableCell>
                   <TableCell>
-                    <Select
-                      value={i.status}
-                      onValueChange={(v) => patch(i, { status: v as AuditStatus })}
-                      disabled={!isAdmin || savingId === i.id}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {STATUSES.map((s) => (
-                          <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isAdmin ? (
+                      <Select
+                        value={i.status}
+                        onValueChange={(v) => patch(i, { status: v as AuditStatus })}
+                        disabled={savingId === i.id}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {STATUSES.map((s) => (
+                            <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      // Read-only for non-admins: bitstop_audit_items writes are admin-only (RLS).
+                      <span className="text-sm">{STATUS_LABEL[i.status] ?? i.status}</span>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Input
-                      defaultValue={i.note ?? ''}
-                      title={i.note ?? undefined}
-                      placeholder="Add a note…"
-                      onBlur={(e) => {
-                        const v = e.target.value.trim() || null;
-                        if (v !== (i.note ?? null)) patch(i, { note: v });
-                      }}
-                      disabled={!isAdmin || savingId === i.id}
-                    />
+                    {isAdmin ? (
+                      <Input
+                        defaultValue={i.note ?? ''}
+                        title={i.note ?? undefined}
+                        placeholder="Add a note…"
+                        onBlur={(e) => {
+                          const v = e.target.value.trim() || null;
+                          if (v !== (i.note ?? null)) patch(i, { note: v });
+                        }}
+                        disabled={savingId === i.id}
+                      />
+                    ) : (
+                      <span className="block truncate text-sm" title={i.note ?? undefined}>
+                        {i.note || <span className="text-muted-foreground">—</span>}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="truncate">{i.resolved_date ?? '—'}</TableCell>
                 </TableRow>
