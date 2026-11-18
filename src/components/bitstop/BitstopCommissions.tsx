@@ -64,8 +64,9 @@ export default function BitstopCommissions() {
   const { role } = useAuth();
   const isAdmin = role === 'admin';
   const [records, setRecords] = useState<BitstopCommission[]>([]);
-  // Open-audit counts per month row, for the badge in the Audit column.
-  const [openCounts, setOpenCounts] = useState<Record<string, number>>({});
+  // Unsettled audit items per month row (open + disputed), for the Audit badges.
+  // Disputed items are still unpaid commission, so they must not read as "clear".
+  const [auditCounts, setAuditCounts] = useState<Record<string, { open: number; disputed: number }>>({});
   // Latest bitstop_report_lines.created_at per month row. Presence = a report
   // was actually uploaded (unlike the manual "Rcvd Report" field).
   const [uploadedAt, setUploadedAt] = useState<Record<string, string>>({});
@@ -87,23 +88,24 @@ export default function BitstopCommissions() {
 
       if (error) throw error;
 
-      // Open-audit counts drive the per-month badge. Fetched as one pass over
-      // open items rather than a count per row, so the page still makes two
-      // queries no matter how many months exist.
-      const { data: openItems, error: itemsError } = await supabase
+      // Open/disputed counts drive the per-month badges. Fetched as one pass
+      // over unsettled items rather than a count per row, so the query count
+      // stays fixed no matter how many months exist.
+      const { data: unsettled, error: itemsError } = await supabase
         .from('bitstop_audit_items')
-        .select('commission_id')
-        .eq('status', 'open');
+        .select('commission_id, status')
+        .in('status', ['open', 'disputed']);
       if (itemsError) {
         // A badge failing to load must not blank the page it sits on.
         console.error('Error fetching audit item counts:', itemsError);
-        setOpenCounts({});
+        setAuditCounts({});
       } else {
-        const counts: Record<string, number> = {};
-        (openItems || []).forEach((r: any) => {
-          counts[r.commission_id] = (counts[r.commission_id] || 0) + 1;
+        const counts: Record<string, { open: number; disputed: number }> = {};
+        (unsettled || []).forEach((r: any) => {
+          const c = (counts[r.commission_id] ??= { open: 0, disputed: 0 });
+          if (r.status === 'open') c.open++; else c.disputed++;
         });
-        setOpenCounts(counts);
+        setAuditCounts(counts);
       }
 
       // Upload dates. PostgREST aggregates are disabled on this project and
@@ -550,13 +552,27 @@ export default function BitstopCommissions() {
                             )}
                         </TableCell>
                         <TableCell className={BTD}>
-                          {openCounts[record.id] > 0 ? (
-                            <Badge
-                              className="px-1.5 whitespace-nowrap bg-danger/10 text-danger border-danger/30 hover:bg-danger/15 cursor-pointer"
-                              onClick={() => setAuditFor(record)}
-                            >
-                              {openCounts[record.id]} open
-                            </Badge>
+                          {(auditCounts[record.id]?.open ?? 0) > 0 || (auditCounts[record.id]?.disputed ?? 0) > 0 ? (
+                            <div className="flex flex-wrap items-center gap-1">
+                              {(auditCounts[record.id]?.open ?? 0) > 0 && (
+                                <Badge
+                                  className="px-1.5 whitespace-nowrap bg-danger/10 text-danger border-danger/30 hover:bg-danger/15 cursor-pointer"
+                                  onClick={() => setAuditFor(record)}
+                                >
+                                  {auditCounts[record.id].open} open
+                                </Badge>
+                              )}
+                              {(auditCounts[record.id]?.disputed ?? 0) > 0 && (
+                                // Amber shades match the warning Alert: dark text on a
+                                // faint tint in light mode, -300 text in dark mode.
+                                <Badge
+                                  className="px-1.5 whitespace-nowrap bg-amber-500/10 text-amber-800 border-amber-600/40 hover:bg-amber-500/20 dark:text-amber-300 dark:border-amber-400/30 cursor-pointer"
+                                  onClick={() => setAuditFor(record)}
+                                >
+                                  {auditCounts[record.id].disputed} disputed
+                                </Badge>
+                              )}
+                            </div>
                           ) : uploadedAt[record.id] ? (
                             <span className="text-xs text-success">clear</span>
                           ) : (

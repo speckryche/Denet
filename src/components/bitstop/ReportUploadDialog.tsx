@@ -8,9 +8,12 @@
 //   * a required column cannot be identified — the mapping dialog opens, and
 //     the answer is remembered for this header layout;
 //   * the line items do not sum to the report's own TOTAL — a hard BLOCK, since
-//     importing a report that disagrees with itself would poison the audit.
+//     importing a report that disagrees with itself would poison the audit;
+//   * the lines' dates don't fall in this row's month (or no month holds a
+//     clear majority) — a WARNING: Cancel is the default and nothing is written
+//     unless the user explicitly clicks "Upload anyway".
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx-js-style';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -22,13 +25,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 import {
   parseBitstopReport, REQUIRED_FIELDS, type CanonicalField, type ParsedReport,
 } from '@/lib/bitstop-report/parse';
 import {
-  importBitstopReport, fetchSavedMapping, saveMapping, type BitstopMonthRow,
+  importBitstopReport, fetchSavedMapping, saveMapping, toYearMonth, type BitstopMonthRow,
 } from '@/lib/bitstop-report/data';
+import { checkReportMonth, formatYearMonth, MONTH_MAJORITY } from '@/lib/bitstop-report/month';
 
 const money = (v: number | null | undefined) =>
   `$${Number(v ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -48,6 +52,7 @@ export default function ReportUploadDialog({ monthRow, open, onOpenChange, onImp
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   const reset = () => {
     setRows(null); setParsed(null); setMapping({});
@@ -84,8 +89,11 @@ export default function ReportUploadDialog({ monthRow, open, onOpenChange, onImp
     setParsed(p);
   };
 
-  const commit = async () => {
+  const commit = async (overrideMonth = false) => {
     if (!rows || !monthRow || !parsed) return;
+    // Belt and braces: the footer already swaps Import for Upload anyway, but
+    // never let a mismatched report through without the explicit override.
+    if (monthMismatch && !overrideMonth) return;
     setBusy(true);
     setError(null);
     try {
@@ -119,6 +127,22 @@ export default function ReportUploadDialog({ monthRow, open, onOpenChange, onImp
   const needsMapping = parsed != null && parsed.unresolved.length > 0;
   const blocked = parsed != null && !parsed.blockCheck.ok && !needsMapping;
   const canCommit = parsed != null && parsed.unresolved.length === 0 && parsed.blockCheck.ok && !result;
+
+  // Month guard, evaluated only once the report has passed its own checks.
+  const targetYM = useMemo(() => {
+    if (!monthRow) return null;
+    try { return toYearMonth(monthRow.month, monthRow.year); } catch { return null; }
+  }, [monthRow?.month, monthRow?.year]);
+  const monthCheck = useMemo(
+    () => (canCommit && targetYM ? checkReportMonth(parsed!.lines, targetYM) : null),
+    [canCommit, parsed, targetYM],
+  );
+  const monthMismatch = monthCheck != null && !monthCheck.ok;
+
+  // Cancel is the default action on a mismatch: focus it so Enter cancels.
+  useEffect(() => {
+    if (monthMismatch) cancelRef.current?.focus();
+  }, [monthMismatch]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!busy) { onOpenChange(o); if (!o) reset(); } }}>
@@ -212,6 +236,38 @@ export default function ReportUploadDialog({ monthRow, open, onOpenChange, onImp
           </Alert>
         )}
 
+        {monthMismatch && monthCheck && (
+          <Alert variant="warning">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Wrong month?</AlertTitle>
+            <AlertDescription>
+              {monthCheck.clearMajority && monthCheck.dominant ? (
+                <p>
+                  This report's transactions are from{' '}
+                  <strong>{formatYearMonth(monthCheck.dominant.yearMonth)}</strong>, but you're
+                  uploading to the <strong>{formatYearMonth(monthCheck.target)}</strong> row.
+                </p>
+              ) : (
+                <p>
+                  No single month holds {Math.round(MONTH_MAJORITY * 100)}% of this report's
+                  transactions, and you're uploading to the{' '}
+                  <strong>{formatYearMonth(monthCheck.target)}</strong> row.
+                </p>
+              )}
+              {(!monthCheck.clearMajority || monthCheck.breakdown.length > 1) && (
+                <ul className="mt-2 space-y-0.5 text-xs">
+                  {monthCheck.breakdown.map((b) => (
+                    <li key={b.yearMonth} className="tabular-nums">
+                      {formatYearMonth(b.yearMonth)}: {b.count} line{b.count === 1 ? '' : 's'} ({Math.round(b.share * 100)}%)
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-2">Nothing has been written. Cancel, or upload to this row anyway.</p>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -228,14 +284,23 @@ export default function ReportUploadDialog({ monthRow, open, onOpenChange, onImp
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => { onOpenChange(false); reset(); }} disabled={busy}>
+          <Button
+            ref={cancelRef}
+            variant={monthMismatch && !result ? 'default' : 'outline'}
+            onClick={() => { onOpenChange(false); reset(); }}
+            disabled={busy}
+          >
             {result ? 'Close' : 'Cancel'}
           </Button>
-          {!result && (
-            <Button onClick={commit} disabled={!canCommit || busy}>
+          {!result && (monthMismatch ? (
+            <Button variant="outline" onClick={() => commit(true)} disabled={busy}>
+              {busy ? 'Importing…' : 'Upload anyway'}
+            </Button>
+          ) : (
+            <Button onClick={() => commit()} disabled={!canCommit || busy}>
               {busy ? 'Importing…' : 'Import report'}
             </Button>
-          )}
+          ))}
         </DialogFooter>
       </DialogContent>
     </Dialog>
