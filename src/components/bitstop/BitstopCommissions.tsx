@@ -550,7 +550,7 @@ export default function BitstopCommissions() {
                                 size="icon"
                                 onClick={() => setUploadFor(record)}
                                 title="Upload Bitstop report (.xlsx)"
-                                className="h-7 w-7 text-secondary hover:text-secondary/80"
+                                className="h-7 w-7"
                               >
                                 <Upload className="w-4 h-4" />
                               </Button>
