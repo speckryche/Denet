@@ -6,6 +6,7 @@
 
 import { AlertTriangle, Info } from 'lucide-react';
 import type { Platform } from '@/lib/pnl';
+import { formatCurrency } from '@/lib/format';
 
 export const MONTH_ABBR = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -26,7 +27,9 @@ export const monthLabelShort = (ym: string): string => {
 
 export const isValidYM = (s: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 
-export const fmtCurrency = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`;
+// Whole dollars, sign before the symbol ("-$5,459"). Kept as a named export
+// because the P&L reports import it; the formatting lives in lib/format.
+export const fmtCurrency = (v: number) => formatCurrency(v);
 
 export const PARTIAL_FOOTNOTE =
   '◦ Partial month — data through the latest upload, not a full month.';

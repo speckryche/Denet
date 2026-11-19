@@ -20,9 +20,17 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calculator, CheckCircle, AlertCircle, Eye, Download, Trash2, ChevronDown, ChevronRight, FileSpreadsheet, Undo2 } from 'lucide-react';
+import { Calculator, CheckCircle, AlertCircle, Eye, Download, Trash2, FileSpreadsheet, Undo2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { formatCurrency } from '@/lib/format';
+import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
+
+// Bitstop Commissions is the reference for grouped-by-year tables. Headers here
+// stay on one line (15 columns use short labels); cells get GROUP_TD's padding and
+// 48px row height via a table-wide selector.
+const CTH = `${GROUP_TH} whitespace-nowrap`;
+const CTD = '[&_td]:px-1.5 [&_td]:h-12';
 
 interface Commission {
   id: string;
@@ -779,55 +787,44 @@ export default function CommissionCalculator() {
                     const totalRecords = yearCommissions.length;
 
                     return (
-                      <div key={year} className="rounded-md border border-white/10 overflow-hidden">
-                        {/* Year Header */}
-                        <div
-                          className="flex flex-wrap items-center justify-between gap-3 p-4 bg-table-header-bg text-table-header-fg cursor-pointer hover:bg-neutral-900 dark:bg-surface-2 dark:text-foreground dark:hover:bg-muted/80 transition-colors"
-                          onClick={() => toggleYear(year)}
-                        >
-                          <div className="flex items-center gap-4">
-                            {isExpanded ? (
-                              <ChevronDown className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
-                            )}
-                            <span className="font-semibold text-xl">{year}</span>
-                            <span className="text-sm text-table-header-fg/70 dark:text-muted-foreground">
-                              ({totalRecords} record{totalRecords !== 1 ? 's' : ''})
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-6">
-                            <div className="text-right">
-                              <div className="text-xs text-table-header-fg/70 dark:text-muted-foreground">Total Commissions</div>
-                              <div className="text-lg font-mono font-semibold text-green-500">
-                                ${Math.round(totalCommissionAmount).toLocaleString('en-US')}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Year Content - Table */}
-                        {isExpanded && (
-                          // 15 columns: reserved Actions width + short headers so the
-                          // five icon buttons stay on one line and the row still fits ~1100px.
-                          <Table containerClassName="overflow-x-hidden" className="w-full table-fixed text-[13px] [&_td]:px-1 [&_th]:px-1 [&_th]:whitespace-nowrap">
+                      <TableGroup
+                        key={year}
+                        label={year}
+                        count={totalRecords}
+                        unit="record"
+                        expanded={isExpanded}
+                        onToggle={() => toggleYear(year)}
+                        stats={[
+                          { label: 'Total Commissions', value: formatCurrency(totalCommissionAmount) },
+                        ]}
+                      >
+                          {/* 15 columns. Actions is a fixed width sized to its five
+                              28px icon buttons, so there's no dead space before it.
+                              Sales Rep has no width, so it absorbs whatever the %
+                              columns leave on wide screens. Short labels keep headers
+                              on one line. Every cell is display-only, so GROUP_TD is
+                              applied table-wide rather than on each of the 15 cells. */}
+                          <Table
+                            containerClassName="overflow-x-hidden"
+                            className={`w-full table-fixed text-[13px] ${CTD}`}
+                          >
                               <TableHeader>
-                                <TableRow>
-                                  <TableHead className="w-[9%]" title="Sales Rep">Sales Rep</TableHead>
-                                  <TableHead className="w-[5.5%]" title="Month">Month</TableHead>
-                                  <TableHead className="w-[7%] text-right" title="Total Sales">Sales</TableHead>
-                                  <TableHead className="w-[6%] text-right" title="Total Fees">Fees</TableHead>
-                                  <TableHead className="w-[6%] text-right" title="Bitstop Fees">BS fees</TableHead>
-                                  <TableHead className="w-[5.5%] text-right" title="Rent">Rent</TableHead>
-                                  <TableHead className="w-[5%] text-right" title="Management — RPS">RPS</TableHead>
-                                  <TableHead className="w-[5%] text-right" title="Management — Rep">Rep</TableHead>
-                                  <TableHead className="w-[6%] text-right" title="Net Profit">Net</TableHead>
-                                  <TableHead className="w-[6%] text-right" title="Commissions">Comm.</TableHead>
-                                  <TableHead className="w-[5%] text-right" title="Flat Fee">Flat</TableHead>
-                                  <TableHead className="w-[6.5%] text-right" title="Total">Total</TableHead>
-                                  <TableHead className="w-[3.5%] text-center" title="ATMs">ATMs</TableHead>
-                                  <TableHead className="w-[7%]" title="Status">Status</TableHead>
-                                  <TableHead className="w-[17%]" title="Actions">Actions</TableHead>
+                                <TableRow className="hover:bg-transparent">
+                                  <TableHead className={CTH} title="Sales Rep">Sales Rep</TableHead>
+                                  <TableHead className={`${CTH} w-[6.5%]`} title="Month">Month</TableHead>
+                                  <TableHead className={`${CTH} w-[6.5%] text-right`} title="Total Sales">Sales</TableHead>
+                                  <TableHead className={`${CTH} w-[5.5%] text-right`} title="Total Fees">Fees</TableHead>
+                                  <TableHead className={`${CTH} w-[5.5%] text-right`} title="Bitstop Fees">BS Fees</TableHead>
+                                  <TableHead className={`${CTH} w-[5%] text-right`} title="Rent">Rent</TableHead>
+                                  <TableHead className={`${CTH} w-[5%] text-right`} title="Management — RPS">RPS</TableHead>
+                                  <TableHead className={`${CTH} w-[5%] text-right`} title="Management — Rep">Rep</TableHead>
+                                  <TableHead className={`${CTH} w-[6%] text-right`} title="Net Profit">Net</TableHead>
+                                  <TableHead className={`${CTH} w-[6%] text-right`} title="Commissions">Comm.</TableHead>
+                                  <TableHead className={`${CTH} w-[5%] text-right`} title="Flat Fee">Flat</TableHead>
+                                  <TableHead className={`${CTH} w-[6.5%] text-right`} title="Total">Total</TableHead>
+                                  <TableHead className={`${CTH} w-[4%] text-center`} title="ATMs">ATMs</TableHead>
+                                  <TableHead className={`${CTH} w-[76px]`} title="Status">Status</TableHead>
+                                  <TableHead className={`${CTH} w-[160px] text-right`} title="Actions">Actions</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -841,40 +838,40 @@ export default function CommissionCalculator() {
                                   });
 
                                   return (
-                                    <TableRow key={commission.id} className="border-white/5">
+                                    <TableRow key={commission.id}>
                                       <TableCell className="truncate font-medium" title={commission.sales_rep?.name || undefined}>
                                         {commission.sales_rep?.name || 'Unknown'}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap">{monthStr}</TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                                        ${Math.round(commission.total_sales).toLocaleString('en-US')}
+                                        {formatCurrency(commission.total_sales)}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                                        ${Math.round(commission.total_fees).toLocaleString('en-US')}
+                                        {formatCurrency(commission.total_fees)}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                                        ${Math.round(commission.bitstop_fees).toLocaleString('en-US')}
+                                        {formatCurrency(commission.bitstop_fees)}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                                        ${Math.round(commission.rent).toLocaleString('en-US')}
+                                        {formatCurrency(commission.rent)}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                                        ${Math.round(commission.mgmt_rps).toLocaleString('en-US')}
+                                        {formatCurrency(commission.mgmt_rps)}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                                        ${Math.round(commission.mgmt_rep).toLocaleString('en-US')}
+                                        {formatCurrency(commission.mgmt_rep)}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                                        ${Math.round(commission.total_net_profit).toLocaleString('en-US')}
+                                        {formatCurrency(commission.total_net_profit)}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                                        ${Math.round(commission.commission_amount).toLocaleString('en-US')}
+                                        {formatCurrency(commission.commission_amount)}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                                        ${Math.round(commission.flat_fee_amount).toLocaleString('en-US')}
+                                        {formatCurrency(commission.flat_fee_amount)}
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap text-right font-mono font-semibold tabular-nums">
-                                        ${Math.round(commission.total_commission).toLocaleString('en-US')}
+                                        {formatCurrency(commission.total_commission)}
                                       </TableCell>
                                       <TableCell className="text-center">{commission.atm_count}</TableCell>
                                       <TableCell>
@@ -883,65 +880,65 @@ export default function CommissionCalculator() {
                                         </Badge>
                                       </TableCell>
                                       <TableCell className="whitespace-nowrap">
-                                        <div className="flex flex-nowrap items-center justify-end gap-0">
+                                        <div className="flex flex-nowrap items-center justify-end gap-0.5">
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-6 w-6 shrink-0"
+                                            className="h-7 w-7 shrink-0"
                                             onClick={() => handleViewDetails(commission)}
                                             title="View Summary"
                                           >
-                                            <Eye className="h-3.5 w-3.5" />
+                                            <Eye className="w-4 h-4" />
                                           </Button>
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-6 w-6 shrink-0"
+                                            className="h-7 w-7 shrink-0"
                                             onClick={() => handleExportTransactionDetails(commission)}
                                             title="Download Transaction Details"
                                           >
-                                            <FileSpreadsheet className="h-3.5 w-3.5" />
+                                            <FileSpreadsheet className="w-4 h-4" />
                                           </Button>
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-6 w-6 shrink-0"
+                                            className="h-7 w-7 shrink-0"
                                             onClick={() => handleExportCSV(commission)}
                                             title="Download Commission Summary"
                                           >
-                                            <Download className="h-3.5 w-3.5" />
+                                            <Download className="w-4 h-4" />
                                           </Button>
                                           {commission.paid ? (
                                             <Button
                                               variant="ghost"
                                               size="icon"
                                               onClick={() => handleMarkAsUnpaid(commission.id)}
-                                              className="h-6 w-6 shrink-0 text-yellow-500 hover:text-yellow-400"
+                                              className="h-7 w-7 shrink-0 text-amber-700 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-300 dark:hover:text-amber-300"
                                               title="Mark Unpaid"
                                               aria-label="Mark Unpaid"
                                             >
-                                              <Undo2 className="h-3.5 w-3.5" />
+                                              <Undo2 className="w-4 h-4" />
                                             </Button>
                                           ) : (
                                             <Button
                                               variant="ghost"
                                               size="icon"
                                               onClick={() => handleMarkAsPaid(commission.id)}
-                                              className="h-6 w-6 shrink-0 text-green-500 hover:text-green-400"
+                                              className="h-7 w-7 shrink-0 text-success hover:text-success hover:bg-success/10"
                                               title="Mark Paid"
                                               aria-label="Mark Paid"
                                             >
-                                              <CheckCircle className="h-3.5 w-3.5" />
+                                              <CheckCircle className="w-4 h-4" />
                                             </Button>
                                           )}
                                           <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleDeleteCommission(commission.id)}
-                                            className="h-6 w-6 shrink-0 text-red-500 hover:text-red-400"
+                                            className="h-7 w-7 shrink-0 text-danger hover:text-danger hover:bg-danger/10"
                                             title="Delete"
                                           >
-                                            <Trash2 className="h-3.5 w-3.5" />
+                                            <Trash2 className="w-4 h-4" />
                                           </Button>
                                         </div>
                                       </TableCell>
@@ -950,8 +947,7 @@ export default function CommissionCalculator() {
                                 })}
                               </TableBody>
                             </Table>
-                        )}
-                      </div>
+                      </TableGroup>
                     );
                   })}
                 </div>
@@ -985,19 +981,19 @@ export default function CommissionCalculator() {
                 <div className="bg-white/5 p-4 rounded-lg">
                   <p className="text-sm text-muted-foreground">Total Net Profit</p>
                   <p className="text-2xl font-mono font-bold">
-                    ${Math.round(selectedCommission?.total_net_profit || 0).toLocaleString('en-US')}
+                    {formatCurrency(selectedCommission?.total_net_profit || 0)}
                   </p>
                 </div>
                 <div className="bg-white/5 p-4 rounded-lg">
                   <p className="text-sm text-muted-foreground">Commission Amount</p>
                   <p className="text-2xl font-mono font-bold">
-                    ${Math.round(selectedCommission?.commission_amount || 0).toLocaleString('en-US')}
+                    {formatCurrency(selectedCommission?.commission_amount || 0)}
                   </p>
                 </div>
                 <div className="bg-white/5 p-4 rounded-lg">
                   <p className="text-sm text-muted-foreground">Total Owed</p>
                   <p className="text-2xl font-mono font-bold text-primary">
-                    ${Math.round(selectedCommission?.total_commission || 0).toLocaleString('en-US')}
+                    {formatCurrency(selectedCommission?.total_commission || 0)}
                   </p>
                 </div>
               </div>
@@ -1020,22 +1016,22 @@ export default function CommissionCalculator() {
                       <TableRow key={detail.id} className="border-white/5">
                         <TableCell className="truncate font-mono" title={detail.atm_id}>{detail.atm_id}</TableCell>
                         <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                          ${Math.round(detail.total_sales).toLocaleString('en-US')}
+                          {formatCurrency(detail.total_sales)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                          ${Math.round(detail.total_fees).toLocaleString('en-US')}
+                          {formatCurrency(detail.total_fees)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                          ${Math.round(detail.rent).toLocaleString('en-US')}
+                          {formatCurrency(detail.rent)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                          ${Math.round(detail.cash_management_rps).toLocaleString('en-US')}
+                          {formatCurrency(detail.cash_management_rps)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                          ${Math.round(detail.cash_management_rep).toLocaleString('en-US')}
+                          {formatCurrency(detail.cash_management_rep)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right font-mono tabular-nums">
-                          ${Math.round(detail.net_profit).toLocaleString('en-US')}
+                          {formatCurrency(detail.net_profit)}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Edit, Trash2, ChevronDown, ChevronRight, Scale, Loader2, AlertCircle } from 'lucide-react';
+import { Edit, Trash2, Scale, Loader2, AlertCircle } from 'lucide-react';
+import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
 import {
   Table,
   TableBody,
@@ -304,42 +305,25 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
               const total = monthTotal(rows);
 
               return (
-                <div key={monthKey} className="rounded-md border border-white/10 overflow-hidden">
-                  {/* Month Header */}
-                  <div
-                    className="flex flex-wrap items-center justify-between gap-3 p-4 bg-table-header-bg text-table-header-fg cursor-pointer hover:bg-neutral-900 dark:bg-surface-2 dark:text-foreground dark:hover:bg-muted/80 transition-colors"
-                    onClick={() => toggleMonth(monthKey)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
-                      )}
-                      <span className="font-semibold text-lg">{monthLabel(monthKey)}</span>
-                      <span className="text-sm text-table-header-fg/70 dark:text-muted-foreground">
-                        ({rows.length} adjustment{rows.length !== 1 ? 's' : ''})
-                      </span>
-                    </div>
-                    <div
-                      className={`text-lg font-mono font-semibold ${
-                        total > 0 ? 'text-green-500' : total < 0 ? 'text-red-500' : 'text-foreground'
-                      }`}
-                    >
-                      {signedMoney(total)}
-                    </div>
-                  </div>
-
-                  {/* Month Content */}
-                  {isExpanded && (
+                <TableGroup
+                  key={monthKey}
+                  label={monthLabel(monthKey)}
+                  count={rows.length}
+                  unit="adjustment"
+                  expanded={isExpanded}
+                  onToggle={() => toggleMonth(monthKey)}
+                  // Bar values are plain white like every group bar; the signed
+                  // text (+/−) carries the direction. Row amounts stay colored.
+                  stats={[{ label: 'Net', value: signedMoney(total) }]}
+                >
                     <Table className="table-fixed">
                       <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[13%] whitespace-normal">Effective Date</TableHead>
-                          <TableHead className="w-[16%]">Person</TableHead>
-                          <TableHead className="w-[13%] text-right">Amount</TableHead>
-                          <TableHead>Reason</TableHead>
-                          <TableHead className="w-20 text-right">Actions</TableHead>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className={`${GROUP_TH} w-[13%]`}>Effective Date</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[16%]`}>Person</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[13%] text-right`}>Amount</TableHead>
+                          <TableHead className={GROUP_TH}>Reason</TableHead>
+                          <TableHead className={`${GROUP_TH} w-20 text-right`}>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -377,8 +361,7 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
                         ))}
                       </TableBody>
                     </Table>
-                  )}
-                </div>
+                </TableGroup>
               );
             })}
           </div>

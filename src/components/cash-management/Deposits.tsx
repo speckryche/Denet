@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Trash2, AlertCircle, Link, ChevronDown, ChevronRight, Check, X } from 'lucide-react';
+import { Plus, Edit, Trash2, AlertCircle, Link, Check, X } from 'lucide-react';
+import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
+import { formatCurrency } from '@/lib/format';
 import { useToast } from '@/components/ui/use-toast';
 import {
   Table,
@@ -676,41 +678,26 @@ export function Deposits({ onUpdate }: DepositsProps) {
               const monthTotal = getMonthTotal(monthDeposits);
 
               return (
-                <div key={monthKey} className="rounded-md border border-white/10 overflow-hidden">
-                  {/* Month Header */}
-                  <div
-                    className="flex flex-wrap items-center justify-between gap-3 p-4 bg-table-header-bg text-table-header-fg cursor-pointer hover:bg-neutral-900 dark:bg-surface-2 dark:text-foreground dark:hover:bg-muted/80 transition-colors"
-                    onClick={() => toggleMonth(monthKey)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
-                      )}
-                      <span className="font-semibold text-lg">{getMonthLabel(monthKey)}</span>
-                      <span className="text-sm text-table-header-fg/70 dark:text-muted-foreground">
-                        ({monthDeposits.length} deposit{monthDeposits.length !== 1 ? 's' : ''})
-                      </span>
-                    </div>
-                    <div className="text-lg font-mono font-semibold">
-                      ${monthTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-
-                  {/* Month Content */}
-                  {isExpanded && (
+                <TableGroup
+                  key={monthKey}
+                  label={getMonthLabel(monthKey)}
+                  count={monthDeposits.length}
+                  unit="deposit"
+                  expanded={isExpanded}
+                  onToggle={() => toggleMonth(monthKey)}
+                  stats={[{ label: 'Total', value: formatCurrency(monthTotal, 2) }]}
+                >
                     <Table className="table-fixed">
                       <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[9%]">Date</TableHead>
-                          <TableHead className="w-[9%]">Deposit ID</TableHead>
-                          <TableHead className="w-[11%]">Person</TableHead>
-                          <TableHead className="w-[12%] whitespace-normal text-right">Deposit Amount</TableHead>
-                          <TableHead className="w-[12%] whitespace-normal text-right">Linked Pickups</TableHead>
-                          <TableHead className="w-[12%] text-right">Difference</TableHead>
-                          <TableHead>Notes</TableHead>
-                          <TableHead className="w-[6.5rem] text-right">Actions</TableHead>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className={`${GROUP_TH} w-[9%]`}>Date</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[9%]`}>Deposit ID</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[11%]`}>Person</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[12%] text-right`}>Deposit Amount</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[12%] text-right`}>Linked Pickups</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[12%] text-right`}>Difference</TableHead>
+                          <TableHead className={GROUP_TH}>Notes</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[6.5rem] text-right`}>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -777,8 +764,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
                         ))}
                       </TableBody>
                     </Table>
-                  )}
-                </div>
+                </TableGroup>
               );
             })}
           </div>

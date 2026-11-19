@@ -19,13 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Save, Plus, Trash2, TrendingUp, ChevronDown, ChevronRight, Upload, ClipboardList } from 'lucide-react';
+import { Save, Plus, Trash2, TrendingUp, Upload, ClipboardList } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import ReportUploadDialog from './ReportUploadDialog';
 import AuditItemsDialog from './AuditItemsDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { TableGroup, GROUP_TH, GROUP_TD } from '@/components/ui/table-group';
 
 interface BitstopCommission {
   id: string;
@@ -55,10 +56,9 @@ const MONTH_ORDER: { [key: string]: number } = {
 const formatUploadDate = (ts: string): string =>
   new Date(ts).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
-// Column header style (matches the Dashboard DataTable). Bitstop variant: labels may wrap to two lines so 12 columns fit a laptop.
-const BTH = 'px-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-table-header-fg leading-tight whitespace-normal';
-// Compact cell padding for this dense, form-heavy table.
-const BTD = 'px-1.5';
+// Header / cell styles shared with the other grouped-by-year tables.
+const BTH = GROUP_TH;
+const BTD = GROUP_TD;
 
 export default function BitstopCommissions() {
   const { role } = useAuth();
@@ -349,52 +349,19 @@ export default function BitstopCommissions() {
                     const commissionPercent = totalSales > 0 ? (totalCommissions / totalSales) * 100 : 0;
 
                     return (
-                      <div key={year} className="rounded-[14px] border border-border bg-card shadow-sm">
-                        {/* Year Header with Summary */}
-                        <div
-                          className={`flex flex-wrap items-center justify-between gap-4 rounded-t-[14px] px-[18px] py-3.5 bg-table-header-bg text-table-header-fg dark:bg-surface-2 cursor-pointer hover:bg-neutral-900 dark:hover:bg-muted/80 transition-colors ${
-                            isExpanded ? 'border-b border-table-header-fg/20 dark:border-border' : ''
-                          } ${isExpanded ? '' : 'rounded-b-[14px]'}`}
-                          onClick={() => toggleYear(year)}
-                        >
-                          <div className="flex items-center gap-3">
-                            {isExpanded ? (
-                              <ChevronDown className="w-4 h-4 text-table-header-fg dark:text-dim" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-table-header-fg dark:text-dim" />
-                            )}
-                            <span className="text-lg font-semibold tracking-tight text-table-header-fg dark:text-foreground tabular-nums">{year}</span>
-                            <span className="text-[13px] text-table-header-fg dark:text-muted-foreground">
-                              {yearRecords.length} month{yearRecords.length !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-8">
-                            <div className="text-right">
-                              <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-table-header-fg dark:text-dim">Total Sales</div>
-                              <div className="text-base font-semibold text-table-header-fg dark:text-foreground tabular-nums">
-                                ${Math.round(totalSales).toLocaleString('en-US')}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-table-header-fg dark:text-dim">Commissions</div>
-                              <div className="text-base font-semibold text-table-header-fg dark:text-foreground tabular-nums">
-                                ${Math.round(totalCommissions).toLocaleString('en-US')}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="flex items-center justify-end gap-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-table-header-fg dark:text-dim">
-                                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-                                Comm %
-                              </div>
-                              <div className="text-base font-semibold text-table-header-fg dark:text-foreground tabular-nums">
-                                {commissionPercent.toFixed(2)}%
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Year Content - Table */}
-                        {isExpanded && (
+                      <TableGroup
+                        key={year}
+                        label={year}
+                        count={yearRecords.length}
+                        unit="month"
+                        expanded={isExpanded}
+                        onToggle={() => toggleYear(year)}
+                        stats={[
+                          { label: 'Total Sales', value: `$${Math.round(totalSales).toLocaleString('en-US')}` },
+                          { label: 'Commissions', value: `$${Math.round(totalCommissions).toLocaleString('en-US')}` },
+                          { label: 'Comm %', value: `${commissionPercent.toFixed(2)}%`, dot: true },
+                        ]}
+                      >
                           <div className="min-w-0">
                             {/* table-fixed + % widths: the table always fits the card at
                                 lg+. The wrapper only scrolls below lg (fallback), and is
@@ -657,8 +624,7 @@ export default function BitstopCommissions() {
                               </TableBody>
                             </Table>
                           </div>
-                        )}
-                      </div>
+                      </TableGroup>
                     );
                   })}
                 </div>

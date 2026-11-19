@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, ChevronDown, ChevronRight, ListFilter } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ListFilter } from 'lucide-react';
+import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
+import { formatCurrency } from '@/lib/format';
 import {
   Table,
   TableBody,
@@ -549,42 +551,27 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
               const monthTotal = getMonthTotal(monthPickups);
 
               return (
-                <div key={monthKey} className="rounded-md border border-white/10 overflow-hidden">
-                  {/* Month Header */}
-                  <div
-                    className="flex flex-wrap items-center justify-between gap-3 p-4 bg-table-header-bg text-table-header-fg cursor-pointer hover:bg-neutral-900 dark:bg-surface-2 dark:text-foreground dark:hover:bg-muted/80 transition-colors"
-                    onClick={() => toggleMonth(monthKey)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-table-header-fg/70 dark:text-muted-foreground" />
-                      )}
-                      <span className="font-semibold text-lg">{getMonthLabel(monthKey)}</span>
-                      <span className="text-sm text-table-header-fg/70 dark:text-muted-foreground">
-                        ({monthPickups.length} pickup{monthPickups.length !== 1 ? 's' : ''})
-                      </span>
-                    </div>
-                    <div className="text-lg font-mono font-semibold">
-                      ${monthTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-
-                  {/* Month Content */}
-                  {isExpanded && (
+                <TableGroup
+                  key={monthKey}
+                  label={getMonthLabel(monthKey)}
+                  count={monthPickups.length}
+                  unit="pickup"
+                  expanded={isExpanded}
+                  onToggle={() => toggleMonth(monthKey)}
+                  stats={[{ label: 'Total', value: formatCurrency(monthTotal, 2) }]}
+                >
                     <Table className="table-fixed">
                       <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[8%]">Date</TableHead>
-                          <TableHead className="w-[9%]">Person</TableHead>
-                          <TableHead>ATM</TableHead>
-                          <TableHead className="w-[10%]">City</TableHead>
-                          <TableHead className="w-[9%] text-right">Amount</TableHead>
-                          <TableHead className="w-[17%] text-right">Deposited</TableHead>
-                          <TableHead className="w-[9%] text-right">Balance</TableHead>
-                          <TableHead className="w-[14%]">Notes</TableHead>
-                          <TableHead className="w-20 text-right">Actions</TableHead>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className={`${GROUP_TH} w-[8%]`}>Date</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[9%]`}>Person</TableHead>
+                          <TableHead className={GROUP_TH}>ATM</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[10%]`}>City</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[9%] text-right`}>Amount</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[17%] text-right`}>Deposited</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[9%] text-right`}>Balance</TableHead>
+                          <TableHead className={`${GROUP_TH} w-[14%]`}>Notes</TableHead>
+                          <TableHead className={`${GROUP_TH} w-20 text-right`}>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -640,8 +627,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                         ))}
                       </TableBody>
                     </Table>
-                  )}
-                </div>
+                </TableGroup>
               );
             })}
           </div>
