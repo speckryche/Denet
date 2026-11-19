@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Archive, History as HistoryIcon } from 'lucide-react';
+import { formatCurrency as formatUSD } from '@/lib/format';
 
 interface TimelineProfile {
   id: string;
@@ -29,13 +30,8 @@ const formatDate = (iso: string | null): string => {
   return `${m}/${d}/${y}`;
 };
 
-const formatCurrency = (value: number): string =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Whole dollars with Intl's half-away-from-zero rounding, as this file always used.
+const formatCurrency = (value: number): string => formatUSD(value, 0, { halfAwayFromZero: true });
 
 // Compact "Ny Nmo" duration. Uses local-date math; ignores days.
 const formatDuration = (start: string | null, end: string | null): string => {

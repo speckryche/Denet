@@ -19,9 +19,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertTriangle, Undo2, AlertCircle } from 'lucide-react';
 import { fetchRefundOverrides } from '@/lib/refund-overrides-data';
 import { auditRefundOverrides, type RefundOverride, type RefundAudit } from '@/lib/refund-overrides';
+import { formatCurrency } from '@/lib/format';
 
-const money = (v: number | null | undefined) =>
-  `$${Number(v ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (v: number | null | undefined) => formatCurrency(v, 2);
 
 export default function Refunds() {
   const { role } = useAuth();

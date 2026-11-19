@@ -12,6 +12,7 @@ import { formatStatusLabel, statusBadgeClass, type TxStatus } from '@/lib/transa
 import { formatDateOnly } from '@/lib/utils';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import type { PendingRow } from './types';
+import { formatCurrency } from '@/lib/format';
 
 export interface ResolveIntent {
   row: PendingRow;
@@ -63,7 +64,7 @@ export function ResolveStatusDialog({
                   <div className="flex justify-between gap-4">
                     <span className="text-muted-foreground">Amount</span>
                     <span className="font-mono">
-                      ${Math.round(row.sale ?? 0).toLocaleString('en-US')}
+                      {formatCurrency(row.sale ?? 0)}
                     </span>
                   </div>
                   <div className="flex justify-between gap-4">

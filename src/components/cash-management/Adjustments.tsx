@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { formatCurrency } from '@/lib/format';
 
 interface Adjustment {
   id: string;
@@ -51,12 +52,9 @@ interface AdjustmentsProps {
   onUpdate: () => void;
 }
 
-const fmtMoney = (n: number): string =>
-  n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
 // Signed display: +$835.00 / −$50.00 (uses a real minus sign for negatives)
 const signedMoney = (n: number): string =>
-  `${n > 0 ? '+' : n < 0 ? '−' : ''}$${fmtMoney(Math.abs(n))}`;
+  `${n > 0 ? '+' : n < 0 ? '−' : ''}${formatCurrency(Math.abs(n), 2)}`;
 
 export function Adjustments({ onUpdate }: AdjustmentsProps) {
   const { toast } = useToast();

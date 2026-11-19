@@ -34,6 +34,7 @@ import {
 import * as XLSX from 'xlsx-js-style';
 import ATMSalesDrillDown from './ATMSalesDrillDown';
 import { TransactionRow } from './TransactionsTable';
+import { formatCurrency } from '@/lib/format';
 
 const MONTH_LABELS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -1049,13 +1050,13 @@ export default function ATMProfitLoss() {
             <Card className="bg-white/5 border-white/10">
               <CardContent className="pt-6">
                 <div className="text-sm text-muted-foreground">Total Sales</div>
-                <div className="text-2xl font-bold">${Math.round(totals.total_sales).toLocaleString('en-US')}</div>
+                <div className="text-2xl font-bold">{formatCurrency(totals.total_sales)}</div>
               </CardContent>
             </Card>
             <Card className="bg-white/5 border-white/10">
               <CardContent className="pt-6">
                 <div className="text-sm text-muted-foreground">Total Fees</div>
-                <div className="text-2xl font-bold">${Math.round(totals.total_fees).toLocaleString('en-US')}</div>
+                <div className="text-2xl font-bold">{formatCurrency(totals.total_fees)}</div>
               </CardContent>
             </Card>
             <Card className="bg-white/5 border-white/10">
@@ -1067,14 +1068,14 @@ export default function ATMProfitLoss() {
             <Card className="bg-white/5 border-white/10">
               <CardContent className="pt-6">
                 <div className="text-sm text-muted-foreground">Total Expenses</div>
-                <div className="text-2xl font-bold">${Math.round(totals.bitstop_fees + totals.rent + totals.mgmt_rps + totals.mgmt_rep + totals.commissions).toLocaleString('en-US')}</div>
+                <div className="text-2xl font-bold">{formatCurrency(totals.bitstop_fees + totals.rent + totals.mgmt_rps + totals.mgmt_rep + totals.commissions)}</div>
               </CardContent>
             </Card>
             <Card className="bg-white/5 border-white/10">
               <CardContent className="pt-6">
                 <div className="text-sm text-muted-foreground">Net Profit $</div>
                 <div className={`text-2xl font-bold ${totals.net_profit < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                  ${Math.round(totals.net_profit).toLocaleString('en-US')}
+                  {formatCurrency(totals.net_profit)}
                 </div>
               </CardContent>
             </Card>
@@ -1384,10 +1385,10 @@ export default function ATMProfitLoss() {
                             className="font-mono hover:underline cursor-pointer focus:outline-none focus-visible:underline"
                             title="View transactions"
                           >
-                            ${Math.round(row.total_sales).toLocaleString('en-US')}
+                            {formatCurrency(row.total_sales)}
                           </button>
                         ) : (
-                          <>${Math.round(row.total_sales).toLocaleString('en-US')}</>
+                          <>{formatCurrency(row.total_sales)}</>
                         )}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
@@ -1431,7 +1432,7 @@ export default function ATMProfitLoss() {
                               {row.has_override && (
                                 <span className="w-1.5 h-1.5 rounded-full bg-yellow-400/40 inline-block flex-shrink-0" title="Using vendor override" />
                               )}
-                              ${Math.round(row.total_fees).toLocaleString('en-US')}
+                              {formatCurrency(row.total_fees)}
                               <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
                             </div>
                           )
@@ -1440,7 +1441,7 @@ export default function ATMProfitLoss() {
                             {row.has_override && (
                               <span className="w-1.5 h-1.5 rounded-full bg-yellow-400/40 inline-block flex-shrink-0" title="Using vendor override" />
                             )}
-                            ${Math.round(row.total_fees).toLocaleString('en-US')}
+                            {formatCurrency(row.total_fees)}
                           </div>
                         )}
                       </TableCell>
@@ -1448,22 +1449,22 @@ export default function ATMProfitLoss() {
                         {row.fee_pct.toFixed(2)}%
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                        ${Math.round(row.bitstop_fees).toLocaleString('en-US')}
+                        {formatCurrency(row.bitstop_fees)}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                        ${Math.round(row.rent).toLocaleString('en-US')}
+                        {formatCurrency(row.rent)}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                        ${Math.round(row.mgmt_rps).toLocaleString('en-US')}
+                        {formatCurrency(row.mgmt_rps)}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                        ${Math.round(row.mgmt_rep).toLocaleString('en-US')}
+                        {formatCurrency(row.mgmt_rep)}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                        ${Math.round(row.commissions).toLocaleString('en-US')}
+                        {formatCurrency(row.commissions)}
                       </TableCell>
                       <TableCell className={`text-right font-mono font-semibold tabular-nums whitespace-nowrap ${row.net_profit < 0 ? 'text-red-400' : row.net_profit > 0 ? 'text-green-400' : ''}`}>
-                        ${Math.round(row.net_profit).toLocaleString('en-US')}
+                        {formatCurrency(row.net_profit)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1471,31 +1472,31 @@ export default function ATMProfitLoss() {
                   <TableRow className="border-white/10 bg-white/5 font-bold">
                     <TableCell colSpan={6}>TOTAL</TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(totals.total_sales).toLocaleString('en-US')}
+                      {formatCurrency(totals.total_sales)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(totals.total_fees).toLocaleString('en-US')}
+                      {formatCurrency(totals.total_fees)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       {totals.total_sales > 0 ? ((totals.total_fees / totals.total_sales) * 100).toFixed(2) : '0.00'}%
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(totals.bitstop_fees).toLocaleString('en-US')}
+                      {formatCurrency(totals.bitstop_fees)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(totals.rent).toLocaleString('en-US')}
+                      {formatCurrency(totals.rent)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(totals.mgmt_rps).toLocaleString('en-US')}
+                      {formatCurrency(totals.mgmt_rps)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(totals.mgmt_rep).toLocaleString('en-US')}
+                      {formatCurrency(totals.mgmt_rep)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(totals.commissions).toLocaleString('en-US')}
+                      {formatCurrency(totals.commissions)}
                     </TableCell>
                     <TableCell className={`text-right font-mono tabular-nums whitespace-nowrap ${totals.net_profit < 0 ? 'text-red-400' : ''}`}>
-                      ${Math.round(totals.net_profit).toLocaleString('en-US')}
+                      {formatCurrency(totals.net_profit)}
                     </TableCell>
                   </TableRow>
                 </>

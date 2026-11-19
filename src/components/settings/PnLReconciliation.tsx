@@ -9,6 +9,7 @@ import {
   type MonthlyPnLCell,
 } from '@/lib/pnl';
 import { computeReferenceRows, type ReferenceRow } from '@/lib/pnl-reference';
+import { formatCurrency } from '@/lib/format';
 
 const TOL = 0.005;
 const LINE_ITEMS = [
@@ -209,7 +210,7 @@ export function PnLReconciliation() {
                   <div className="p-3 text-sm text-muted-foreground space-y-1">
                     <div>
                       profiles: engine {r.engineProfiles} / reference {r.refProfiles} · cells {r.cells} · fleet net:
-                      engine ${Math.round(r.fleetEngineNet).toLocaleString()} / reference ${Math.round(r.fleetRefNet).toLocaleString()}
+                      engine {formatCurrency(r.fleetEngineNet)} / reference {formatCurrency(r.fleetRefNet)}
                     </div>
                     {!r.pass && (
                       <div className="mt-2 text-red-400 space-y-1">

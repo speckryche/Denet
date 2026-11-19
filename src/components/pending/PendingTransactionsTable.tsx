@@ -15,6 +15,7 @@ import {
   type TxStatus,
 } from '@/lib/transaction-status';
 import { STALE_AFTER_DAYS, type PendingRow } from './types';
+import { formatCurrency } from '@/lib/format';
 
 interface PendingTransactionsTableProps {
   rows: PendingRow[];
@@ -124,7 +125,7 @@ export function PendingTransactionsTable({
                     </span>
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    ${Math.round(row.sale ?? 0).toLocaleString('en-US')}
+                    {formatCurrency(row.sale ?? 0)}
                   </TableCell>
                   {showActions && (
                     <TableCell>

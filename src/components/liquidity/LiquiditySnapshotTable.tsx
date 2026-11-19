@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
+import { formatCurrency as formatUSD } from '@/lib/format';
 
 interface LiquidityCategory {
   id: string;
@@ -34,13 +35,8 @@ interface LiquiditySnapshotTableProps {
 const STARTING_LIQUIDITY = 150_000;
 const DENET_START_DATE = new Date('2022-05-01');
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Whole dollars with Intl's half-away-from-zero rounding, as this file always used.
+const formatCurrency = (value: number) => formatUSD(value, 0, { halfAwayFromZero: true });
 
 const formatSigned = (value: number) =>
   `${value > 0 ? '+' : ''}${formatCurrency(value)}`;

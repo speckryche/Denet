@@ -582,7 +582,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                             <TableCell className="truncate" title={pickup.atm_name}>{pickup.atm_name}</TableCell>
                             <TableCell className="truncate" title={pickup.city}>{pickup.city}</TableCell>
                             <TableCell className="text-right font-mono">
-                              ${pickup.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {formatCurrency(pickup.amount, 2)}
                             </TableCell>
                             <TableCell className="text-right">
                               <span className={`font-mono ${
@@ -590,15 +590,15 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                                 pickup.deposit_status === 'partial' ? 'text-yellow-500' :
                                 'text-muted-foreground'
                               }`}>
-                                ${pickup.total_deposited.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {formatCurrency(pickup.total_deposited, 2)}
                                 <span className="text-muted-foreground"> / </span>
-                                ${pickup.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {formatCurrency(pickup.amount, 2)}
                               </span>
                             </TableCell>
                             <TableCell className={`text-right font-mono ${
                               pickup.remaining_balance > 0 ? 'text-orange-500' : 'text-green-500'
                             }`}>
-                              ${pickup.remaining_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {formatCurrency(pickup.remaining_balance, 2)}
                             </TableCell>
                             <TableCell className="truncate" title={pickup.notes || undefined}>{pickup.notes || '-'}</TableCell>
                             <TableCell className="text-right">

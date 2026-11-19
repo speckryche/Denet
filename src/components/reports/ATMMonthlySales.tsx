@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import * as XLSX from 'xlsx-js-style';
+import { formatCurrency } from '@/lib/format';
 
 interface ATMMonthlyData {
   active: boolean | null;
@@ -57,7 +58,7 @@ const collator = new Intl.Collator('en-US', { numeric: true, sensitivity: 'base'
 const isZero = (value: number) => Math.round(value) === 0;
 
 const formatMoneyFull = (value: number) =>
-  isZero(value) ? '–' : `$${Math.round(value).toLocaleString('en-US')}`;
+  isZero(value) ? '–' : formatCurrency(value);
 
 // Compact display so 12 months + Totals fit a 1280 laptop. Full amount is
 // always available via the cell's title tooltip.

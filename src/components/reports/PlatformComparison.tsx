@@ -19,6 +19,7 @@ import {
   txsByProfile as groupTxsByProfile,
 } from '@/lib/atm-profile';
 import PlatformComparisonScenario from './PlatformComparisonScenario';
+import { formatCurrency as formatUSD } from '@/lib/format';
 
 // ──────────────────────────────────────────────────────────────
 // Types
@@ -63,13 +64,8 @@ const parseLocalDate = (dateStr: string): Date => {
 // here; Phase 2b removed them once each profile became its own
 // one-platform period.
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Whole dollars with Intl's half-away-from-zero rounding, as this file always used.
+const formatCurrency = (value: number) => formatUSD(value, 0, { halfAwayFromZero: true });
 
 const formatPct = (value: number) =>
   isFinite(value) ? `${value >= 0 ? '+' : ''}${value.toFixed(1)}%` : '—';

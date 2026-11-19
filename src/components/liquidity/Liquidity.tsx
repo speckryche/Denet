@@ -36,6 +36,7 @@ import { AddSnapshotDialog } from './AddSnapshotDialog';
 import { ImportSnapshotsDialog } from './ImportSnapshotsDialog';
 import { CategoryManager } from './CategoryManager';
 import { CryptoInvestments } from './CryptoInvestments';
+import { formatCurrency as formatUSD } from '@/lib/format';
 
 interface LiquidityCategory {
   id: string;
@@ -62,13 +63,8 @@ interface LiquiditySnapshot {
 const STARTING_LIQUIDITY = 150_000;
 const DENET_START_DATE = new Date('2022-05-01');
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Whole dollars with Intl's half-away-from-zero rounding, as this file always used.
+const formatCurrency = (value: number) => formatUSD(value, 0, { halfAwayFromZero: true });
 
 const formatDate = (dateStr: string): string => {
   const [year, month, day] = dateStr.split('-');

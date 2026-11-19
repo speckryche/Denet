@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { formatCurrency } from '@/lib/format';
 
 export interface RefundTarget {
   id: string;
@@ -34,8 +35,7 @@ interface Props {
   onDone: () => void;
 }
 
-const money = (v: number | null | undefined) =>
-  `$${Number(v ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (v: number | null | undefined) => formatCurrency(v, 2);
 
 export default function MarkRefundedDialog({ target, open, onOpenChange, onDone }: Props) {
   const { user } = useAuth();

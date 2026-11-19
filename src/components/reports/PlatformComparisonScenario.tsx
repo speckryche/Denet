@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Link as LinkIcon, Unlink, RotateCcw, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
+import { formatCurrency as formatUSD } from '@/lib/format';
 
 interface Props {
   feePctActualDefault: number;
@@ -19,13 +20,8 @@ interface Props {
   bitstopFeesPctDefault: number;
 }
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Whole dollars with Intl's half-away-from-zero rounding, as this file always used.
+const formatCurrency = (value: number) => formatUSD(value, 0, { halfAwayFromZero: true });
 
 const deltaColor = (n: number) =>
   n > 0 ? 'text-green-400' : n < 0 ? 'text-red-400' : 'text-muted-foreground';

@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2, Bitcoin, RefreshCw } from 'lucide-react';
+import { formatCurrency as formatUSD } from '@/lib/format';
 
 interface CryptoInvestment {
   id: string;
@@ -61,13 +62,8 @@ const getCoinGeckoId = (name: string): string | null => {
   return CRYPTO_TO_COINGECKO[name.toLowerCase().trim()] || null;
 };
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Whole dollars with Intl's half-away-from-zero rounding, as this file always used.
+const formatCurrency = (value: number) => formatUSD(value, 0, { halfAwayFromZero: true });
 
 const formatQuantity = (value: number) =>
   new Intl.NumberFormat('en-US', {

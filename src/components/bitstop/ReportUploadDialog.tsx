@@ -33,9 +33,9 @@ import {
   importBitstopReport, fetchSavedMapping, saveMapping, toYearMonth, type BitstopMonthRow,
 } from '@/lib/bitstop-report/data';
 import { checkReportMonth, formatYearMonth, MONTH_MAJORITY } from '@/lib/bitstop-report/month';
+import { formatCurrency } from '@/lib/format';
 
-const money = (v: number | null | undefined) =>
-  `$${Number(v ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (v: number | null | undefined) => formatCurrency(v, 2);
 
 interface Props {
   monthRow: BitstopMonthRow | null;

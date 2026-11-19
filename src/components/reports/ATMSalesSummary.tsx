@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import * as XLSX from 'xlsx-js-style';
+import { formatCurrency } from '@/lib/format';
 
 const MONTH_LABELS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -735,13 +736,13 @@ export default function ATMSalesSummary() {
                         {row.transaction_count.toLocaleString('en-US')}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                        ${Math.round(row.total_sales).toLocaleString('en-US')}
+                        {formatCurrency(row.total_sales)}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                        ${Math.round(row.total_fees).toLocaleString('en-US')}
+                        {formatCurrency(row.total_fees)}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                        ${Math.round(row.avg_transaction).toLocaleString('en-US')}
+                        {formatCurrency(row.avg_transaction)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -752,13 +753,13 @@ export default function ATMSalesSummary() {
                       {totals.transaction_count.toLocaleString('en-US')}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(totals.total_sales).toLocaleString('en-US')}
+                      {formatCurrency(totals.total_sales)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(totals.total_fees).toLocaleString('en-US')}
+                      {formatCurrency(totals.total_fees)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                      ${Math.round(avgTransaction).toLocaleString('en-US')}
+                      {formatCurrency(avgTransaction)}
                     </TableCell>
                   </TableRow>
                 </>

@@ -707,7 +707,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
                             <TableCell className="truncate font-semibold" title={deposit.deposit_id}>{deposit.deposit_id}</TableCell>
                             <TableCell className="truncate" title={deposit.person_name}>{deposit.person_name}</TableCell>
                             <TableCell className="text-right font-mono">
-                              ${deposit.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {formatCurrency(deposit.amount, 2)}
                             </TableCell>
                             <TableCell className="text-right font-mono">
                               {deposit.amount_above > 0 ? (
@@ -716,17 +716,17 @@ export function Deposits({ onUpdate }: DepositsProps) {
                                   className="text-primary hover:text-primary/80 underline underline-offset-2 cursor-pointer"
                                   title="View linked pickup details"
                                 >
-                                  ${deposit.amount_above.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  {formatCurrency(deposit.amount_above, 2)}
                                 </button>
                               ) : (
-                                <span>${deposit.amount_above.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span>{formatCurrency(deposit.amount_above, 2)}</span>
                               )}
                             </TableCell>
                             <TableCell className={`text-right font-mono ${
                               deposit.difference === 0 ? 'text-green-500' : 'text-red-500 font-bold'
                             }`}>
                               {deposit.difference !== 0 && <AlertCircle className="w-4 h-4 inline mr-1" />}
-                              ${deposit.difference.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {formatCurrency(deposit.difference, 2)}
                             </TableCell>
                             <TableCell className="truncate" title={deposit.notes || undefined}>{deposit.notes || '-'}</TableCell>
                             <TableCell className="text-right">
@@ -854,7 +854,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
                               <div className="text-right">
                                 <div className="text-xs text-muted-foreground">Balance</div>
                                 <div className="text-sm font-mono font-semibold text-orange-500">
-                                  ${pickup.remaining_balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                  {formatCurrency(pickup.remaining_balance, 2)}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -959,7 +959,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
                         <TableCell className="truncate" title={p.person_name}>{p.person_name}</TableCell>
                         <TableCell className="truncate" title={p.atm_name}>{p.atm_name}</TableCell>
                         <TableCell className="text-right font-mono">
-                          ${p.link_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatCurrency(p.link_amount, 2)}
                         </TableCell>
                         <TableCell
                           className="text-right"
@@ -1027,7 +1027,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
                   {detailPickups.length} pickup{detailPickups.length !== 1 ? 's' : ''} linked
                 </span>
                 <span className="font-mono font-bold">
-                  ${detailPickups.reduce((sum, p) => sum + p.link_amount, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatCurrency(detailPickups.reduce((sum, p) => sum + p.link_amount, 0), 2)}
                 </span>
               </div>
             </div>

@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowRightLeft, Loader2, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { formatCurrency } from '@/lib/format';
 
 interface DenetMachine {
   profile_id: string;
@@ -45,7 +46,6 @@ const isoMinusOneDay = (iso: string): string => {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 };
 
-const fmtMoney = (n: number): string => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function BulkPlatformConversion() {
   const [machines, setMachines] = useState<DenetMachine[]>([]);
@@ -289,7 +289,7 @@ export function BulkPlatformConversion() {
                         >
                           {m.last_denet_tx || '—'}
                         </TableCell>
-                        <TableCell className="text-right font-mono">${fmtMoney(m.monthly_rent)}</TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(m.monthly_rent, 2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -336,7 +336,7 @@ export function BulkPlatformConversion() {
                         </TableCell>
                         <TableCell className="font-mono">{isoMinusOneDay(cutover)}</TableCell>
                         <TableCell className="font-mono">{cutover}</TableCell>
-                        <TableCell className="text-right font-mono">${fmtMoney(m.monthly_rent)}</TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(m.monthly_rent, 2)}</TableCell>
                         <TableCell
                           className="text-xs text-muted-foreground truncate"
                           title={[m.street_address, m.city, m.state, m.zip_code].filter(Boolean).join(', ') || undefined}

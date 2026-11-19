@@ -27,6 +27,7 @@ import AuditItemsDialog from './AuditItemsDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { TableGroup, GROUP_TH, GROUP_TD } from '@/components/ui/table-group';
+import { formatCurrency } from '@/lib/format';
 
 interface BitstopCommission {
   id: string;
@@ -357,8 +358,8 @@ export default function BitstopCommissions() {
                         expanded={isExpanded}
                         onToggle={() => toggleYear(year)}
                         stats={[
-                          { label: 'Total Sales', value: `$${Math.round(totalSales).toLocaleString('en-US')}` },
-                          { label: 'Commissions', value: `$${Math.round(totalCommissions).toLocaleString('en-US')}` },
+                          { label: 'Total Sales', value: formatCurrency(totalSales) },
+                          { label: 'Commissions', value: formatCurrency(totalCommissions) },
                           { label: 'Comm %', value: `${commissionPercent.toFixed(2)}%`, dot: true },
                         ]}
                       >
@@ -435,7 +436,7 @@ export default function BitstopCommissions() {
                           <Input
                             disabled={!isAdmin}
                             type="text"
-                            value={record.total_sales > 0 ? `$${Math.round(record.total_sales).toLocaleString('en-US')}` : ''}
+                            value={record.total_sales > 0 ? formatCurrency(record.total_sales) : ''}
                             onChange={(e) => {
                               const numericValue = e.target.value.replace(/[^0-9]/g, '');
                               handleFieldChange(record.id, 'total_sales', numericValue ? parseFloat(numericValue) : 0);
@@ -448,7 +449,7 @@ export default function BitstopCommissions() {
                           <Input
                             disabled={!isAdmin}
                             type="text"
-                            value={record.commission_amount > 0 ? `$${Math.round(record.commission_amount).toLocaleString('en-US')}` : ''}
+                            value={record.commission_amount > 0 ? formatCurrency(record.commission_amount) : ''}
                             onChange={(e) => {
                               const numericValue = e.target.value.replace(/[^0-9]/g, '');
                               handleFieldChange(record.id, 'commission_amount', numericValue ? parseFloat(numericValue) : 0);

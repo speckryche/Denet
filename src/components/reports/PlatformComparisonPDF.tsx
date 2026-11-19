@@ -7,6 +7,7 @@ import {
   StyleSheet,
   pdf,
 } from '@react-pdf/renderer';
+import { formatCurrency as formatUSD } from '@/lib/format';
 
 export interface PlatformComparisonPDFPayload {
   fromDate: string;
@@ -230,13 +231,8 @@ const styles = StyleSheet.create({
 });
 
 // ── Formatters ──────────────────────────────────────────────
-const fmtCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Whole dollars with Intl's half-away-from-zero rounding, as this file always used.
+const fmtCurrency = (value: number) => formatUSD(value, 0, { halfAwayFromZero: true });
 
 const fmtSignedCurrency = (value: number) => {
   const abs = fmtCurrency(Math.abs(value));

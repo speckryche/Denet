@@ -15,6 +15,7 @@ import MarkRefundedDialog, { type RefundTarget } from '@/components/refunds/Mark
 import { Button } from '@/components/ui/button';
 import { Undo2 } from 'lucide-react';
 import { useRefundedIds } from '@/lib/refund-overrides-data';
+import { formatCurrency } from '@/lib/format';
 
 export interface TransactionRow {
   id: string;
@@ -258,13 +259,13 @@ export default function TransactionsTable({
                   <TableCell className="truncate" title={`${row.customer_first_name} ${row.customer_last_name}`}>{row.customer_first_name} {row.customer_last_name}</TableCell>
                   <TableCell className="truncate" title={row.ticker}>{row.ticker}</TableCell>
                   <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                    ${Math.round(row.sale).toLocaleString('en-US')}
+                    {formatCurrency(row.sale)}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                    ${Math.round(row.fee).toLocaleString('en-US')}
+                    {formatCurrency(row.fee)}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                    ${Math.round(row.bitstop_fee).toLocaleString('en-US')}
+                    {formatCurrency(row.bitstop_fee)}
                   </TableCell>
                   {isAdmin && (
                     <TableCell>
@@ -295,19 +296,19 @@ export default function TransactionsTable({
                     : ''} transaction{completedRows.length === 1 && nonCompletedCount === 0 ? '' : 's'})
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                  ${Math.round(totals.sale).toLocaleString('en-US')}
+                  {formatCurrency(totals.sale)}
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                   {adjustedFeeTotals.hasOverrides ? (
                     <span title="Adjusted with Bitstop fee overrides">
-                      ${Math.round(adjustedFeeTotals.fee).toLocaleString('en-US')} *
+                      {formatCurrency(adjustedFeeTotals.fee)} *
                     </span>
                   ) : (
-                    <>${Math.round(totals.fee).toLocaleString('en-US')}</>
+                    <>{formatCurrency(totals.fee)}</>
                   )}
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                  ${Math.round(totals.bitstop_fee).toLocaleString('en-US')}
+                  {formatCurrency(totals.bitstop_fee)}
                 </TableCell>
               </TableRow>
             </>

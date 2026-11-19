@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { formatCurrency } from '@/lib/format';
 
 interface PersonContext {
   id: string;
@@ -33,8 +34,6 @@ const todayLocalISO = (): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const formatMoney = (n: number): string =>
-  n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function AdjustBalanceModal({ open, onOpenChange, onSuccess, person }: Props) {
   const { toast } = useToast();
@@ -97,7 +96,7 @@ export default function AdjustBalanceModal({ open, onOpenChange, onSuccess, pers
     onOpenChange(false);
     toast({
       title: 'Balance adjusted',
-      description: `${person.name} — new target $${formatMoney(parsedTarget)}.`,
+      description: `${person.name} — new target ${formatCurrency(parsedTarget, 2)}.`,
     });
     onSuccess();
   };
@@ -120,7 +119,7 @@ export default function AdjustBalanceModal({ open, onOpenChange, onSuccess, pers
           <div className="rounded-md border border-white/10 bg-secondary/10 p-3">
             <div className="text-xs text-muted-foreground">Current tracked balance</div>
             <div className="text-2xl font-bold font-mono">
-              ${formatMoney(person.currentBalance)}
+              {formatCurrency(person.currentBalance, 2)}
             </div>
           </div>
 
@@ -167,7 +166,7 @@ export default function AdjustBalanceModal({ open, onOpenChange, onSuccess, pers
                 <>
                   This records a{' '}
                   <span className="font-mono font-bold">
-                    {delta > 0 ? '+' : '−'}${formatMoney(Math.abs(delta))}
+                    {delta > 0 ? '+' : '−'}{formatCurrency(Math.abs(delta), 2)}
                   </span>{' '}
                   adjustment.
                 </>

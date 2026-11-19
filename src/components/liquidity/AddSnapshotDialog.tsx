@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { RefreshCw, Loader2 } from 'lucide-react';
+import { formatCurrency as formatUSD } from '@/lib/format';
 
 interface LiquidityCategory {
   id: string;
@@ -49,13 +50,8 @@ const getPacificDateString = () => {
   });
 };
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Whole dollars with Intl's half-away-from-zero rounding, as this file always used.
+const formatCurrency = (value: number) => formatUSD(value, 0, { halfAwayFromZero: true });
 
 // Supported coins for CoinGecko price fetch
 const SUPPORTED_COINS: Record<string, string> = {

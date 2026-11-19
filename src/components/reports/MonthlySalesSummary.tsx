@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import * as XLSX from 'xlsx-js-style';
 import { KpiCard } from '@/components/dashboard/MetricsGrid';
+import { formatCurrency } from '@/lib/format';
 
 interface PlatformMonthlyData {
   platform: string;
@@ -319,7 +320,7 @@ export default function MonthlySalesSummary() {
     const rows = data.filter((row) => row.monthlyTotals[key] !== undefined);
     return rows.length === 0 ? undefined : rows.reduce((sum, row) => sum + row.monthlyTotals[key], 0);
   };
-  const formatUsd = (value: number) => `$${Math.round(value).toLocaleString('en-US')}`;
+  const formatUsd = (value: number) => formatCurrency(value);
   const sharePercent = (value: number) =>
     allPlatformsTotal > 0 ? `${((value / allPlatformsTotal) * 100).toFixed(1)}% of ${selectedYear} sales` : undefined;
 

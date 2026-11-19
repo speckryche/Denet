@@ -26,6 +26,7 @@ import {
   type ReconProfile,
   type OrphanReason,
 } from '@/lib/reconciliation';
+import { formatCurrency } from '@/lib/format';
 
 type FilterMode = 'actionable' | 'mismatch' | 'before_install' | 'all';
 
@@ -39,8 +40,6 @@ const ORPHAN_LABEL: Record<OrphanReason, string> = {
   profiles_have_null_install: 'no dated profile',
 };
 
-const fmtMoney = (n: number): string =>
-  n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function ReconciliationReport() {
   const [running, setRunning] = useState(false);
@@ -244,7 +243,7 @@ export function ReconciliationReport() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right font-mono">${fmtMoney(f.amount)}</TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(f.amount, 2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

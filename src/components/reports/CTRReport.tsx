@@ -45,6 +45,7 @@ import { CTR_THRESHOLD, findCtrQualifyingGroups, findSingleTxCtrKeys } from '@/l
 import { CTR_STATUSES } from '@/lib/transaction-status';
 import { findProfileForTx } from '@/lib/atm-profile';
 import { useToast } from '@/components/ui/use-toast';
+import { formatCurrency as formatUSD } from '@/lib/format';
 
 type AtmProfileRow = {
   id: string;
@@ -78,13 +79,8 @@ interface ExpansionData {
   transactions: { id: string; sale: number; atm_name: string; atm_address: string; date: string }[];
 }
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Whole dollars with Intl's half-away-from-zero rounding, as this file always used.
+const formatCurrency = (value: number) => formatUSD(value, 0, { halfAwayFromZero: true });
 
 const formatDate = (dateStr: string): string => {
   const [year, month, day] = dateStr.split('-');

@@ -34,6 +34,7 @@ import { ResolveStatusDialog, type ResolveIntent } from './ResolveStatusDialog';
 import { RecheckPanel } from './RecheckPanel';
 import { notifyPendingCountChanged } from './pending-count';
 import { STALE_AFTER_DAYS, type PendingRow } from './types';
+import { formatCurrency } from '@/lib/format';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PENDING RESOLUTION TRACKER
@@ -174,7 +175,7 @@ export default function PendingResolution() {
     notifyPendingCountChanged();
     toast({
       title: `Marked ${formatStatusLabel(applied.status)}`,
-      description: `${row.atm_id} — $${Math.round(row.sale ?? 0).toLocaleString('en-US')} on ${
+      description: `${row.atm_id} — ${formatCurrency(row.sale ?? 0)} on ${
         row.date?.slice(0, 10) ?? 'unknown date'
       }.`,
     });
@@ -234,7 +235,7 @@ export default function PendingResolution() {
                 Cash held up (not in totals)
               </div>
               <div className="text-2xl font-bold font-mono">
-                ${Math.round(pendingTotal).toLocaleString('en-US')}
+                {formatCurrency(pendingTotal)}
               </div>
             </CardContent>
           </Card>

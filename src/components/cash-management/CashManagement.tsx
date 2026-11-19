@@ -9,6 +9,7 @@ import { CashPickups } from './CashPickups';
 import { Deposits } from './Deposits';
 import { Adjustments } from './Adjustments';
 import AdjustBalanceModal from './AdjustBalanceModal';
+import { formatCurrency } from '@/lib/format';
 
 interface CashInTransit {
   person_id: string;
@@ -160,7 +161,7 @@ export default function CashManagement() {
                     {person.person_name}
                   </div>
                   <div className={`text-2xl font-bold ${person.amount > 0 ? 'text-green-500' : person.amount < 0 ? 'text-red-500' : 'text-foreground'}`}>
-                    ${person.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    {formatCurrency(person.amount, 0, { halfAwayFromZero: true })}
                   </div>
                 </div>
               ))}
@@ -169,7 +170,7 @@ export default function CashManagement() {
                   Total
                 </div>
                 <div className={`text-2xl font-bold ${totalInTransit > 0 ? 'text-green-500' : 'text-foreground'}`}>
-                  ${totalInTransit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(totalInTransit, 0, { halfAwayFromZero: true })}
                 </div>
               </div>
             </div>

@@ -20,9 +20,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { fetchAuditItems, updateAuditItem, type BitstopMonthRow } from '@/lib/bitstop-report/data';
 import type { StoredAuditItem, AuditStatus } from '@/lib/bitstop-report/reconcile';
+import { formatCurrency } from '@/lib/format';
 
-const money = (v: number | null | undefined) =>
-  v == null ? '—' : `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (v: number | null | undefined) => (v == null ? '—' : formatCurrency(v, 2));
 
 const KIND_LABEL: Record<string, string> = {
   missing_from_report: 'Missing from report',
