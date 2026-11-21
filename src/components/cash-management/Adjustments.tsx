@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { Edit, Trash2, Scale, Loader2, AlertCircle } from 'lucide-react';
-import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
+import { TableGroup, GROUP_TH, GROUP_THEAD } from '@/components/ui/table-group';
 import {
   Table,
   TableBody,
@@ -310,12 +310,12 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
                   unit="adjustment"
                   expanded={isExpanded}
                   onToggle={() => toggleMonth(monthKey)}
-                  // Bar values are plain white like every group bar; the signed
+                  // Bar values use the group-bar foreground; the signed
                   // text (+/−) carries the direction. Row amounts stay colored.
                   stats={[{ label: 'Net', value: signedMoney(total) }]}
                 >
                     <Table className="table-fixed">
-                      <TableHeader>
+                      <TableHeader className={GROUP_THEAD}>
                         <TableRow className="hover:bg-transparent">
                           <TableHead className={`${GROUP_TH} w-[13%]`}>Effective Date</TableHead>
                           <TableHead className={`${GROUP_TH} w-[16%]`}>Person</TableHead>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, AlertCircle, Link, Check, X } from 'lucide-react';
-import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
+import { TableGroup, GROUP_TH, GROUP_THEAD } from '@/components/ui/table-group';
 import { formatCurrency } from '@/lib/format';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -688,7 +688,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
                   stats={[{ label: 'Total', value: formatCurrency(monthTotal, 2) }]}
                 >
                     <Table className="table-fixed">
-                      <TableHeader>
+                      <TableHeader className={GROUP_THEAD}>
                         <TableRow className="hover:bg-transparent">
                           <TableHead className={`${GROUP_TH} w-[9%]`}>Date</TableHead>
                           <TableHead className={`${GROUP_TH} w-[9%]`}>Deposit ID</TableHead>
@@ -938,13 +938,13 @@ export function Deposits({ onUpdate }: DepositsProps) {
           ) : (
             <div className="min-w-0 overflow-y-auto max-h-[400px]">
               <Table className="table-fixed">
-                <TableHeader>
+                <TableHeader className={GROUP_THEAD}>
                   <TableRow>
-                    <TableHead className="w-[18%] whitespace-normal">Pickup Date</TableHead>
-                    <TableHead className="w-[18%]">Person</TableHead>
-                    <TableHead>ATM</TableHead>
-                    <TableHead className="w-[19%] whitespace-normal text-right">Amount Linked</TableHead>
-                    <TableHead className="w-[9.5rem] text-right">Actions</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[18%] whitespace-normal`}>Pickup Date</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[18%]`}>Person</TableHead>
+                    <TableHead className={GROUP_TH}>ATM</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[19%] whitespace-normal text-right`}>Amount Linked</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[9.5rem] text-right`}>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

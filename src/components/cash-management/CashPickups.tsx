@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, ChevronDown, ListFilter } from 'lucide-react';
-import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
+import { TableGroup, GROUP_TH, GROUP_THEAD } from '@/components/ui/table-group';
 import { formatCurrency } from '@/lib/format';
 import {
   Table,
@@ -561,7 +561,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                   stats={[{ label: 'Total', value: formatCurrency(monthTotal, 2) }]}
                 >
                     <Table className="table-fixed">
-                      <TableHeader>
+                      <TableHeader className={GROUP_THEAD}>
                         <TableRow className="hover:bg-transparent">
                           <TableHead className={`${GROUP_TH} w-[8%]`}>Date</TableHead>
                           <TableHead className={`${GROUP_TH} w-[9%]`}>Person</TableHead>

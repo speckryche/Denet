@@ -26,7 +26,7 @@ import ReportUploadDialog from './ReportUploadDialog';
 import AuditItemsDialog from './AuditItemsDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { TableGroup, GROUP_TH, GROUP_TD } from '@/components/ui/table-group';
+import { TableGroup, GROUP_TH, GROUP_TD, GROUP_THEAD } from '@/components/ui/table-group';
 import { formatCurrency } from '@/lib/format';
 
 interface BitstopCommission {
@@ -371,7 +371,7 @@ export default function BitstopCommissions() {
                               className="table-fixed max-lg:min-w-[960px]"
                               containerClassName="overflow-visible max-lg:overflow-x-auto"
                             >
-                              <TableHeader>
+                              <TableHeader className={GROUP_THEAD}>
                                 <TableRow className="hover:bg-transparent">
                                   <TableHead className={`${BTH} w-[8.5%]`}>Month</TableHead>
                                   <TableHead className={`${BTH} w-[5.5%]`}>Year</TableHead>
