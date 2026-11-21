@@ -50,6 +50,9 @@ const isVenue = (v: string | null): v is Venue => VENUES.includes(v as Venue);
 
 const qtyFmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
 const formatQty = (n: number) => qtyFmt.format(roundQty(n));
+// Table display only: 4 decimals. Stored values, FIFO math and the form keep 8.
+const qtyFmt4 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+const formatQtyTable = (n: number) => qtyFmt4.format(roundQty(n));
 
 const formatDate = (d: string) => {
   const [y, m, day] = d.split('-');
@@ -99,7 +102,7 @@ export function InvestmentTransactions({ onCountChange }: InvestmentTransactions
   const [isFetchingPrices, setIsFetchingPrices] = useState(false);
 
   const [holdingsOpen, setHoldingsOpen] = useState(true);
-  const [openYears, setOpenYears] = useState<Record<string, boolean>>({});
+  const [txOpen, setTxOpen] = useState(true);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<InvestmentTransaction | null>(null);
@@ -189,25 +192,19 @@ export function InvestmentTransactions({ onCountChange }: InvestmentTransactions
   );
   const oversoldCoins = holdings.filter((h) => h.oversold > 0);
 
-  // ── Transactions grouped by year, newest first ──────────────────────────
-  const years = useMemo(() => {
-    const sorted = [...txs].sort(
-      (a, b) =>
-        b.tx_date.localeCompare(a.tx_date) ||
-        b.created_at.localeCompare(a.created_at) ||
-        b.id.localeCompare(a.id),
-    );
-    const map = new Map<string, InvestmentTransaction[]>();
-    for (const t of sorted) {
-      const y = t.tx_date.slice(0, 4);
-      if (!map.has(y)) map.set(y, []);
-      map.get(y)!.push(t);
-    }
-    return [...map.entries()];
-  }, [txs]);
-
-  const newestYear = years[0]?.[0];
-  const isYearOpen = (y: string) => openYears[y] ?? y === newestYear;
+  // ── Transactions, newest first ───────────────────────────────────────────
+  const sortedTxs = useMemo(
+    () =>
+      [...txs].sort(
+        (a, b) =>
+          b.tx_date.localeCompare(a.tx_date) ||
+          b.created_at.localeCompare(a.created_at) ||
+          b.id.localeCompare(a.id),
+      ),
+    [txs],
+  );
+  const totalBought = sortedTxs.filter((r) => r.tx_type === 'Buy').reduce((s, r) => s + r.usd_amount, 0);
+  const totalSold = sortedTxs.filter((r) => r.tx_type === 'Sell').reduce((s, r) => s + r.usd_amount, 0);
 
   // ── Form ────────────────────────────────────────────────────────────────
   const openAdd = () => {
@@ -427,7 +424,7 @@ export function InvestmentTransactions({ onCountChange }: InvestmentTransactions
                   {holdings.map((h) => (
                     <TableRow key={h.coin}>
                       <TableCell className={`${GROUP_TD} font-medium`}>{h.coin}</TableCell>
-                      <TableCell className={`${GROUP_TD} text-right font-mono tabular-nums`}>{formatQty(h.qty)}</TableCell>
+                      <TableCell className={`${GROUP_TD} text-right font-mono tabular-nums`}>{formatQtyTable(h.qty)}</TableCell>
                       <TableCell className={`${GROUP_TD} text-right font-mono tabular-nums text-muted-foreground`}>
                         {formatCurrency(h.avgCost, 2)}
                       </TableCell>
@@ -474,23 +471,18 @@ export function InvestmentTransactions({ onCountChange }: InvestmentTransactions
           </TableGroup>
 
           {/* Transaction list */}
-          {years.length === 0 ? (
+          {sortedTxs.length === 0 ? (
             <div className="text-center px-4 py-8 text-muted-foreground">No investment transactions yet.</div>
           ) : (
-            years.map(([year, rows]) => {
-              const bought = rows.filter((r) => r.tx_type === 'Buy').reduce((s, r) => s + r.usd_amount, 0);
-              const sold = rows.filter((r) => r.tx_type === 'Sell').reduce((s, r) => s + r.usd_amount, 0);
-              return (
                 <TableGroup
-                  key={year}
-                  label={year}
-                  count={rows.length}
+                  label="All transactions"
+                  count={sortedTxs.length}
                   unit="transaction"
-                  expanded={isYearOpen(year)}
-                  onToggle={() => setOpenYears((o) => ({ ...o, [year]: !isYearOpen(year) }))}
+                  expanded={txOpen}
+                  onToggle={() => setTxOpen((o) => !o)}
                   stats={[
-                    { label: 'Bought', value: formatCurrency(bought) },
-                    { label: 'Sold', value: formatCurrency(sold) },
+                    { label: 'Bought', value: formatCurrency(totalBought) },
+                    { label: 'Sold', value: formatCurrency(totalSold) },
                   ]}
                 >
                   <div className="w-full overflow-x-auto">
@@ -509,7 +501,7 @@ export function InvestmentTransactions({ onCountChange }: InvestmentTransactions
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {rows.map((t) => (
+                        {sortedTxs.map((t) => (
                           <TableRow key={t.id}>
                             <TableCell className={`${GROUP_TD} tabular-nums`}>{formatDate(t.tx_date)}</TableCell>
                             <TableCell className={`${GROUP_TD} font-medium`}>{t.coin}</TableCell>
@@ -522,7 +514,7 @@ export function InvestmentTransactions({ onCountChange }: InvestmentTransactions
                               )}
                             >
                               {t.quantity > 0 ? '+' : ''}
-                              {formatQty(t.quantity)}
+                              {formatQtyTable(t.quantity)}
                             </TableCell>
                             <TableCell className={`${GROUP_TD} text-right font-mono tabular-nums`}>
                               {t.tx_type === 'Adjustment' ? '—' : formatCurrency(t.usd_amount, 2)}
@@ -568,8 +560,6 @@ export function InvestmentTransactions({ onCountChange }: InvestmentTransactions
                     </Table>
                   </div>
                 </TableGroup>
-              );
-            })
           )}
         </>
       )}

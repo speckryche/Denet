@@ -452,7 +452,8 @@ export function AddSnapshotDialog({
           {/* Cash Assets Section */}
           {assets.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 pb-2">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 pb-2">
+                <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-success" aria-hidden="true" />
                 Cash Assets
               </div>
               <div className="grid gap-3">
@@ -485,9 +486,10 @@ export function AddSnapshotDialog({
           {/* Crypto Assets Section */}
           {cryptoCategories.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-amber-400/70 border-b border-amber-400/20 pb-2">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 pb-2">
+                <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
                 Crypto Assets
-                <span className="ml-2 text-[10px] font-normal text-amber-400/40 normal-case">
+                <span className="text-[10px] font-normal tracking-normal text-muted-foreground normal-case">
                   enter quantity, value calculated from price
                 </span>
               </div>
@@ -497,7 +499,7 @@ export function AddSnapshotDialog({
                   return (
                     <div key={cat.id} className="space-y-1">
                       <div className="flex items-center gap-3">
-                        <Label className="w-[180px] shrink-0 text-sm text-amber-400/80">
+                        <Label className="w-[180px] shrink-0 text-sm">
                           {cat.name}
                         </Label>
                         <div className="flex-1">
@@ -534,16 +536,17 @@ export function AddSnapshotDialog({
           {/* Liabilities Section */}
           {liabilities.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-red-400/70 border-b border-red-400/20 pb-2">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 pb-2">
+                <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-destructive" aria-hidden="true" />
                 Liabilities
-                <span className="ml-2 text-[10px] font-normal text-red-400/40 normal-case">
+                <span className="text-[10px] font-normal tracking-normal text-muted-foreground normal-case">
                   subtracted from total
                 </span>
               </div>
               <div className="grid gap-3">
                 {liabilities.map((cat) => (
                   <div key={cat.id} className="flex items-center gap-3">
-                    <Label className="w-[180px] shrink-0 text-sm text-red-400/80">
+                    <Label className="w-[180px] shrink-0 text-sm">
                       {cat.name}
                     </Label>
                     <div className="relative flex-1">
