@@ -36,9 +36,10 @@
     --muted-foreground: 215 14.3% 35.7%; /* #4E5968 */
     --dim: 217 8.9% 46.1%;               /* #6B7380 */
 
-    /* Table header strip: solid black with white labels in light mode */
-    --table-header-bg: 0 0% 0%;          /* #000000 */
-    --table-header-fg: 0 0% 100%;        /* #FFFFFF */
+    /* Table header (Option B): opaque white for sticky cells, muted labels.
+       Dark keeps the slate strip (see html.dark below). */
+    --table-header-bg: 0 0% 100%;        /* #FFFFFF */
+    --table-header-fg: 215 13.8% 34.1%;  /* #4B5563 */
 
     --accent: 214 25.9% 94.7%;
     --accent-foreground: 216 21.7% 9%;
@@ -199,17 +200,6 @@ html:not(.dark) .text-purple-200,
 html:not(.dark) .text-purple-300 { color: #7E22CE; }
 html:not(.dark) .text-blue-300,
 html:not(.dark) .text-blue-400 { color: #1D4ED8; }
-
-/* Dark leftover row fills / hovers (#252b3d, #323C49). The zebra shim
-   (bg-white/[0.02] -> surface-2) is more specific than a plain hover
-   utility, so every other row stayed light while its neighbor went
-   charcoal — and dark-on-dark body text became unreadable. */
-html:not(.dark) .hover\:bg-\[\#252b3d\]:hover,
-html:not(.dark) .bg-\[\#252b3d\],
-html:not(.dark) .hover\:bg-\[\#323C49\]:hover,
-html:not(.dark) .group:hover .group-hover\:bg-\[\#323C49\] {
-  background-color: #F3F4F6;
-}
 
 /* Light-gray body text written for dark surfaces (e.g. Pay / Installed). */
 html:not(.dark) .text-gray-300,

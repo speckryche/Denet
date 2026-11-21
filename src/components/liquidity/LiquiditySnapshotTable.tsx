@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency as formatUSD } from '@/lib/format';
+import { TABLE_THEAD, TABLE_TH, TABLE_SECTION } from '@/components/ui/table-styles';
 
 interface LiquidityCategory {
   id: string;
@@ -140,17 +141,14 @@ export function LiquiditySnapshotTable({
   const renderSectionHeader = (label: string) => (
     <tr>
       <td
-        className={cn(
-          stickyHead,
-          'px-2 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em]'
-        )}
+        className={cn('sticky left-0 z-20 bg-card', TABLE_SECTION)}
       >
         {label}
       </td>
       {snapshots.map((snap) => (
         <td
           key={snap.id}
-          className="bg-table-header-bg py-1"
+          className="bg-transparent py-2 border-b-2 border-foreground dark:border-b dark:border-border dark:bg-table-header-bg"
         />
       ))}
     </tr>
@@ -183,20 +181,17 @@ export function LiquiditySnapshotTable({
           ))}
         </colgroup>
 
-        <thead>
-          <tr className="bg-table-header-bg text-table-header-fg">
+        <thead className={TABLE_THEAD}>
+          <tr>
             <th
-              className={cn(
-                stickyHead,
-                'px-2 py-1 min-[1440px]:py-1.5 text-left text-[11px] font-bold uppercase tracking-[0.08em]'
-              )}
+              className={cn(stickyHead, TABLE_TH)}
             >
               Asset
             </th>
             {snapshots.map((snap) => (
               <th
                 key={snap.id}
-                className="px-2 py-1 min-[1440px]:py-1.5 text-center text-table-header-fg border-l border-table-header-fg/20"
+                className={cn(TABLE_TH, 'text-center border-l border-border')}
               >
                 <div className="font-bold tabular-nums text-xs">
                   {formatDate(snap.snapshot_date)}

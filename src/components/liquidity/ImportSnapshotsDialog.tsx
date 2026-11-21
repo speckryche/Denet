@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import Papa from 'papaparse';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { TABLE_THEAD, TABLE_TH } from '@/components/ui/table-styles';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -421,15 +422,15 @@ export function ImportSnapshotsDialog({
               </div>
               <div className="w-full min-w-0 overflow-x-auto bg-white/[0.02] border border-white/10 rounded-md">
                 <table className="w-full text-xs">
-                  <thead className="bg-table-header-bg text-table-header-fg">
-                    <tr className="border-b border-table-header-bg">
-                      <th className="px-3 py-2 text-left text-table-header-fg font-medium">
+                  <thead className={TABLE_THEAD}>
+                    <tr>
+                      <th className={cn(TABLE_TH, 'px-3')}>
                         Date
                       </th>
-                      <th className="px-3 py-2 text-right text-table-header-fg font-medium">
+                      <th className={cn(TABLE_TH, 'px-3 text-right')}>
                         Cash/Liab Fields
                       </th>
-                      <th className="px-3 py-2 text-right text-table-header-fg font-medium">
+                      <th className={cn(TABLE_TH, 'px-3 text-right')}>
                         Crypto Qty Fields
                       </th>
                     </tr>

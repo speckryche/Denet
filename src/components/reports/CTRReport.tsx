@@ -2,6 +2,7 @@ import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn, getPacificDateString } from '@/lib/utils';
+import { TABLE_THEAD, TABLE_TH } from '@/components/ui/table-styles';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -722,12 +723,12 @@ export default function CTRReport() {
                                     Transactions on {formatDate(item.trigger_date)}
                                   </div>
                                   <table className="w-full table-fixed text-sm">
-                                    <thead className="bg-table-header-bg text-table-header-fg">
-                                      <tr className="text-xs text-table-header-fg [&>th:first-child]:pl-2">
-                                        <th className="text-left py-1.5 pr-4 w-[28%]">Transaction ID</th>
-                                        <th className="text-left py-1.5 pr-4 w-[26%]">ATM</th>
-                                        <th className="text-left py-1.5 pr-4">ATM Address</th>
-                                        <th className="text-right py-1.5 pr-2 w-[110px]">Amount</th>
+                                    <thead className={TABLE_THEAD}>
+                                      <tr>
+                                        <th className={cn(TABLE_TH, 'pr-4 w-[28%]')}>Transaction ID</th>
+                                        <th className={cn(TABLE_TH, 'pr-4 w-[26%]')}>ATM</th>
+                                        <th className={cn(TABLE_TH, 'pr-4')}>ATM Address</th>
+                                        <th className={cn(TABLE_TH, 'pr-2 w-[110px] text-right')}>Amount</th>
                                       </tr>
                                     </thead>
                                     <tbody>

@@ -1,7 +1,7 @@
 // Collapsible group bar + card for grouped tables (by year or by month).
 // Used by Commission Records, Bitstop Commissions, Cash Management month
-// tables, and Investments. Other app tables do not import this file and
-// keep the default black/slate TableHeader.
+// tables, and Investments. Default TableHeader now uses the same Option B
+// light treatment; these constants keep grouped-page padding consistent.
 //
 // Owns the bar — chevron, label ("2026" or "Nov 2026"), "N months" count, and
 // the right-hand stats (uppercase label over a value) — plus the card around
@@ -15,24 +15,20 @@
 import * as React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TABLE_THEAD, TABLE_TFOOT } from '@/components/ui/table-styles';
 
 /** Column header: small uppercase, tracked, semibold. Labels may wrap to two lines. */
 export const GROUP_TH =
   'px-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#4B5563] dark:text-table-header-fg leading-tight whitespace-normal';
 
-/**
- * TableHeader variant for grouped tables. Light: no fill, 2px rule, #4B5563
- * labels. Dark: same slate strip as the default TableHeader.
- */
-export const GROUP_THEAD =
-  'bg-transparent text-[#4B5563] dark:bg-table-header-bg dark:text-table-header-fg [&_tr]:border-b-2 [&_tr]:border-foreground dark:[&_tr]:border-b dark:[&_tr]:border-table-header-bg [&_tr:hover]:bg-transparent [&_th]:text-[#4B5563] dark:[&_th]:text-table-header-fg';
+/** Same Option B header as the default TableHeader. */
+export const GROUP_THEAD = TABLE_THEAD;
 
 /** Body cell: compact horizontal padding and a 48px row, the height of a row of form inputs. */
 export const GROUP_TD = 'px-1.5 h-12';
 
-/** Holdings totals row: 2px rule, no fill in light; unchanged muted strip in dark. */
-export const GROUP_TFOOT =
-  'border-t-2 border-foreground bg-transparent dark:border-t dark:border-border dark:bg-muted/50';
+/** Holdings totals row: same as the default TableFooter. */
+export const GROUP_TFOOT = TABLE_TFOOT;
 
 export interface GroupStat {
   label: string;
