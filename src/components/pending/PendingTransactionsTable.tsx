@@ -52,7 +52,7 @@ export function PendingTransactionsTable({
             <TableHead className="text-right font-bold w-[48px]">Age</TableHead>
             <TableHead className="font-bold">ATM</TableHead>
             <TableHead className="font-bold w-[84px]">Platform</TableHead>
-            <TableHead className="text-right font-bold w-[104px]">Amount</TableHead>
+            <TableHead className="text-right font-bold w-[124px]">Amount</TableHead>
             {showActions && <TableHead className="text-right font-bold w-[210px]">Resolve</TableHead>}
           </TableRow>
         </TableHeader>
@@ -125,7 +125,7 @@ export function PendingTransactionsTable({
                       {row.platform === 'bitstop' ? 'Bitstop' : 'Denet'}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums whitespace-nowrap overflow-hidden">
+                  <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                     {formatCurrency(row.sale ?? 0, 2)}
                   </TableCell>
                   {showActions && (
