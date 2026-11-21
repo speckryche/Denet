@@ -186,14 +186,14 @@ const TOTAL_COL_HOVER = 'group-hover:bg-muted dark:group-hover:bg-slate-500';
 const TOTAL_COL_EDGE = 'bg-surface-2 text-foreground font-bold border-l-2 border-border-strong dark:bg-slate-500 dark:text-white dark:border-slate-400';
 
 // Compact column widths: 12 months + Totals fit a 1280 laptop (icon sidebar).
-const COL_STATUS = 52;
-const COL_INSTALL = 72;
-const COL_REMOVED = 72;
+const COL_STATUS = 60;
+const COL_INSTALL = 80;
+const COL_REMOVED = 80;
 const COL_ATM_ID = 52;
-const COL_ATM_NAME = 100;
-const COL_PLATFORM = 56;
-const COL_MONTH = 54;
-const COL_TOTAL = 68;
+const COL_ATM_NAME = 84;
+const COL_PLATFORM = 72;
+const COL_MONTH = 50;
+const COL_TOTAL = 72;
 const FIXED_WIDTH = COL_STATUS + COL_INSTALL + COL_REMOVED + COL_ATM_ID + COL_ATM_NAME + COL_PLATFORM;
 const LEFT_INSTALL = COL_STATUS;
 const LEFT_REMOVED = LEFT_INSTALL + COL_INSTALL;
@@ -502,7 +502,7 @@ export default function ATMMonthlySales() {
       <button
         type="button"
         onClick={() => handleSort(key)}
-        className={`inline-flex items-center gap-1 font-bold hover:underline ${align === 'center' ? 'justify-center w-full' : ''}`}
+        className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-normal text-[11px] hover:underline ${align === 'center' ? 'justify-center w-full' : ''}`}
         title={`Sort by ${label}`}
       >
         {label}
@@ -690,7 +690,7 @@ export default function ATMMonthlySales() {
     XLSX.writeFile(wb, `atm-monthly-sales-${selectedYear}-${exportFileSuffix(selectedPlatform)}.xlsx`);
   };
 
-  const stickyHead = 'sticky z-20 bg-table-header-bg text-table-header-fg font-bold';
+  const stickyHead = 'sticky z-20 bg-table-header-bg text-table-header-fg font-bold overflow-hidden tracking-normal';
 
   return (
     <Card>
@@ -770,22 +770,22 @@ export default function ATMMonthlySales() {
           <Table className="table-fixed text-xs [&_td]:h-9 [&_td]:py-1 [&_th]:h-9" style={{ width: tableWidth }}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className={`${stickyHead} left-0 w-[52px] px-1`}>Status</TableHead>
-                <TableHead className={`${stickyHead} left-[52px] w-[72px] px-1`}>Install</TableHead>
-                <TableHead className={`${stickyHead} left-[124px] w-[72px] px-1`} title="Removed">Rem.</TableHead>
-                <TableHead className={`${stickyHead} left-[196px] w-[52px] px-1`} title="ATM ID">
+                <TableHead className={`${stickyHead} left-0 w-[60px] px-1.5`}>Status</TableHead>
+                <TableHead className={`${stickyHead} left-[60px] w-[80px] px-1`}>Install</TableHead>
+                <TableHead className={`${stickyHead} left-[140px] w-[80px] px-1`} title="Removed">Rem.</TableHead>
+                <TableHead className={`${stickyHead} left-[220px] w-[52px] px-1.5`} title="ATM ID">
                   {renderSortLabel('ID', 'atm_id')}
                 </TableHead>
-                <TableHead className={`${stickyHead} left-[248px] w-[100px] px-1`}>
+                <TableHead className={`${stickyHead} left-[272px] w-[84px] px-1.5`}>
                   {renderSortLabel('ATM Name', 'atm_name')}
                 </TableHead>
-                <TableHead className={`${stickyHead} left-[348px] w-[56px] px-1 border-r-2 border-white/20`}>Platform</TableHead>
+                <TableHead className={`${stickyHead} left-[356px] w-[72px] px-1.5 border-r-2 border-white/20`}>Platform</TableHead>
                 {visibleMonths.map(month => (
-                  <TableHead key={month.key} className="text-center font-bold w-[54px] px-1">
+                  <TableHead key={month.key} className="text-center font-bold w-[50px] px-1 overflow-hidden tracking-normal">
                     {month.label}
                   </TableHead>
                 ))}
-                <TableHead className={`text-center w-[68px] px-1 ${TOTAL_COL_EDGE}`}>
+                <TableHead className={`text-center w-[72px] px-1.5 overflow-hidden tracking-normal ${TOTAL_COL_EDGE}`}>
                   {renderSortLabel('Totals', 'total', 'center')}
                 </TableHead>
               </TableRow>
@@ -823,14 +823,14 @@ export default function ATMMonthlySales() {
                     const sticky = `sticky z-20 ${band}`;
                     return (
                       <TableRow key={idx} className="group border-white/5">
-                        <TableCell className={`font-semibold ${sticky} left-0 w-[52px] px-1 ${row.active === false ? 'text-red-500' : 'text-green-500'}`}>
+                        <TableCell className={`font-semibold ${sticky} left-0 w-[60px] px-1.5 ${row.active === false ? 'text-red-500' : 'text-green-500'}`}>
                           {row.active === false ? 'Inactive' : 'Active'}
                         </TableCell>
-                        <TableCell className={`${sticky} left-[52px] w-[72px] px-1 tabular-nums`}>{formatDate(row.installed_date)}</TableCell>
-                        <TableCell className={`${sticky} left-[124px] w-[72px] px-1 tabular-nums`}>{formatDate(row.removed_date)}</TableCell>
-                        <TableCell className={`font-medium truncate ${sticky} left-[196px] w-[52px] px-1`} title={row.atm_id}>{row.atm_id}</TableCell>
-                        <TableCell className={`truncate ${sticky} left-[248px] w-[100px] px-1`} title={row.atm_name}>{row.atm_name}</TableCell>
-                        <TableCell className={`${sticky} left-[348px] w-[56px] px-1 border-r-2 border-white/20`}>
+                        <TableCell className={`${sticky} left-[60px] w-[80px] px-1 tabular-nums whitespace-nowrap overflow-hidden`}>{formatDate(row.installed_date)}</TableCell>
+                        <TableCell className={`${sticky} left-[140px] w-[80px] px-1 tabular-nums whitespace-nowrap overflow-hidden`}>{formatDate(row.removed_date)}</TableCell>
+                        <TableCell className={`font-medium truncate ${sticky} left-[220px] w-[52px] px-1.5`} title={row.atm_id}>{row.atm_id}</TableCell>
+                        <TableCell className={`truncate ${sticky} left-[272px] w-[84px] px-1.5`} title={row.atm_name}>{row.atm_name}</TableCell>
+                        <TableCell className={`${sticky} left-[356px] w-[72px] px-1.5 border-r-2 border-white/20`}>
                           <span className={`px-1.5 py-0.5 rounded text-xs ${
                             row.platform === 'bitstop'
                               ? 'bg-blue-500/20 text-blue-300'
@@ -859,7 +859,7 @@ export default function ATMMonthlySales() {
                           return (
                             <TableCell
                               key={month.key}
-                              className={`text-center font-mono tabular-nums whitespace-nowrap w-[54px] px-1 ${band}`}
+                              className={`text-center font-mono tabular-nums whitespace-nowrap w-[50px] px-1 ${band}`}
                               title={moneyTitle(value)}
                             >
                               <span className={isRemovalMonth ? 'text-red-600 font-semibold' : isInstallMonth ? 'text-green-600 font-semibold' : isZero(value) ? 'text-muted-foreground' : ''}>
@@ -868,7 +868,7 @@ export default function ATMMonthlySales() {
                             </TableCell>
                           );
                         })}
-                        <TableCell className={`text-center font-mono font-bold tabular-nums whitespace-nowrap w-[68px] px-1 border-l-2 border-border-strong dark:border-slate-400 ${TOTAL_COL_BAND[idx % 2]} ${TOTAL_COL_HOVER}`}
+                        <TableCell className={`text-center font-mono font-bold tabular-nums whitespace-nowrap w-[72px] px-1.5 border-l-2 border-border-strong dark:border-slate-400 ${TOTAL_COL_BAND[idx % 2]} ${TOTAL_COL_HOVER}`}
                           title={moneyTitle(row.yearTotal)}
                         >
                           {formatMoney(row.yearTotal)}
@@ -880,11 +880,11 @@ export default function ATMMonthlySales() {
                   <TableRow className="border-t-2 border-foreground font-semibold hover:bg-transparent dark:border-border">
                     <TableCell colSpan={FIXED_COL_COUNT} className="sticky left-0 z-20 bg-card px-1 border-r-2 border-border">TOTAL</TableCell>
                     {visibleMonths.map(month => (
-                      <TableCell key={month.key} className="text-center font-mono tabular-nums whitespace-nowrap bg-transparent w-[54px] px-1" title={moneyTitle(totals.monthlyTotals[month.key] || 0)}>
+                      <TableCell key={month.key} className="text-center font-mono tabular-nums whitespace-nowrap bg-transparent w-[50px] px-1" title={moneyTitle(totals.monthlyTotals[month.key] || 0)}>
                         {formatMoney(totals.monthlyTotals[month.key] || 0)}
                       </TableCell>
                     ))}
-                    <TableCell className={`text-center font-mono tabular-nums whitespace-nowrap w-[68px] px-1 ${TOTAL_COL_EDGE}`} title={moneyTitle(totals.yearTotal)}>
+                    <TableCell className={`text-center font-mono tabular-nums whitespace-nowrap w-[72px] px-1.5 ${TOTAL_COL_EDGE}`} title={moneyTitle(totals.yearTotal)}>
                       {formatMoney(totals.yearTotal)}
                     </TableCell>
                   </TableRow>

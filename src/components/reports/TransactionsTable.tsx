@@ -185,32 +185,32 @@ export default function TransactionsTable({
   }) => (
     <button
       onClick={() => onSortChange(field)}
-      className={`flex items-center gap-1 text-left leading-tight hover:text-foreground/80 ${align === 'right' ? 'ml-auto' : ''}`}
+      className={`inline-flex items-center gap-0.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] leading-tight hover:text-foreground/80 ${align === 'right' ? 'ml-auto justify-end' : ''}`}
     >
       {label}
       {sortField === field ? (
-        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 shrink-0" /> : <ArrowDown className="w-3 h-3 shrink-0" />
       ) : (
-        <ArrowUpDown className="w-4 h-4 opacity-50" />
+        <ArrowUpDown className="w-3 h-3 shrink-0 opacity-50" />
       )}
     </button>
   );
 
   return (
     <div className="rounded-md border border-white/10 min-w-0">
-      <Table className="table-fixed min-w-[860px]">
+      <Table className="table-fixed w-full">
         <TableHeader>
           <TableRow>
-            <TableHead className="font-bold w-[84px]"><SortButton field="date" label="Date" /></TableHead>
-            <TableHead className="font-bold w-[88px]"><SortButton field="atm_id" label="ATM ID" /></TableHead>
-            <TableHead className="font-bold"><SortButton field="atm_name" label="ATM Name" /></TableHead>
-            <TableHead className="font-bold w-[150px]"><SortButton field="platform" label="Platform" /></TableHead>
-            <TableHead className="font-bold"><SortButton field="customer_last_name" label="Customer" /></TableHead>
-            <TableHead className="font-bold w-[72px]"><SortButton field="ticker" label="Ticker" /></TableHead>
-            <TableHead className="text-right font-bold w-[96px]"><SortButton field="sale" label="Sale" align="right" /></TableHead>
-            <TableHead className="text-right font-bold w-[84px]"><SortButton field="fee" label="Fee" align="right" /></TableHead>
-            <TableHead className="text-right font-bold w-[112px]"><SortButton field="bitstop_fee" label="Bitstop Fee" align="right" /></TableHead>
-            {isAdmin && <TableHead className="w-[48px] font-bold" />}
+            <TableHead className="font-bold w-[108px] overflow-hidden"><SortButton field="date" label="Date" /></TableHead>
+            <TableHead className="font-bold w-[80px] overflow-hidden"><SortButton field="atm_id" label="ATM ID" /></TableHead>
+            <TableHead className="font-bold overflow-hidden"><SortButton field="atm_name" label="ATM Name" /></TableHead>
+            <TableHead className="font-bold w-[110px] overflow-hidden"><SortButton field="platform" label="Platform" /></TableHead>
+            <TableHead className="font-bold overflow-hidden"><SortButton field="customer_last_name" label="Customer" /></TableHead>
+            <TableHead className="font-bold w-[64px] overflow-hidden"><SortButton field="ticker" label="Ticker" /></TableHead>
+            <TableHead className="text-right font-bold w-[116px] overflow-hidden"><SortButton field="sale" label="Sale" align="right" /></TableHead>
+            <TableHead className="text-right font-bold w-[108px] overflow-hidden"><SortButton field="fee" label="Fee" align="right" /></TableHead>
+            <TableHead className="text-right font-bold w-[128px] overflow-hidden"><SortButton field="bitstop_fee" label="Bitstop Fee" align="right" /></TableHead>
+            {isAdmin && <TableHead className="w-[44px] font-bold" />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -235,8 +235,8 @@ export default function TransactionsTable({
                   key={row.id || idx}
                   className={counted ? 'border-white/5' : 'border-white/5 bg-white/[0.02] text-muted-foreground/70'}
                 >
-                  <TableCell className="whitespace-nowrap tabular-nums">{formatTransactionDate(row.date)}</TableCell>
-                  <TableCell className="font-medium truncate" title={row.atm_id}>{row.atm_id}</TableCell>
+                  <TableCell className="whitespace-nowrap tabular-nums overflow-hidden pr-2">{formatTransactionDate(row.date)}</TableCell>
+                  <TableCell className="font-medium truncate pr-2" title={row.atm_id}>{row.atm_id}</TableCell>
                   <TableCell className="truncate" title={row.atm_name}>{row.atm_name}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-1">
@@ -256,13 +256,13 @@ export default function TransactionsTable({
                   </TableCell>
                   <TableCell className="truncate" title={`${row.customer_first_name} ${row.customer_last_name}`}>{row.customer_first_name} {row.customer_last_name}</TableCell>
                   <TableCell className="truncate" title={row.ticker}>{row.ticker}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
+                  <TableCell className="text-right font-mono tabular-nums whitespace-nowrap overflow-hidden pl-2">
                     {formatCurrency(row.sale, 2)}
                   </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
+                  <TableCell className="text-right font-mono tabular-nums whitespace-nowrap overflow-hidden pl-2">
                     {formatCurrency(row.fee, 2)}
                   </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
+                  <TableCell className="text-right font-mono tabular-nums whitespace-nowrap overflow-hidden pl-2">
                     {formatCurrency(row.bitstop_fee, 2)}
                   </TableCell>
                   {isAdmin && (
@@ -293,10 +293,10 @@ export default function TransactionsTable({
                     ? ` of ${rows.length.toLocaleString('en-US')} shown`
                     : ''} transaction{completedRows.length === 1 && nonCompletedCount === 0 ? '' : 's'})
                 </TableCell>
-                <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
+                <TableCell className="text-right font-mono tabular-nums whitespace-nowrap overflow-hidden pl-2">
                   {formatCurrency(totals.sale, 2)}
                 </TableCell>
-                <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
+                <TableCell className="text-right font-mono tabular-nums whitespace-nowrap overflow-hidden pl-2">
                   {adjustedFeeTotals.hasOverrides ? (
                     <span title="Adjusted with Bitstop fee overrides">
                       {formatCurrency(adjustedFeeTotals.fee, 2)} *
@@ -305,7 +305,7 @@ export default function TransactionsTable({
                     <>{formatCurrency(totals.fee, 2)}</>
                   )}
                 </TableCell>
-                <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
+                <TableCell className="text-right font-mono tabular-nums whitespace-nowrap overflow-hidden pl-2">
                   {formatCurrency(totals.bitstop_fee, 2)}
                 </TableCell>
               </TableRow>

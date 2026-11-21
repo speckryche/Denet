@@ -38,22 +38,22 @@ export function PendingTransactionsTable({
 
   return (
     <div className="min-w-0 rounded-md border border-white/10">
-      <Table>
+      <Table className="table-fixed w-full">
         <TableHeader>
           <TableRow>
             {/* The transaction's own id, abbreviated. Several rows can share an
                 ATM, a date and an amount — this is the only field that never
                 collides, so it is what you cross-check against the confirm
                 dialog before approving a write. */}
-            <TableHead className="font-bold">ID</TableHead>
-            <TableHead className="font-bold">Status</TableHead>
-            <TableHead className="font-bold leading-tight">Transaction Date</TableHead>
-            <TableHead className="font-bold">First Seen</TableHead>
-            <TableHead className="text-right font-bold">Age</TableHead>
+            <TableHead className="font-bold w-[88px]">ID</TableHead>
+            <TableHead className="font-bold w-[128px]">Status</TableHead>
+            <TableHead className="font-bold leading-tight w-[116px]">Transaction Date</TableHead>
+            <TableHead className="font-bold w-[116px]">First Seen</TableHead>
+            <TableHead className="text-right font-bold w-[48px]">Age</TableHead>
             <TableHead className="font-bold">ATM</TableHead>
-            <TableHead className="font-bold">Platform</TableHead>
-            <TableHead className="text-right font-bold">Amount</TableHead>
-            {showActions && <TableHead className="text-right font-bold">Resolve</TableHead>}
+            <TableHead className="font-bold w-[84px]">Platform</TableHead>
+            <TableHead className="text-right font-bold w-[104px]">Amount</TableHead>
+            {showActions && <TableHead className="text-right font-bold w-[210px]">Resolve</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -86,13 +86,13 @@ export function PendingTransactionsTable({
                   )}
                 >
                   <TableCell
-                    className="font-mono text-xs text-muted-foreground"
+                    className="font-mono text-xs text-muted-foreground whitespace-nowrap overflow-hidden"
                     title={row.id}
                   >
                     {row.id.slice(0, 8)}
                   </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded text-xs ${statusBadgeClass(row.status)}`}>
+                  <TableCell className="overflow-hidden">
+                    <span className={`inline-flex whitespace-nowrap px-2 py-1 rounded text-xs ${statusBadgeClass(row.status)}`}>
                       {formatStatusLabel(row.status)}
                     </span>
                   </TableCell>
@@ -108,7 +108,7 @@ export function PendingTransactionsTable({
                   >
                     {age === null ? '—' : `${age}d`}
                   </TableCell>
-                  <TableCell className="max-w-0 w-[24%]">
+                  <TableCell className="min-w-0 overflow-hidden">
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate font-medium" title={row.atm_id}>{row.atm_id}</span>
                       <span className="truncate text-xs text-muted-foreground" title={row.atm_name || undefined}>{row.atm_name || '—'}</span>
@@ -125,7 +125,7 @@ export function PendingTransactionsTable({
                       {row.platform === 'bitstop' ? 'Bitstop' : 'Denet'}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right font-mono tabular-nums whitespace-nowrap overflow-hidden">
                     {formatCurrency(row.sale ?? 0, 2)}
                   </TableCell>
                   {showActions && (
