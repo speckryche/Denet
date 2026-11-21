@@ -12,6 +12,7 @@ import BTMDetails from "./components/btm-details/BTMDetails";
 import CsvUploads from "./components/csv-uploads/CsvUploads";
 import PendingResolution from "./components/pending/PendingResolution";
 import Liquidity from "./components/liquidity/Liquidity";
+import Investments from "./components/investments/Investments";
 import Refunds from "./components/refunds/Refunds";
 import QboEntries from "./components/qbo-entries/QboEntries";
 import { Eula, Privacy } from "./components/legal/LegalPages";
@@ -128,6 +129,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Liquidity />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/investments"
+            element={
+              <ProtectedRoute>
+                <Investments />
               </ProtectedRoute>
             }
           />

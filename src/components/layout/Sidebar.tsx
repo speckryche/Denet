@@ -69,6 +69,7 @@ const navGroups: NavGroup[] = [
     items: [
       { name: 'Cash Management', path: '/cash-management', icon: <Banknote className={iconClass} />, title: 'Cash Management' },
       { name: 'Liquidity', path: '/liquidity', icon: <Wallet className={iconClass} />, title: 'Liquidity' },
+      { name: 'Investments', path: '/investments', icon: <TrendingUp className={iconClass} />, title: 'Investments' },
     ],
   },
   {

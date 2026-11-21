@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { formatCurrency as formatUSD } from '@/lib/format';
+import { ledgerQtyAsOf, type InvestmentCoin, type InvestmentTransaction } from '@/lib/investmentFifo';
 
 interface LiquidityCategory {
   id: string;
@@ -68,6 +69,16 @@ const SUPPORTED_COINS: Record<string, string> = {
 
 export { SUPPORTED_COINS };
 
+// New snapshots prefill these categories from the investment_transactions ledger.
+const LEDGER_CATEGORIES: Record<string, InvestmentCoin> = {
+  'btc - investment': 'BTC',
+  'sol - investment': 'SOL',
+};
+const ledgerCoinFor = (cat: LiquidityCategory): InvestmentCoin | undefined =>
+  LEDGER_CATEGORIES[cat.name.trim().toLowerCase()];
+
+type LedgerRow = Pick<InvestmentTransaction, 'coin' | 'tx_date' | 'quantity'>;
+
 export function AddSnapshotDialog({
   open,
   onOpenChange,
@@ -88,6 +99,10 @@ export function AddSnapshotDialog({
   const [isFetchingPrices, setIsFetchingPrices] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  // Investment ledger rows, loaded when adding a new snapshot (null = not loaded).
+  const [ledger, setLedger] = useState<LedgerRow[] | null>(null);
+  // Categories whose quantity the user typed over; prefill leaves them alone.
+  const [touchedQty, setTouchedQty] = useState<Set<string>>(new Set());
 
   const activeCategories = categories.filter((c) => c.active);
   const assets = activeCategories.filter((c) => c.type === 'asset');
@@ -133,8 +148,10 @@ export function AddSnapshotDialog({
         setSnapshotDate(getPacificDateString());
         setCategoryValues({});
         setCategoryQuantities({});
+        setTouchedQty(new Set());
         // Only fetch live prices for new snapshots
         fetchAllPrices(neededCoinIds);
+        fetchLedger();
       }
     }
   }, [open, editingSnapshot, categories]);
@@ -159,7 +176,7 @@ export function AddSnapshotDialog({
         setBitcoinPrice(Math.round(prices.bitcoin).toString());
       }
       if (prices.solana) {
-        setSolanaPrice(Math.round(prices.solana * 100 / 100).toString());
+        setSolanaPrice((Math.round(prices.solana * 100) / 100).toString());
       }
     } catch (err) {
       console.error('Failed to fetch prices:', err);
@@ -167,6 +184,41 @@ export function AddSnapshotDialog({
       setIsFetchingPrices(false);
     }
   };
+
+  const fetchLedger = async () => {
+    setLedger(null);
+    const { data, error: err } = await supabase
+      .from('investment_transactions')
+      .select('coin, tx_date, quantity');
+    if (err) {
+      console.error('Failed to load investment ledger for prefill:', err);
+      return;
+    }
+    setLedger((data ?? []).map((r) => ({ ...r, quantity: Number(r.quantity) })) as LedgerRow[]);
+  };
+
+  // New snapshots only: "BTC - Investment" / "SOL - Investment" quantity = ledger
+  // qty as of the snapshot date; value = qty × this snapshot's coin price. Re-runs
+  // when the date or price changes; a quantity the user edited is kept.
+  const btcPriceNum = coinPrices.bitcoin || parseFloat(bitcoinPrice) || 0;
+  const solPriceNum = coinPrices.solana || parseFloat(solanaPrice) || 0;
+  useEffect(() => {
+    if (!open || isEditing || !ledger || !snapshotDate) return;
+    const qtyUpdates: Record<string, string> = {};
+    const valueUpdates: Record<string, string> = {};
+    for (const cat of cryptoCategories) {
+      const coin = ledgerCoinFor(cat);
+      if (!coin || touchedQty.has(cat.id)) continue;
+      const qty = ledgerQtyAsOf(ledger, coin, snapshotDate);
+      const price = coin === 'BTC' ? btcPriceNum : solPriceNum;
+      qtyUpdates[cat.id] = qty.toString();
+      valueUpdates[cat.id] = Math.round(qty * price).toString();
+    }
+    if (Object.keys(qtyUpdates).length === 0) return;
+    setCategoryQuantities((prev) => ({ ...prev, ...qtyUpdates }));
+    setCategoryValues((prev) => ({ ...prev, ...valueUpdates }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEditing, ledger, snapshotDate, btcPriceNum, solPriceNum, touchedQty, categories]);
 
   // Get the current price for a coin, using price fields as fallback
   const getCoinPrice = (coinId: string | null): number => {
@@ -189,6 +241,7 @@ export function AddSnapshotDialog({
   // When quantity changes for a crypto category, update the computed value
   const updateCryptoQuantity = (catId: string, quantity: string) => {
     setCategoryQuantities((prev) => ({ ...prev, [catId]: quantity }));
+    setTouchedQty((prev) => (prev.has(catId) ? prev : new Set(prev).add(catId)));
     const cat = cryptoCategories.find((c) => c.id === catId);
     if (cat?.coin_id) {
       const qty = parseFloat(quantity) || 0;
@@ -450,7 +503,7 @@ export function AddSnapshotDialog({
                         <div className="flex-1">
                           <Input
                             type="number"
-                            step="0.0001"
+                            step="any"
                             value={categoryQuantities[cat.id] || ''}
                             onChange={(e) =>
                               updateCryptoQuantity(cat.id, e.target.value)
