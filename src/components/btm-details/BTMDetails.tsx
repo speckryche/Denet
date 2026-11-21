@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Pencil, History, Search, Download, Check, Plus, Monitor, RefreshCw, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate } from '@/lib/format';
 import { TABLE_THEAD, TABLE_TH } from '@/components/ui/table-styles';
 import UpdateMachineStateModal from './UpdateMachineStateModal';
 import ProfileTimeline from './ProfileTimeline';
@@ -647,12 +648,12 @@ export default function BTMDetails() {
                       </td>
                       {/* Installed */}
                       <td className="px-3 py-3 align-top font-mono tabular-nums text-gray-400">
-                        {profile.installed_date || '—'}
+                        {profile.installed_date ? formatDisplayDate(profile.installed_date) : '—'}
                       </td>
                       {/* Removed (Inactive only) */}
                       {isInactive && (
                         <td className="px-3 py-3 align-top font-mono tabular-nums text-gray-400">
-                          {profile.removed_date || '—'}
+                          {profile.removed_date ? formatDisplayDate(profile.removed_date) : '—'}
                         </td>
                       )}
                       {/* Chevron */}

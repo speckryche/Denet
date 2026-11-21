@@ -747,7 +747,7 @@ export default function ATMSalesSummary() {
                     </TableRow>
                   ))}
                   {/* Totals Row */}
-                  <TableRow className="border-white/10 bg-white/5 font-bold">
+                  <TableRow className="border-t-2 border-foreground bg-transparent font-semibold hover:bg-transparent dark:border-border">
                     <TableCell colSpan={3}>TOTAL</TableCell>
                     <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                       {totals.transaction_count.toLocaleString('en-US')}

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import Papa from 'papaparse';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate } from '@/lib/format';
 import { TABLE_THEAD, TABLE_TH } from '@/components/ui/table-styles';
 import { Button } from '@/components/ui/button';
 import {
@@ -333,10 +334,7 @@ export function ImportSnapshotsDialog({
     if (created > 0) onImported();
   };
 
-  const formatDateDisplay = (d: string) => {
-    const [y, m, day] = d.split('-');
-    return `${m}/${day}/${y.slice(2)}`;
-  };
+  const formatDateDisplay = (d: string) => formatDisplayDate(d);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

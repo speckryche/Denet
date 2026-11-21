@@ -16,6 +16,7 @@ import {
 } from '@/lib/transaction-status';
 import { STALE_AFTER_DAYS, type PendingRow } from './types';
 import { formatCurrency } from '@/lib/format';
+import { TableEmpty } from '@/components/ui/table-empty';
 
 interface PendingTransactionsTableProps {
   rows: PendingRow[];
@@ -57,15 +58,15 @@ export function PendingTransactionsTable({
         </TableHeader>
         <TableBody>
           {isLoading ? (
-            <TableRow>
-              <TableCell colSpan={colSpan} className="text-center text-muted-foreground">
-                Loading...
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={colSpan} className="h-auto p-0">
+                <TableEmpty>Loading...</TableEmpty>
               </TableCell>
             </TableRow>
           ) : rows.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={colSpan} className="text-center text-muted-foreground py-8">
-                {emptyMessage}
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={colSpan} className="h-auto p-0">
+                <TableEmpty>{emptyMessage}</TableEmpty>
               </TableCell>
             </TableRow>
           ) : (
@@ -125,11 +126,11 @@ export function PendingTransactionsTable({
                     </span>
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {formatCurrency(row.sale ?? 0)}
+                    {formatCurrency(row.sale ?? 0, 2)}
                   </TableCell>
                   {showActions && (
                     <TableCell>
-                      <div className="flex flex-wrap gap-1.5 justify-end">
+                      <div className="flex flex-nowrap gap-1.5 justify-end">
                         {/* Buttons come from the config, never a literal list —
                             add one by flipping manualTarget in STATUS_RULES. */}
                         {MANUAL_RESOLUTION_TARGETS.filter((t) => t !== row.status).map((target) => (
@@ -137,7 +138,7 @@ export function PendingTransactionsTable({
                             key={target}
                             variant="outline"
                             size="sm"
-                            className="h-7 text-xs whitespace-nowrap"
+                            className="h-7 px-2 text-xs whitespace-nowrap"
                             onClick={() => onResolve?.(row, target)}
                           >
                             Mark {formatStatusLabel(target)}

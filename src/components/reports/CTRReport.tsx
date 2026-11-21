@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn, getPacificDateString } from '@/lib/utils';
 import { TABLE_THEAD, TABLE_TH } from '@/components/ui/table-styles';
+import { TableEmpty } from '@/components/ui/table-empty';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -582,13 +583,15 @@ export default function CTRReport() {
           </CardContent>
         </Card>
       ) : displayItems.length === 0 ? (
-        <Card className="bg-card/30 border-white/10">
-          <CardContent className="py-12 text-center text-muted-foreground">
-            {viewMode === 'single'
-              ? `No days with a single transaction ≥ ${formatCurrency(CTR_THRESHOLD)}.`
-              : showFiled
-              ? 'No CTR entries match this filter.'
-              : 'No pending CTR filings in this view.'}
+        <Card className="border-border bg-card">
+          <CardContent className="p-0">
+            <TableEmpty>
+              {viewMode === 'single'
+                ? `No days with a single transaction ≥ ${formatCurrency(CTR_THRESHOLD)}.`
+                : showFiled
+                ? 'No CTR entries match this filter.'
+                : 'No pending CTR filings in this view.'}
+            </TableEmpty>
           </CardContent>
         </Card>
       ) : (

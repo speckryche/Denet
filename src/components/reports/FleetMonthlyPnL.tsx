@@ -29,6 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TableEmpty } from '@/components/ui/table-empty';
 import { FileSpreadsheet, LineChart, EyeOff } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import {
@@ -476,7 +477,7 @@ export default function FleetMonthlyPnL() {
 
         {/* Table */}
         <div className="rounded-md border border-white/10 min-w-0">
-          <Table className="text-xs">
+          <Table className="text-xs [&_td]:h-9 [&_td]:py-1 [&_th]:h-9">
             <TableHeader>
               <TableRow>
                 <TableHead className="font-bold sticky left-0 bg-table-header-bg z-10 w-[130px] px-1.5">Line Item</TableHead>
@@ -517,8 +518,8 @@ export default function FleetMonthlyPnL() {
                 </TableRow>
               ) : !result ? (
                 <TableRow>
-                  <TableCell colSpan={months.length + 2} className="text-center text-muted-foreground py-8">
-                    No data available for selected range
+                  <TableCell colSpan={months.length + 2} className="h-auto p-0">
+                    <TableEmpty>No data available for selected range</TableEmpty>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -528,7 +529,7 @@ export default function FleetMonthlyPnL() {
                     className={cn(
                       'border-white/5',
                       r.informational && 'text-muted-foreground italic border-b-2 border-b-white/10',
-                      r.emphasis && 'border-t-2 border-t-white/20 bg-white/5 font-bold',
+                      r.emphasis && 'border-t-2 border-foreground bg-transparent font-semibold dark:border-border',
                     )}
                   >
                     <TableCell

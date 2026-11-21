@@ -421,7 +421,7 @@ export default function MonthlySalesSummary() {
                     </TableRow>
                   ))}
                   {data.length > 1 && (
-                    <TableRow className="bg-surface-2/60 font-semibold hover:bg-surface-2">
+                    <TableRow className="border-t-2 border-foreground bg-transparent font-semibold hover:bg-transparent dark:border-border">
                       <TableCell className={firstCol}>All platforms</TableCell>
                       {months.map((_, monthIdx) => {
                         const value = allPlatformsMonth(monthIdx);

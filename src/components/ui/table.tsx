@@ -1,7 +1,7 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
-import { TABLE_THEAD, TABLE_TH } from "@/components/ui/table-styles"
+import { TABLE_THEAD, TABLE_TH, TABLE_TFOOT, TABLE_TD } from "@/components/ui/table-styles"
 
 interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
   /** Extra classes for the scroll wrapper (e.g. to let overlays escape it). */
@@ -57,7 +57,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      TABLE_TFOOT,
       className
     )}
     {...props}
@@ -102,7 +102,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-2 py-1.5 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      TABLE_TD,
       className
     )}
     {...props}

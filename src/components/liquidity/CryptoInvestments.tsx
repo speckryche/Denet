@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2, Bitcoin, RefreshCw } from 'lucide-react';
-import { formatCurrency as formatUSD } from '@/lib/format';
+import { formatCurrency as formatUSD, formatDisplayDate } from '@/lib/format';
 import { TABLE_THEAD, TABLE_TH } from '@/components/ui/table-styles';
 
 interface CryptoInvestment {
@@ -72,10 +72,7 @@ const formatQuantity = (value: number) =>
     maximumFractionDigits: 8,
   }).format(value);
 
-const formatDate = (dateStr: string): string => {
-  const [year, month, day] = dateStr.split('-');
-  return `${month}/${day}/${year.slice(2)}`;
-};
+const formatDate = (dateStr: string): string => formatDisplayDate(dateStr);
 
 const getPacificDateString = () => {
   return new Date().toLocaleDateString('en-CA', {

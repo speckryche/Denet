@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { Edit, Trash2, Scale, Loader2, AlertCircle } from 'lucide-react';
-import { TableGroup, GROUP_TH, GROUP_THEAD } from '@/components/ui/table-group';
+import { TableGroup, GROUP_TH, GROUP_THEAD, GROUP_TD } from '@/components/ui/table-group';
 import {
   Table,
   TableBody,
@@ -31,7 +31,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, formatDisplayDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 interface Adjustment {
   id: string;
@@ -327,26 +328,26 @@ export function Adjustments({ onUpdate }: AdjustmentsProps) {
                       <TableBody>
                         {rows.map((adj) => (
                           <TableRow key={adj.id}>
-                            <TableCell>
-                              {new Date(adj.effective_date + 'T00:00:00').toLocaleDateString()}
+                            <TableCell className={GROUP_TD}>
+                              {formatDisplayDate(adj.effective_date)}
                             </TableCell>
-                            <TableCell className="truncate" title={adj.person_name}>{adj.person_name}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "truncate")} title={adj.person_name}>{adj.person_name}</TableCell>
                             <TableCell
-                              className={`text-right font-mono ${
+                              className={cn(GROUP_TD, `text-right font-mono ${
                                 adj.delta_amount > 0
                                   ? 'text-green-500'
                                   : adj.delta_amount < 0
                                   ? 'text-red-500'
                                   : 'text-foreground'
-                              }`}
+                              }`)}
                             >
                               {signedMoney(adj.delta_amount)}
                             </TableCell>
-                            <TableCell className="whitespace-pre-wrap break-words">
+                            <TableCell className={cn(GROUP_TD, "whitespace-pre-wrap break-words")}>
                               {adj.reason}
                             </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
+                            <TableCell className={cn(GROUP_TD, "text-right")}>
+                              <div className="flex flex-nowrap justify-end gap-1">
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(adj)} title="Edit">
                                   <Edit className="w-4 h-4" />
                                 </Button>

@@ -51,3 +51,20 @@ export const formatCurrency = (
   // "-$0" / "-$0.00": a negative that rounded to zero. Drop the sign.
   return /^-\$0(\.0+)?$/.test(s) ? s.slice(1) : s;
 };
+
+/**
+ * Display-only calendar date as MM/DD/YYYY.
+ * YYYY-MM-DD (optionally followed by a time) is parsed as a calendar date,
+ * not a UTC instant, so the day does not shift in US time zones.
+ */
+export const formatDisplayDate = (value: string | null | undefined): string => {
+  if (value == null || String(value).trim() === '') return '—';
+  const raw = String(value).trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  if (iso) return `${iso[2]}/${iso[3]}/${iso[1]}`;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return '—';
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${month}/${day}/${d.getFullYear()}`;
+};

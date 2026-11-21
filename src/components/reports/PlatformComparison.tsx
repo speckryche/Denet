@@ -14,6 +14,7 @@ import { FileSpreadsheet, FileText, RotateCcw, Loader2, Info } from 'lucide-reac
 import * as XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
 import { TABLE_THEAD, TABLE_TH, TABLE_TFOOT } from '@/components/ui/table-styles';
+import { TableEmpty } from '@/components/ui/table-empty';
 import {
   calculateExpenseMonths,
   profilesForWindow,
@@ -976,9 +977,7 @@ export default function PlatformComparison() {
 
         {/* No machines found */}
         {!isLoading && canRun && machineCount === 0 && !error && (
-          <div className="text-center py-12 text-muted-foreground">
-            No Denet Platform machines found for the selected date range.
-          </div>
+          <TableEmpty>No Denet Platform machines found for the selected date range.</TableEmpty>
         )}
       </CardContent>
     </Card>

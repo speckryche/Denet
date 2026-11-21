@@ -1,8 +1,9 @@
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
-import { formatCurrency as formatUSD } from '@/lib/format';
+import { formatCurrency as formatUSD, formatDisplayDate } from '@/lib/format';
 import { TABLE_THEAD, TABLE_TH, TABLE_SECTION } from '@/components/ui/table-styles';
+import { TableEmpty } from '@/components/ui/table-empty';
 
 interface LiquidityCategory {
   id: string;
@@ -42,17 +43,14 @@ const formatCurrency = (value: number) => formatUSD(value, 0, { halfAwayFromZero
 const formatSigned = (value: number) =>
   `${value > 0 ? '+' : ''}${formatCurrency(value)}`;
 
-const formatDate = (dateStr: string): string => {
-  const [year, month, day] = dateStr.split('-');
-  return `${month}/${day}/${year.slice(2)}`;
-};
+const formatDate = (dateStr: string): string => formatDisplayDate(dateStr);
 
 const stickyHead =
   'sticky left-0 z-20 bg-table-header-bg text-table-header-fg';
 const stickyCell = 'sticky left-0 z-20 bg-card';
 const stickyFoot = 'sticky left-0 z-20 bg-card';
 const colRule = 'border-l border-border';
-const cell = 'px-2 py-1 min-[1440px]:py-1.5';
+const cell = 'px-2 py-1.5';
 
 export function LiquiditySnapshotTable({
   snapshots,
@@ -89,12 +87,10 @@ export function LiquiditySnapshotTable({
 
   if (snapshots.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p className="text-lg">No snapshots yet</p>
-        <p className="text-sm mt-1">
-          Add your first liquidity snapshot to get started.
-        </p>
-      </div>
+      <TableEmpty>
+        <div>No snapshots yet</div>
+        <div className="mt-1">Add your first liquidity snapshot to get started.</div>
+      </TableEmpty>
     );
   }
 
@@ -116,7 +112,7 @@ export function LiquiditySnapshotTable({
         className={cn(
           cell,
           colRule,
-          'text-right tabular-nums text-[12.5px] bg-card border-b border-table-row-border group-hover/row:bg-surface-2',
+          'text-right font-mono tabular-nums text-[12.5px] bg-card border-b border-table-row-border group-hover/row:bg-surface-2',
           isLiability && val > 0 && 'text-danger'
         )}
       >
@@ -173,7 +169,7 @@ export function LiquiditySnapshotTable({
 
   return (
     <div className="min-w-0 w-full overflow-x-auto">
-      <table className="w-full table-fixed border-collapse text-[12.5px]">
+      <table className="w-full table-fixed border-collapse text-[12.5px] [&_td]:h-9 [&_th]:h-9">
         <colgroup>
           <col style={{ width: '158px' }} />
           {snapshots.map((snap) => (
@@ -235,7 +231,7 @@ export function LiquiditySnapshotTable({
               <td
                 key={snap.id}
                 className={cn(
-                  'px-2 py-1 text-right text-[12px] tabular-nums text-muted-foreground bg-card border-b border-table-row-border',
+                  'px-2 py-1.5 text-right text-[12px] font-mono tabular-nums text-muted-foreground bg-card border-b border-table-row-border',
                   colRule
                 )}
               >
@@ -256,7 +252,7 @@ export function LiquiditySnapshotTable({
               <td
                 key={snap.id}
                 className={cn(
-                  'px-2 py-1 text-right text-[12px] tabular-nums text-muted-foreground bg-card border-b border-table-row-border',
+                  'px-2 py-1.5 text-right text-[12px] font-mono tabular-nums text-muted-foreground bg-card border-b border-table-row-border',
                   colRule
                 )}
               >
@@ -279,7 +275,7 @@ export function LiquiditySnapshotTable({
           <tr>
             <td
               className={cn(
-                'sticky left-0 z-20 bg-surface-2 px-2 py-1.5 min-[1440px]:py-2 font-bold text-foreground text-[13.5px] border-t-2 border-table-row-border'
+                'sticky left-0 z-20 bg-transparent dark:bg-muted/50 px-2 py-2 font-semibold text-foreground text-[13px] border-t-2 border-foreground dark:border-border'
               )}
             >
               Total
@@ -290,7 +286,7 @@ export function LiquiditySnapshotTable({
                 <td
                   key={snap.id}
                   className={cn(
-                    'px-2 py-1.5 min-[1440px]:py-2 text-right tabular-nums font-bold text-foreground text-[13.5px] bg-surface-2 border-t-2 border-table-row-border',
+                    'px-2 py-2 text-right font-mono tabular-nums font-semibold text-foreground text-[13px] bg-transparent dark:bg-muted/50 border-t-2 border-foreground dark:border-border',
                     colRule
                   )}
                 >
@@ -340,7 +336,7 @@ export function LiquiditySnapshotTable({
                   className={cn(
                     cell,
                     colRule,
-                    'text-right tabular-nums font-semibold text-[12.5px] bg-card border-b border-table-row-border',
+                    'text-right font-mono tabular-nums font-semibold text-[12.5px] bg-card border-b border-table-row-border',
                     gain >= 0 ? 'text-success' : 'text-danger'
                   )}
                 >
@@ -367,7 +363,7 @@ export function LiquiditySnapshotTable({
                   className={cn(
                     cell,
                     colRule,
-                    'text-right tabular-nums text-muted-foreground text-[12.5px] bg-card'
+                    'text-right font-mono tabular-nums text-muted-foreground text-[12.5px] bg-card'
                   )}
                 >
                   {formatCurrency(dailyAvg)}

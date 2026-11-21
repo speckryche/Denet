@@ -15,7 +15,8 @@ import MarkRefundedDialog, { type RefundTarget } from '@/components/refunds/Mark
 import { Button } from '@/components/ui/button';
 import { Undo2 } from 'lucide-react';
 import { useRefundedIds } from '@/lib/refund-overrides-data';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, formatDisplayDate } from '@/lib/format';
+import { TableEmpty } from '@/components/ui/table-empty';
 
 export interface TransactionRow {
   id: string;
@@ -81,11 +82,8 @@ export function sortTransactionRows(
 
 export function formatTransactionDate(dateStr: string | null): string {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const year = String(date.getFullYear()).slice(-2);
-  return `${month}/${day}/${year}`;
+  const formatted = formatDisplayDate(dateStr);
+  return formatted === '—' ? '' : formatted;
 }
 
 function computeAdjustedFeeTotal(
@@ -217,15 +215,15 @@ export default function TransactionsTable({
         </TableHeader>
         <TableBody>
           {isLoading ? (
-            <TableRow>
-              <TableCell colSpan={isAdmin ? 10 : 9} className="text-center text-muted-foreground">
-                Loading...
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={isAdmin ? 10 : 9} className="h-auto p-0">
+                <TableEmpty>Loading...</TableEmpty>
               </TableCell>
             </TableRow>
           ) : rows.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={isAdmin ? 10 : 9} className="text-center text-muted-foreground">
-                {emptyMessage}
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={isAdmin ? 10 : 9} className="h-auto p-0">
+                <TableEmpty>{emptyMessage}</TableEmpty>
               </TableCell>
             </TableRow>
           ) : (
@@ -259,13 +257,13 @@ export default function TransactionsTable({
                   <TableCell className="truncate" title={`${row.customer_first_name} ${row.customer_last_name}`}>{row.customer_first_name} {row.customer_last_name}</TableCell>
                   <TableCell className="truncate" title={row.ticker}>{row.ticker}</TableCell>
                   <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                    {formatCurrency(row.sale)}
+                    {formatCurrency(row.sale, 2)}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                    {formatCurrency(row.fee)}
+                    {formatCurrency(row.fee, 2)}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                    {formatCurrency(row.bitstop_fee)}
+                    {formatCurrency(row.bitstop_fee, 2)}
                   </TableCell>
                   {isAdmin && (
                     <TableCell>
@@ -288,7 +286,7 @@ export default function TransactionsTable({
                 </TableRow>
                 );
               })}
-              <TableRow className="border-white/10 bg-white/5 font-bold">
+              <TableRow className="border-t-2 border-foreground bg-transparent font-semibold hover:bg-transparent dark:border-border">
                 <TableCell colSpan={6}>
                   TOTAL ({completedRows.length.toLocaleString('en-US')} completed
                   {nonCompletedCount > 0
@@ -296,19 +294,19 @@ export default function TransactionsTable({
                     : ''} transaction{completedRows.length === 1 && nonCompletedCount === 0 ? '' : 's'})
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                  {formatCurrency(totals.sale)}
+                  {formatCurrency(totals.sale, 2)}
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
                   {adjustedFeeTotals.hasOverrides ? (
                     <span title="Adjusted with Bitstop fee overrides">
-                      {formatCurrency(adjustedFeeTotals.fee)} *
+                      {formatCurrency(adjustedFeeTotals.fee, 2)} *
                     </span>
                   ) : (
-                    <>{formatCurrency(totals.fee)}</>
+                    <>{formatCurrency(totals.fee, 2)}</>
                   )}
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
-                  {formatCurrency(totals.bitstop_fee)}
+                  {formatCurrency(totals.bitstop_fee, 2)}
                 </TableCell>
               </TableRow>
             </>
