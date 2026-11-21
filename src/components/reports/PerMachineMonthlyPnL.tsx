@@ -347,7 +347,7 @@ export default function PerMachineMonthlyPnL() {
 
         {/* Table */}
         <div className="rounded-md border border-white/10 min-w-0">
-          <Table className="text-xs">
+          <Table className="text-xs [&_td]:h-9 [&_td]:py-1 [&_th]:h-9">
             <TableHeader>
               <TableRow>
                 <TableHead className="font-bold sticky left-0 bg-table-header-bg z-10 px-1.5">Machine</TableHead>
@@ -416,7 +416,7 @@ export default function PerMachineMonthlyPnL() {
                     </TableRow>
                   ))}
                   {/* Fleet net total row */}
-                  <TableRow className="border-t-2 border-t-white/20 bg-white/5 font-bold">
+                  <TableRow className="border-t-2 border-foreground bg-transparent font-semibold hover:bg-transparent dark:border-border">
                     <TableCell className="sticky left-0 bg-background z-10 font-bold px-1.5">Fleet net</TableCell>
                     {months.map((ym) => {
                       const v = fleetNetByMonth[ym] || 0;

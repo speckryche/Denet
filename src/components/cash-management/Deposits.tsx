@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, AlertCircle, Link, Check, X } from 'lucide-react';
-import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
-import { formatCurrency } from '@/lib/format';
+import { TableGroup, GROUP_TH, GROUP_THEAD, GROUP_TD } from '@/components/ui/table-group';
+import { formatCurrency, formatDisplayDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import {
   Table,
@@ -688,7 +689,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
                   stats={[{ label: 'Total', value: formatCurrency(monthTotal, 2) }]}
                 >
                     <Table className="table-fixed">
-                      <TableHeader>
+                      <TableHeader className={GROUP_THEAD}>
                         <TableRow className="hover:bg-transparent">
                           <TableHead className={`${GROUP_TH} w-[9%]`}>Date</TableHead>
                           <TableHead className={`${GROUP_TH} w-[9%]`}>Deposit ID</TableHead>
@@ -703,13 +704,13 @@ export function Deposits({ onUpdate }: DepositsProps) {
                       <TableBody>
                         {monthDeposits.map((deposit) => (
                           <TableRow key={deposit.id}>
-                            <TableCell>{new Date(deposit.deposit_date + 'T00:00:00').toLocaleDateString()}</TableCell>
-                            <TableCell className="truncate font-semibold" title={deposit.deposit_id}>{deposit.deposit_id}</TableCell>
-                            <TableCell className="truncate" title={deposit.person_name}>{deposit.person_name}</TableCell>
-                            <TableCell className="text-right font-mono">
+                            <TableCell className={GROUP_TD}>{formatDisplayDate(deposit.deposit_date)}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "truncate font-semibold")} title={deposit.deposit_id}>{deposit.deposit_id}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "truncate")} title={deposit.person_name}>{deposit.person_name}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "text-right font-mono")}>
                               {formatCurrency(deposit.amount, 2)}
                             </TableCell>
-                            <TableCell className="text-right font-mono">
+                            <TableCell className={cn(GROUP_TD, "text-right font-mono")}>
                               {deposit.amount_above > 0 ? (
                                 <button
                                   onClick={() => handleViewLinkedPickups(deposit)}
@@ -722,15 +723,15 @@ export function Deposits({ onUpdate }: DepositsProps) {
                                 <span>{formatCurrency(deposit.amount_above, 2)}</span>
                               )}
                             </TableCell>
-                            <TableCell className={`text-right font-mono ${
+                            <TableCell className={cn(GROUP_TD, `text-right font-mono ${
                               deposit.difference === 0 ? 'text-green-500' : 'text-red-500 font-bold'
-                            }`}>
+                            }`)}>
                               {deposit.difference !== 0 && <AlertCircle className="w-4 h-4 inline mr-1" />}
                               {formatCurrency(deposit.difference, 2)}
                             </TableCell>
-                            <TableCell className="truncate" title={deposit.notes || undefined}>{deposit.notes || '-'}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
+                            <TableCell className={cn(GROUP_TD, "truncate")} title={deposit.notes || undefined}>{deposit.notes || '-'}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "text-right")}>
+                              <div className="flex flex-nowrap justify-end gap-1">
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -839,7 +840,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
                             <div className="min-w-0 flex-1 grid grid-cols-5 gap-4 items-center">
                               <div>
                                 <div className="text-xs text-muted-foreground">Date</div>
-                                <div className="text-sm">{new Date(pickup.pickup_date + 'T00:00:00').toLocaleDateString()}</div>
+                                <div className="text-sm">{formatDisplayDate(pickup.pickup_date)}</div>
                               </div>
                               <div className="min-w-0">
                                 <div className="text-xs text-muted-foreground">ATM</div>
@@ -926,7 +927,7 @@ export function Deposits({ onUpdate }: DepositsProps) {
             </DialogTitle>
             <DialogDescription>
               Deposit of ${detailDeposit?.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} on{' '}
-              {detailDeposit ? new Date(detailDeposit.deposit_date + 'T00:00:00').toLocaleDateString() : ''}
+              {detailDeposit ? formatDisplayDate(detailDeposit.deposit_date) : ''}
               {' '}by {detailDeposit?.person_name}
             </DialogDescription>
           </DialogHeader>
@@ -938,13 +939,13 @@ export function Deposits({ onUpdate }: DepositsProps) {
           ) : (
             <div className="min-w-0 overflow-y-auto max-h-[400px]">
               <Table className="table-fixed">
-                <TableHeader>
+                <TableHeader className={GROUP_THEAD}>
                   <TableRow>
-                    <TableHead className="w-[18%] whitespace-normal">Pickup Date</TableHead>
-                    <TableHead className="w-[18%]">Person</TableHead>
-                    <TableHead>ATM</TableHead>
-                    <TableHead className="w-[19%] whitespace-normal text-right">Amount Linked</TableHead>
-                    <TableHead className="w-[9.5rem] text-right">Actions</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[18%] whitespace-normal`}>Pickup Date</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[18%]`}>Person</TableHead>
+                    <TableHead className={GROUP_TH}>ATM</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[19%] whitespace-normal text-right`}>Amount Linked</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[9.5rem] text-right`}>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -953,16 +954,16 @@ export function Deposits({ onUpdate }: DepositsProps) {
                     const isUnlinking = unlinkingLinkId === p.link_id;
                     return (
                       <TableRow key={p.link_id}>
-                        <TableCell>
-                          {new Date(p.pickup_date + 'T00:00:00').toLocaleDateString()}
+                        <TableCell className={GROUP_TD}>
+                          {formatDisplayDate(p.pickup_date)}
                         </TableCell>
-                        <TableCell className="truncate" title={p.person_name}>{p.person_name}</TableCell>
-                        <TableCell className="truncate" title={p.atm_name}>{p.atm_name}</TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className={cn(GROUP_TD, "truncate")} title={p.person_name}>{p.person_name}</TableCell>
+                        <TableCell className={cn(GROUP_TD, "truncate")} title={p.atm_name}>{p.atm_name}</TableCell>
+                        <TableCell className={cn(GROUP_TD, "text-right font-mono")}>
                           {formatCurrency(p.link_amount, 2)}
                         </TableCell>
                         <TableCell
-                          className="text-right"
+                          className={cn(GROUP_TD, "text-right")}
                           onClick={(e) => e.stopPropagation()}
                         >
                           {isConfirming ? (

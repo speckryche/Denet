@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TableEmpty } from '@/components/ui/table-empty';
 import { Check, Copy } from 'lucide-react';
 import { fmtAmount } from '@/lib/qbo/money';
 import type { Je } from '@/lib/qbo/types';
@@ -93,9 +94,9 @@ export function JeTable({ je, title }: { je: Je; title: string }) {
           </TableHeader>
           <TableBody>
             {je.lines.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
-                  Nothing to post for this month.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={4} className="h-auto p-0">
+                  <TableEmpty>Nothing to post for this month.</TableEmpty>
                 </TableCell>
               </TableRow>
             ) : (

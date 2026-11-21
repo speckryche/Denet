@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertTriangle, Undo2, AlertCircle } from 'lucide-react';
 import { fetchRefundOverrides } from '@/lib/refund-overrides-data';
 import { auditRefundOverrides, type RefundOverride, type RefundAudit } from '@/lib/refund-overrides';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, formatDisplayDate } from '@/lib/format';
 
 const money = (v: number | null | undefined) => formatCurrency(v, 2);
 
@@ -205,10 +205,10 @@ export default function Refunds() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{o.tx_date ?? '—'}</TableCell>
-                        <TableCell className="text-right">{money(o.sale)}</TableCell>
-                        <TableCell className="text-right">{money(o.fee)}</TableCell>
-                        <TableCell>{o.refund_date}</TableCell>
+                        <TableCell className="whitespace-nowrap">{o.tx_date ? formatDisplayDate(o.tx_date) : '—'}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{money(o.sale)}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{money(o.fee)}</TableCell>
+                        <TableCell className="whitespace-nowrap">{formatDisplayDate(o.refund_date)}</TableCell>
                         <TableCell className="truncate" title={o.source ?? undefined}>{o.source ?? '—'}</TableCell>
                         <TableCell className="truncate" title={o.note ?? undefined}>{o.note ?? '—'}</TableCell>
                         <TableCell className="truncate" title={(o as any).created_by ?? undefined}>{(o as any).created_by ?? '—'}</TableCell>

@@ -24,7 +24,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2, Bitcoin, RefreshCw } from 'lucide-react';
-import { formatCurrency as formatUSD } from '@/lib/format';
+import { formatCurrency as formatUSD, formatDisplayDate } from '@/lib/format';
+import { TABLE_THEAD, TABLE_TH } from '@/components/ui/table-styles';
 
 interface CryptoInvestment {
   id: string;
@@ -71,10 +72,7 @@ const formatQuantity = (value: number) =>
     maximumFractionDigits: 8,
   }).format(value);
 
-const formatDate = (dateStr: string): string => {
-  const [year, month, day] = dateStr.split('-');
-  return `${month}/${day}/${year.slice(2)}`;
-};
+const formatDate = (dateStr: string): string => formatDisplayDate(dateStr);
 
 const getPacificDateString = () => {
   return new Date().toLocaleDateString('en-CA', {
@@ -309,36 +307,36 @@ export function CryptoInvestments() {
                   <col style={{ width: '9%' }} />
                   <col style={{ width: '6%' }} />
                 </colgroup>
-                <thead className="bg-table-header-bg text-table-header-fg">
+                <thead className={TABLE_THEAD}>
                   <tr className="border-b border-table-header-bg">
-                    <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-left')}>
                       Crypto
                     </th>
-                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-right')}>
                       Current Price
                     </th>
-                    <th className="px-2 py-2.5 text-center text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-center')}>
                       As Of
                     </th>
-                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-right')}>
                       Quantity
                     </th>
-                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-right')}>
                       Total Cost
                     </th>
-                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-right')}>
                       Current Value
                     </th>
-                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-right')}>
                       Avg Cost Each
                     </th>
-                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-right')}>
                       Unrealized
                     </th>
-                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-right')}>
                       Realized
                     </th>
-                    <th className="px-2 py-2.5 text-right text-xs font-semibold uppercase leading-tight tracking-wider text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'text-right')}>
                       Total Gain
                     </th>
                     <th className="px-2 py-2.5" />

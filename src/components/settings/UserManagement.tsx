@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableEmpty } from '@/components/ui/table-empty';
 import { Shield, ShieldAlert, Info, Loader2, RefreshCw } from 'lucide-react';
 
 type Role = 'admin' | 'standard';
@@ -164,11 +165,13 @@ export function UserManagement() {
                   </TableCell>
                 </TableRow>
               ) : users.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
-                    {error
-                      ? 'The user list could not be loaded.'
-                      : 'No users to show yet. Invite someone from the Supabase dashboard, then refresh this list.'}
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={3} className="h-auto p-0">
+                    <TableEmpty>
+                      {error
+                        ? 'The user list could not be loaded.'
+                        : 'No users to show yet. Invite someone from the Supabase dashboard, then refresh this list.'}
+                    </TableEmpty>
                   </TableCell>
                 </TableRow>
               ) : (

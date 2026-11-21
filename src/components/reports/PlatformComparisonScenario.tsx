@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Link as LinkIcon, Unlink, RotateCcw, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
+import { TABLE_THEAD, TABLE_TH } from '@/components/ui/table-styles';
 import { formatCurrency as formatUSD } from '@/lib/format';
 
 interface Props {
@@ -571,28 +572,28 @@ export default function PlatformComparisonScenario({
               <col style={{ width: '21%' }} />
               <col style={{ width: '18%' }} />
             </colgroup>
-            <thead className="bg-table-header-bg text-table-header-fg">
-              <tr className="border-b-2 border-table-header-bg">
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-table-header-fg">
+            <thead className={TABLE_THEAD}>
+              <tr>
+                <th className={cn(TABLE_TH, 'px-4')}>
                   &nbsp;
                 </th>
-                <th className="px-3 py-3 text-right text-xs font-bold uppercase tracking-widest text-table-header-fg">
+                <th className={cn(TABLE_TH, 'px-3 text-right')}>
                   Per Machine
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-primary">
+                <th className={cn(TABLE_TH, 'px-4 text-right')}>
                   Actuals (Denet)
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-amber-400">
+                <th className={cn(TABLE_TH, 'px-4 text-right')}>
                   Projected (Bitstop)
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-table-header-fg">
+                <th className={cn(TABLE_TH, 'px-4 text-right')}>
                   Delta
                 </th>
               </tr>
             </thead>
             <tbody>
               {/* Total Sales — avg-per-machine input, always shared */}
-              <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr className="border-b border-table-row-border hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium align-top">
                   Total Sales
                 </td>
@@ -610,7 +611,7 @@ export default function PlatformComparisonScenario({
               </tr>
 
               {/* Fee % of Sales — two independent % inputs (no per-machine) */}
-              <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr className="border-b border-table-row-border hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium align-top">
                   Fee % of Sales
                 </td>
@@ -639,7 +640,7 @@ export default function PlatformComparisonScenario({
               </tr>
 
               {/* Revenue — calculated */}
-              <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr className="border-b border-table-row-border hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium align-top">Revenue</td>
                 {dashCell()}
                 {totalCell(revenueActual)}
@@ -655,7 +656,7 @@ export default function PlatformComparisonScenario({
               </tr>
 
               {/* Bitstop Fees % — Actuals input only */}
-              <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr className="border-b border-table-row-border hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium align-top">
                   Bitstop Fees %
                 </td>
@@ -671,7 +672,7 @@ export default function PlatformComparisonScenario({
               </tr>
 
               {/* Bitstop Fees — calculated; projected always $0 */}
-              <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr className="border-b border-table-row-border hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium align-top">
                   Bitstop Fees
                 </td>
@@ -689,7 +690,7 @@ export default function PlatformComparisonScenario({
               </tr>
 
               {/* Rent — per-machine, splittable */}
-              <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr className="border-b border-table-row-border hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium align-top">
                   Rent
                   <SplitToggle split={rentSplit} onToggle={toggleRentSplit} />
@@ -725,7 +726,7 @@ export default function PlatformComparisonScenario({
               </tr>
 
               {/* Mgmt RPS — per-machine, splittable */}
-              <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr className="border-b border-table-row-border hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium align-top">
                   Mgmt RPS
                   <SplitToggle split={mgmtRpsSplit} onToggle={toggleMgmtRpsSplit} />
@@ -765,7 +766,7 @@ export default function PlatformComparisonScenario({
               </tr>
 
               {/* Mgmt Rep — per-machine, splittable */}
-              <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr className="border-b border-table-row-border hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium align-top">
                   Mgmt Rep
                   <SplitToggle split={mgmtRepSplit} onToggle={toggleMgmtRepSplit} />
@@ -805,7 +806,7 @@ export default function PlatformComparisonScenario({
               </tr>
 
               {/* Commission — % input, splittable; $ derived per column */}
-              <tr className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr className="border-b border-table-row-border hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium align-top">
                   Commission
                   <SplitToggle
@@ -848,7 +849,7 @@ export default function PlatformComparisonScenario({
               </tr>
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-primary/30 bg-white/[0.03]">
+              <tr className="border-t-2 border-foreground bg-transparent dark:border-border dark:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-bold">Profit / Loss</td>
                 {dashCell()}
                 <td

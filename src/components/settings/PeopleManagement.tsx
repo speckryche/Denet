@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { formatDisplayDate } from '@/lib/format';
 import {
   Dialog,
   DialogContent,
@@ -277,7 +278,7 @@ export function PeopleManagement() {
                         )}
                       </span>
                     </TableCell>
-                    <TableCell>{new Date(person.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDisplayDate(person.created_at)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-0.5">
                         <Button

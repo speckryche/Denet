@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, ChevronDown, ListFilter } from 'lucide-react';
-import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
-import { formatCurrency } from '@/lib/format';
+import { TableGroup, GROUP_TH, GROUP_THEAD, GROUP_TD } from '@/components/ui/table-group';
+import { formatCurrency, formatDisplayDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -561,7 +562,7 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                   stats={[{ label: 'Total', value: formatCurrency(monthTotal, 2) }]}
                 >
                     <Table className="table-fixed">
-                      <TableHeader>
+                      <TableHeader className={GROUP_THEAD}>
                         <TableRow className="hover:bg-transparent">
                           <TableHead className={`${GROUP_TH} w-[8%]`}>Date</TableHead>
                           <TableHead className={`${GROUP_TH} w-[9%]`}>Person</TableHead>
@@ -577,14 +578,14 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                       <TableBody>
                         {monthPickups.map((pickup) => (
                           <TableRow key={pickup.id}>
-                            <TableCell>{new Date(pickup.pickup_date + 'T00:00:00').toLocaleDateString()}</TableCell>
-                            <TableCell className="truncate" title={pickup.person_name}>{pickup.person_name}</TableCell>
-                            <TableCell className="truncate" title={pickup.atm_name}>{pickup.atm_name}</TableCell>
-                            <TableCell className="truncate" title={pickup.city}>{pickup.city}</TableCell>
-                            <TableCell className="text-right font-mono">
+                            <TableCell className={GROUP_TD}>{formatDisplayDate(pickup.pickup_date)}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "truncate")} title={pickup.person_name}>{pickup.person_name}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "truncate")} title={pickup.atm_name}>{pickup.atm_name}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "truncate")} title={pickup.city}>{pickup.city}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "text-right font-mono")}>
                               {formatCurrency(pickup.amount, 2)}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className={cn(GROUP_TD, "text-right")}>
                               <span className={`font-mono ${
                                 pickup.deposit_status === 'full' ? 'text-green-500' :
                                 pickup.deposit_status === 'partial' ? 'text-yellow-500' :
@@ -595,14 +596,14 @@ export function CashPickups({ onUpdate }: CashPickupsProps) {
                                 {formatCurrency(pickup.amount, 2)}
                               </span>
                             </TableCell>
-                            <TableCell className={`text-right font-mono ${
+                            <TableCell className={cn(GROUP_TD, `text-right font-mono ${
                               pickup.remaining_balance > 0 ? 'text-orange-500' : 'text-green-500'
-                            }`}>
+                            }`)}>
                               {formatCurrency(pickup.remaining_balance, 2)}
                             </TableCell>
-                            <TableCell className="truncate" title={pickup.notes || undefined}>{pickup.notes || '-'}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
+                            <TableCell className={cn(GROUP_TD, "truncate")} title={pickup.notes || undefined}>{pickup.notes || '-'}</TableCell>
+                            <TableCell className={cn(GROUP_TD, "text-right")}>
+                              <div className="flex flex-nowrap justify-end gap-1">
                                 <Button
                                   variant="ghost"
                                   size="icon"

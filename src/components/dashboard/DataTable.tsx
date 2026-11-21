@@ -24,6 +24,7 @@ import { formatStatusLabel, statusBadgeClass } from "@/lib/transaction-status";
 import { countsFinancialTx } from "@/lib/refund-overrides";
 import { useRefundedIds } from "@/lib/refund-overrides-data";
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatDisplayDate } from '@/lib/format';
 
 interface DataTableProps {
   data: any[];
@@ -333,28 +334,15 @@ export function DataTable({ data = [], columns = [], title, toolbar }: DataTable
                   // Format date for date column
                   let cellValue = row[col];
                   if (col === 'date' && cellValue) {
-                    try {
-                      const date = new Date(cellValue);
-                      if (!isNaN(date.getTime())) {
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const day = String(date.getDate()).padStart(2, '0');
-                        const year = date.getFullYear();
-                        cellValue = `${month}/${day}/${year}`;
-                      }
-                    } catch (e) {
-                      // If date parsing fails, keep original value
-                    }
+                    cellValue = formatDisplayDate(String(cellValue));
                   }
 
-                  // Format numeric columns with 2 decimal places and commas
+                  // Ledger money: $ prefix, cents, tabular mono in the cell class.
                   const isNumeric = NUMERIC_COLUMNS.includes(col);
                   if (isNumeric && cellValue != null && cellValue !== '') {
                     const numValue = typeof cellValue === 'number' ? cellValue : parseFloat(cellValue);
                     if (!isNaN(numValue)) {
-                      cellValue = numValue.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      });
+                      cellValue = formatCurrency(numValue, 2);
                     }
                   }
 
@@ -364,6 +352,7 @@ export function DataTable({ data = [], columns = [], title, toolbar }: DataTable
                       title={cellValue != null && cellValue !== '' ? String(cellValue) : undefined}
                       className={cn(
                         "truncate px-1.5 py-2.5 xl:px-3 text-xs xl:text-[13px] tabular-nums",
+                        isNumeric && "font-mono",
                         isNumeric && "text-right",
                         (col === 'date' || col === 'fee' || col === 'bitstop_fee') && !muted && "text-muted-foreground",
                         col === 'platform' && "capitalize"

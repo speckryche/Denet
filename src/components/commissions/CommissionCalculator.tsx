@@ -24,7 +24,7 @@ import { Calculator, CheckCircle, AlertCircle, Eye, Download, Trash2, FileSpread
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { formatCurrency } from '@/lib/format';
-import { TableGroup, GROUP_TH } from '@/components/ui/table-group';
+import { TableGroup, GROUP_TH, GROUP_THEAD } from '@/components/ui/table-group';
 
 // Bitstop Commissions is the reference for grouped-by-year tables. Headers here
 // stay on one line (15 columns use short labels); cells get GROUP_TD's padding and
@@ -808,7 +808,7 @@ export default function CommissionCalculator() {
                             containerClassName="overflow-x-hidden"
                             className={`w-full table-fixed text-[13px] ${CTD}`}
                           >
-                              <TableHeader>
+                              <TableHeader className={GROUP_THEAD}>
                                 <TableRow className="hover:bg-transparent">
                                   <TableHead className={CTH} title="Sales Rep">Sales Rep</TableHead>
                                   <TableHead className={`${CTH} w-[6.5%]`} title="Month">Month</TableHead>
@@ -1000,15 +1000,15 @@ export default function CommissionCalculator() {
 
               <div className="min-w-0 overflow-hidden rounded-md border border-white/10">
                 <Table className="table-fixed">
-                  <TableHeader>
+                  <TableHeader className={GROUP_THEAD}>
                     <TableRow>
-                      <TableHead className="w-[18%]">ATM ID</TableHead>
-                      <TableHead className="text-right">Total Sales</TableHead>
-                      <TableHead className="text-right">Total Fees</TableHead>
-                      <TableHead className="text-right">Rent</TableHead>
-                      <TableHead className="text-right">Mgmt - RPS</TableHead>
-                      <TableHead className="text-right">Mgmt - Rep</TableHead>
-                      <TableHead className="text-right">Net Profit</TableHead>
+                      <TableHead className={`${GROUP_TH} w-[18%]`}>ATM ID</TableHead>
+                      <TableHead className={`${GROUP_TH} text-right`}>Total Sales</TableHead>
+                      <TableHead className={`${GROUP_TH} text-right`}>Total Fees</TableHead>
+                      <TableHead className={`${GROUP_TH} text-right`}>Rent</TableHead>
+                      <TableHead className={`${GROUP_TH} text-right`}>Mgmt - RPS</TableHead>
+                      <TableHead className={`${GROUP_TH} text-right`}>Mgmt - Rep</TableHead>
+                      <TableHead className={`${GROUP_TH} text-right`}>Net Profit</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

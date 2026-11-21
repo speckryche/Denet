@@ -10,6 +10,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { Pencil, History, Search, Download, Check, Plus, Monitor, RefreshCw, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate } from '@/lib/format';
+import { TABLE_THEAD, TABLE_TH } from '@/components/ui/table-styles';
 import UpdateMachineStateModal from './UpdateMachineStateModal';
 import ProfileTimeline from './ProfileTimeline';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -385,36 +387,36 @@ export default function BTMDetails() {
 
         <div className="w-full min-w-0 overflow-x-auto">
           <table className="w-full table-fixed text-sm">
-            <thead className="bg-table-header-bg text-table-header-fg">
-              <tr className="border-b border-table-header-bg text-xs uppercase tracking-wide text-table-header-fg">
+            <thead className={TABLE_THEAD}>
+              <tr>
                 <th
-                  className="w-[12%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-primary"
+                  className={cn(TABLE_TH, 'w-[12%] px-3 cursor-pointer hover:text-primary')}
                   onClick={() => handleSort('atm_id')}
                 >
                   Machine {getSortIcon('atm_id')}
                 </th>
                 <th
-                  className="text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-primary"
+                  className={cn(TABLE_TH, 'px-3 cursor-pointer hover:text-primary')}
                   onClick={() => handleSort('location_name')}
                 >
                   Location {getSortIcon('location_name')}
                 </th>
-                <th className="w-[7%] text-center px-3 py-2 font-mono font-normal">Listed</th>
-                <th className="w-[8%] text-right px-3 py-2 font-mono font-normal">Rent</th>
-                <th className="w-[12%] text-right px-3 py-2 font-mono font-normal">Mgmt</th>
+                <th className={cn(TABLE_TH, 'w-[7%] px-3 text-center')}>Listed</th>
+                <th className={cn(TABLE_TH, 'w-[8%] px-3 text-right')}>Rent</th>
+                <th className={cn(TABLE_TH, 'w-[12%] px-3 text-right')}>Mgmt</th>
                 <th
-                  className="w-[9%] text-left px-3 py-2 font-mono font-normal cursor-pointer hover:text-primary"
+                  className={cn(TABLE_TH, 'w-[9%] px-3 cursor-pointer hover:text-primary')}
                   onClick={() => handleSort('rent_payment_method')}
                 >
                   Pay {getSortIcon('rent_payment_method')}
                 </th>
-                <th className="w-[10%] text-left px-3 py-2 font-mono font-normal">Installed</th>
-                {isInactive && <th className="w-[10%] text-left px-3 py-2 font-mono font-normal">Removed</th>}
+                <th className={cn(TABLE_TH, 'w-[10%] px-3')}>Installed</th>
+                {isInactive && <th className={cn(TABLE_TH, 'w-[10%] px-3')}>Removed</th>}
                 <th className="w-10 px-3 py-2" aria-label="Expand" />
               </tr>
             </thead>
             <tbody>
-              {sorted.map((profile, idx) => {
+              {sorted.map((profile) => {
                 const isExpanded = expandedId === profile.id;
                 const address = formatAddress(profile);
 
@@ -604,9 +606,8 @@ export default function BTMDetails() {
                     <tr
                       onClick={() => toggleExpand(profile.id)}
                       className={cn(
-                        'border-b border-[#2a3142]/60 cursor-pointer transition-colors hover:bg-[#252b3d]',
-                        idx % 2 === 1 && !isExpanded && 'bg-white/[0.02]',
-                        isExpanded && 'bg-[#252b3d]'
+                        'border-b border-table-row-border cursor-pointer transition-colors hover:bg-muted/50',
+                        isExpanded && 'bg-muted'
                       )}
                     >
                       {/* Machine */}
@@ -647,12 +648,12 @@ export default function BTMDetails() {
                       </td>
                       {/* Installed */}
                       <td className="px-3 py-3 align-top font-mono tabular-nums text-gray-400">
-                        {profile.installed_date || '—'}
+                        {profile.installed_date ? formatDisplayDate(profile.installed_date) : '—'}
                       </td>
                       {/* Removed (Inactive only) */}
                       {isInactive && (
                         <td className="px-3 py-3 align-top font-mono tabular-nums text-gray-400">
-                          {profile.removed_date || '—'}
+                          {profile.removed_date ? formatDisplayDate(profile.removed_date) : '—'}
                         </td>
                       )}
                       {/* Chevron */}

@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { FileSpreadsheet, FileText, RotateCcw, Loader2, Info } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
+import { TABLE_THEAD, TABLE_TH, TABLE_TFOOT } from '@/components/ui/table-styles';
+import { TableEmpty } from '@/components/ui/table-empty';
 import {
   calculateExpenseMonths,
   profilesForWindow,
@@ -850,18 +852,18 @@ export default function PlatformComparison() {
                   <col style={{ width: '24%' }} />
                   <col style={{ width: '24%' }} />
                 </colgroup>
-                <thead className="bg-table-header-bg text-table-header-fg">
-                  <tr className="border-b-2 border-table-header-bg">
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-table-header-fg">
+                <thead className={TABLE_THEAD}>
+                  <tr>
+                    <th className={cn(TABLE_TH, 'px-4')}>
                       &nbsp;
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-primary">
+                    <th className={cn(TABLE_TH, 'px-4 text-right')}>
                       Actuals (Denet)
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-amber-400">
+                    <th className={cn(TABLE_TH, 'px-4 text-right')}>
                       Projected (Bitstop)
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-table-header-fg">
+                    <th className={cn(TABLE_TH, 'px-4 text-right')}>
                       Delta
                     </th>
                   </tr>
@@ -870,7 +872,7 @@ export default function PlatformComparison() {
                   {rows.map((row) => (
                     <tr
                       key={row.label}
-                      className="border-b border-white/[0.04] hover:bg-white/[0.02]"
+                      className="border-b border-table-row-border hover:bg-muted/50"
                     >
                       <td className="px-4 py-3 text-sm font-medium">
                         {row.label}
@@ -926,7 +928,7 @@ export default function PlatformComparison() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-primary/30 bg-white/[0.03]">
+                  <tr className="border-t-2 border-foreground bg-transparent dark:border-border dark:bg-muted/50">
                     <td className="px-4 py-3 text-sm font-bold">
                       Profit / Loss
                     </td>
@@ -975,9 +977,7 @@ export default function PlatformComparison() {
 
         {/* No machines found */}
         {!isLoading && canRun && machineCount === 0 && !error && (
-          <div className="text-center py-12 text-muted-foreground">
-            No Denet Platform machines found for the selected date range.
-          </div>
+          <TableEmpty>No Denet Platform machines found for the selected date range.</TableEmpty>
         )}
       </CardContent>
     </Card>

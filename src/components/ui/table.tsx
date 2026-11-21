@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { TABLE_THEAD, TABLE_TH, TABLE_TFOOT, TABLE_TD } from "@/components/ui/table-styles"
 
 interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
   /** Extra classes for the scroll wrapper (e.g. to let overlays escape it). */
@@ -29,7 +30,7 @@ const TableHeader = React.forwardRef<
   <thead
     ref={ref}
     className={cn(
-      "bg-table-header-bg text-table-header-fg [&_tr]:border-b [&_tr]:border-table-header-bg [&_tr:hover]:bg-transparent",
+      TABLE_THEAD,
       className
     )}
     {...props}
@@ -56,7 +57,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      TABLE_TFOOT,
       className
     )}
     {...props}
@@ -86,7 +87,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-10 px-2 py-1.5 text-left align-middle font-medium leading-tight text-table-header-fg [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&_[role=checkbox]]:border-current",
+      TABLE_TH,
       className
     )}
     {...props}
@@ -101,7 +102,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-2 py-1.5 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      TABLE_TD,
       className
     )}
     {...props}
@@ -131,3 +132,14 @@ export {
   TableCell,
   TableCaption,
 }
+
+export {
+  TABLE_THEAD,
+  TABLE_THEAD_TR,
+  TABLE_TH,
+  TABLE_TFOOT,
+  TABLE_TD,
+  TABLE_TD_DENSE,
+  TABLE_MONEY,
+  TABLE_SECTION,
+} from "@/components/ui/table-styles"
