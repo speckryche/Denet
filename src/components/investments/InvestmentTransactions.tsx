@@ -21,6 +21,7 @@ import {
   type InvestmentTxType,
 } from '@/lib/investmentFifo';
 import { TableGroup, GROUP_TH, GROUP_TD, GROUP_THEAD, GROUP_TFOOT } from '@/components/ui/table-group';
+import { CoinIdentity } from '@/components/investments/CoinIdentity';
 import {
   Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -410,8 +411,8 @@ export function InvestmentTransactions({ onCountChange }: InvestmentTransactions
               <Table className="table-fixed min-w-[860px]">
                 <TableHeader className={GROUP_THEAD}>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className={`${GROUP_TH} w-[8%]`}>Coin</TableHead>
-                    <TableHead className={`${GROUP_TH} w-[15%] text-right`}>Qty</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[184px]`}>Coin</TableHead>
+                    <TableHead className={`${GROUP_TH} w-[12%] text-right`}>Qty</TableHead>
                     <TableHead className={`${GROUP_TH} text-right`}>Avg cost</TableHead>
                     <TableHead className={`${GROUP_TH} text-right`}>Cost basis</TableHead>
                     <TableHead className={`${GROUP_TH} text-right`}>Current price</TableHead>
@@ -423,7 +424,7 @@ export function InvestmentTransactions({ onCountChange }: InvestmentTransactions
                 <TableBody>
                   {holdings.map((h) => (
                     <TableRow key={h.coin}>
-                      <TableCell className={`${GROUP_TD} font-medium`}>{h.coin}</TableCell>
+                      <TableCell className={GROUP_TD}><CoinIdentity symbol={h.coin} /></TableCell>
                       <TableCell className={`${GROUP_TD} text-right font-mono tabular-nums`}>{formatQtyTable(h.qty)}</TableCell>
                       <TableCell className={`${GROUP_TD} text-right font-mono tabular-nums text-muted-foreground`}>
                         {formatCurrency(h.avgCost, 2)}
